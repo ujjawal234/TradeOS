@@ -1467,9 +1467,137 @@
    "rows": 3704,
    "first": "2011-09-26",
    "last": "2026-09-28"
+  },
+  "NIFTYNEXT50": {
+   "yahoo": "^NSMIDCP",
+   "rows": 3694,
+   "first": "2011-09-26",
+   "last": "2026-09-28"
+  },
+  "NIFTY100": {
+   "yahoo": "^CNX100",
+   "rows": 3688,
+   "first": "2011-09-26",
+   "last": "2026-09-28"
+  },
+  "NIFTY200": {
+   "yahoo": "^CNX200",
+   "rows": 3693,
+   "first": "2011-09-26",
+   "last": "2026-09-28"
+  },
+  "NIFTY500": {
+   "yahoo": "^CRSLDX",
+   "rows": 3688,
+   "first": "2011-09-26",
+   "last": "2026-09-28"
+  },
+  "NIFTYMIDCAP50": {
+   "yahoo": "^NSEMDCP50",
+   "rows": 3653,
+   "first": "2011-09-26",
+   "last": "2026-09-28"
+  },
+  "NIFTYMIDCAP100": {
+   "yahoo": "NIFTY_MIDCAP_100.NS",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYMIDSELECT": {
+   "yahoo": "NIFTY_MID_SELECT.NS",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYSMALLCAP100": {
+   "yahoo": "^CNXSC",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYPSE": {
+   "yahoo": "^CNXPSE",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYMNC": {
+   "yahoo": "^CNXMNC",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYCONSUMPTION": {
+   "yahoo": "^CNXCONSUM",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYCOMMODITIES": {
+   "yahoo": "^CNXCMDT",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYSERVICES": {
+   "yahoo": "^CNXSERVICE",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYPVTBANK": {
+   "yahoo": "NIFTY_PVT_BANK.NS",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYHEALTHCARE": {
+   "yahoo": "NIFTY_HEALTHCARE.NS",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYOILGAS": {
+   "yahoo": "NIFTY_OIL_AND_GAS.NS",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYCONSDURABLES": {
+   "yahoo": "NIFTY_CONSR_DURBL.NS",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "NIFTYCPSE": {
+   "yahoo": "NIFTY_CPSE.NS",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "BANKEX": {
+   "yahoo": "BSE-BANK.BO",
+   "rows": 1,
+   "first": "2026-09-29",
+   "last": "2026-09-29"
+  },
+  "BSE100": {
+   "yahoo": "BSE-100.BO",
+   "rows": 3676,
+   "first": "2011-09-26",
+   "last": "2026-09-28"
+  },
+  "BSE500": {
+   "yahoo": "BSE-500.BO",
+   "rows": 3677,
+   "first": "2011-09-26",
+   "last": "2026-09-28"
   }
  },
  "failed": {
-  "NIFTYFPI": "no data"
+  "NIFTYDIVOPPS50": "no data",
+  "BSEMIDCAP": "no data",
+  "BSESMALLCAP": "no data"
  }
 }

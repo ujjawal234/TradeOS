@@ -1199,13 +1199,6 @@
    "lot_size": 6950,
    "nifty50": false
   },
-  "NIFTYFPI": {
-   "fno": true,
-   "lot_size": 1100,
-   "name": "NIFTY FPI 150",
-   "nifty50": false,
-   "nifty200": false
-  },
   "NMDC": {
    "name": "NMDC Ltd.",
    "industry": "Metals & Mining",
