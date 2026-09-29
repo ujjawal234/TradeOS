@@ -21,12 +21,38 @@ from tradeos.data.universe import INDICES, NIFTY50, SECTORS, to_yahoo  # noqa: E
 
 OUT = ROOT / "data" / "prices"
 
+# Alternative Yahoo tickers to try when the default one has no history
+ALTERNATES = {
+    "NIFTYFMCG": ["NIFTY_FMCG.NS", "^CNXFMCG"], "NIFTYAUTO": ["NIFTY_AUTO.NS", "^CNXAUTO"],
+    "NIFTYMETAL": ["NIFTY_METAL.NS", "^CNXMETAL"], "NIFTYREALTY": ["NIFTY_REALTY.NS", "^CNXREALTY"],
+    "NIFTYENERGY": ["NIFTY_ENERGY.NS", "^CNXENERGY"], "NIFTYPSUBANK": ["NIFTY_PSU_BANK.NS", "^CNXPSUBANK"],
+    "NIFTYMEDIA": ["NIFTY_MEDIA.NS", "^CNXMEDIA"], "NIFTYINFRA": ["NIFTY_INFRA.NS", "^CNXINFRA"],
+    "NIFTYFIN": ["NIFTY_FIN_SERVICE.NS", "^CNXFIN", "^NSEFIN"],
+}
+
 
 def fetch(symbol: str, start: str) -> pd.DataFrame:
+    best, used = None, None
+    for t in [to_yahoo(symbol)] + [a for a in ALTERNATES.get(symbol, []) if a != to_yahoo(symbol)]:
+        try:
+            df = fetch_ticker(t, start)
+        except Exception:
+            continue
+        if best is None or len(df) > len(best):
+            best, used = df, t
+        if len(best) > 200:
+            break
+    if best is None:
+        raise RuntimeError(f"{symbol}: no data from any ticker")
+    best.attrs["ticker"] = used
+    return best
+
+
+def fetch_ticker(ticker: str, start: str) -> pd.DataFrame:
     last_err = None
     for attempt in range(4):
         try:
-            df = yf.Ticker(to_yahoo(symbol)).history(start=start, auto_adjust=True, actions=False)
+            df = yf.Ticker(ticker).history(start=start, auto_adjust=True, actions=False)
             if df is not None and not df.empty:
                 df = df.rename(columns=str.lower)[["open", "high", "low", "close", "volume"]]
                 idx = df.index.tz_localize(None) if df.index.tz is not None else df.index
@@ -39,7 +65,7 @@ def fetch(symbol: str, start: str) -> pd.DataFrame:
         except Exception as e:  # rate limits etc.
             last_err = str(e)
         time.sleep(3 * (attempt + 1))
-    raise RuntimeError(f"{symbol}: {last_err}")
+    raise RuntimeError(f"{ticker}: {last_err}")
 
 
 def main() -> None:
@@ -54,7 +80,7 @@ def main() -> None:
         try:
             df = fetch(s, start)
             df.round(2).to_csv(OUT / f"{s}.csv")
-            manifest[s] = {"yahoo": to_yahoo(s), "rows": len(df), "first": str(df.index[0].date()),
+            manifest[s] = {"yahoo": df.attrs.get("ticker", to_yahoo(s)), "rows": len(df), "first": str(df.index[0].date()),
                            "last": str(df.index[-1].date())}
             print(f"OK   {s:<14} {len(df):>5} rows {manifest[s]['first']} -> {manifest[s]['last']}")
         except Exception as e:
