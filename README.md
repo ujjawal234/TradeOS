@@ -1,5 +1,24 @@
 # TradeOS
 
+**The team app** (Claude artifact, private until shared): Main Agent · Agents · Agent rooms · Today's signals.
+Open it from claude.ai → Artifacts → "TradeOS". Everything runs in the cloud; no local install needed.
+
+How it runs every weekday
+1. 16:00 IST — GitHub Actions `Fetch market data` refreshes 15 years of daily prices for all Nifty 200 + F&O stocks
+   and the NSE/BSE indices Yahoo carries (`data/`), plus official constituent lists and lot sizes from NSE.
+2. 16:45 IST — a scheduled Claude task rebuilds the app data, republishes it, runs every paper-trading agent with
+   `scripts/daily_run.mjs` (same engine as the app: `lab/engine.js`), writes results to the app database and
+   `paper/<date>.json`, updates `alerts/latest.json` (→ Telegram) and sends a phone push when there are buy/sell signals.
+
+Telegram (optional): create a bot with @BotFather, then in this repo add Settings → Secrets and variables → Actions →
+`TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
+
+Paper trading and research only. Not investment advice.
+
+---
+
+## Python toolkit (CLI)
+
 Agentic research, backtesting and **paper-trading** system for Indian markets (NSE).
 A Claude-powered **Main Agent** creates, runs and destroys sub-agents — alerts, rule strategies,
 momentum/sector rotation, option selling, and report readers — backtests each one and paper-trades it daily.
