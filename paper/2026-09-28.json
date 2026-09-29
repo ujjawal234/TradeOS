@@ -1,0 +1,26 @@
+{
+ "date": "2026-09-28",
+ "generated": "2026-09-29T19:08:43.477Z",
+ "agents_run": 1,
+ "actions": 0,
+ "push_text": "TradeOS 2026-09-28: no buy/sell signals across 1 paper agent(s).",
+ "telegram_text": "TradeOS signals for the session after 2026-09-28 (paper trading, not advice)\nNIFTY200 12-1 Momentum Top10 (Trend-Filtered, Final) (v1) starts next session: no action",
+ "results": [
+  {
+   "id": "amun1pkmas1hgs",
+   "name": "NIFTY200 12-1 Momentum Top10 (Trend-Filtered, Final)",
+   "version": 1,
+   "since": "2026-09-28",
+   "pending": true,
+   "signals": [
+    {
+     "symbol": "-",
+     "action": "CASH",
+     "date": "2026-09-28",
+     "note": "Trend filter off (NIFTY below its 200-day average) or nothing qualifies"
+    }
+   ],
+   "actions": []
+  }
+ ]
+}
