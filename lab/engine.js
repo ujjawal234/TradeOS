@@ -537,49 +537,107 @@
   const OPT_DEF = { underlying: "NIFTY", structure: "strangle", expiry: null, expiry_weekday: 1, strike_mode: "delta", delta: 0.15, otm_pct: 2.0,
     wing_width: 500, strike_step: null, lot_size: null, lots: 1, min_dte: 2, stop_loss_mult: 2.0, profit_target_pct: 50, exit_dte: 0,
     min_vix: null, max_vix: null, iv_mult: 1.0, capital: 500000, fee_per_order: 20, cost_pct_premium: 0.15, vix_symbol: "INDIAVIX" };
+  // Claude (or a person) may write values loosely: "15" for 0.15 delta, "Nifty 50" for nifty50, "RELIANCE.NS",
+  // null for "use the default". Normalise all of that here so a sensible strategy never fails on format.
+  const NULLABLE = new Set(["stop_loss_pct", "take_profit_pct", "min_score", "trend_filter", "min_vix", "max_vix", "stop_loss_mult", "profit_target_pct", "exit"]);
+  const ALIASES = { NIFTY50: "NIFTY", "NIFTY 50": "NIFTY", NSEI: "NIFTY", "BANK NIFTY": "BANKNIFTY", NIFTYBANK: "BANKNIFTY", NSEBANK: "BANKNIFTY", "INDIA VIX": "INDIAVIX", VIX: "INDIAVIX",
+    FINNIFTY: "NIFTYFIN", "NIFTY IT": "NIFTYIT", "NIFTY PHARMA": "NIFTYPHARMA", BSESN: "SENSEX", ZOMATO: "ETERNAL", TATAMOTORS: "TMPV", "TATA MOTORS": "TMPV", BAJAJAUTO: "BAJAJ-AUTO",
+    "M & M": "M&M", MM: "M&M", MAHINDRA: "M&M" };
+  const groupKey = (x) => String(x).toLowerCase().replace(/[^a-z0-9]/g, "");
+  function symKey(x) {
+    let s = String(x).trim().toUpperCase().replace(/^\^/, "").replace(/\.(NS|BO)$/, "");
+    if (ALIASES[s]) return ALIASES[s];
+    const squeezed = s.replace(/\s+/g, "");
+    return ALIASES[squeezed] || squeezed;
+  }
+  function expandSymbols(list, universes) {
+    if (typeof list === "string") list = universes[groupKey(list)] ? [list] : list.split(/[,;\s]+/).filter(Boolean);
+    if (!Array.isArray(list)) list = [];
+    const out = [];
+    for (const x of list) { const g = universes[groupKey(x)]; if (g) out.push(...g); else out.push(symKey(x)); }
+    return [...new Set(out)];
+  }
+  function clean(o, defaults) {
+    const x = {};
+    for (const [k, v] of Object.entries(o || {})) {
+      if (v === undefined || v === "") continue;
+      if (v === null && !NULLABLE.has(k) && defaults[k] !== null) continue; // null -> default
+      x[k] = v;
+    }
+    return x;
+  }
+  const numOr = (v, d) => { if (v == null || v === "") return d; const n = Number(String(v).replace(/[%x×,\s]/gi, "")); return isFinite(n) ? n : d; };
+  const numOrNull = (v) => v == null || v === "" || v === false ? null : numOr(v, null);
   function normalize(spec, universes) {
-    const type = spec.type || "rule";
-    const clean = (o) => { const x = {}; for (const [k, v] of Object.entries(o)) if (v !== undefined && v !== "") x[k] = v; return x; };
+    if (!spec || typeof spec !== "object") throw new RuleError("No strategy given");
+    const t = groupKey(spec.type || "rule");
+    const type = t.startsWith("rot") || t.includes("momentum") ? "rotation" : t.includes("option") ? "option_selling" : t === "rule" || t === "" ? "rule" : spec.type;
     if (type === "rule") {
-      const s = Object.assign({}, RULE_DEF, clean(spec), { type });
-      if (typeof s.symbols === "string") s.symbols = s.symbols.split(/[\s,]+/).filter(Boolean);
-      s.symbols = [...new Set(s.symbols.flatMap((x) => universes[String(x).toLowerCase()] || [String(x).toUpperCase()]))].sort();
-      if (!s.symbols.length) throw new RuleError("Add at least one symbol");
-      if (!["long", "short"].includes(s.side)) throw new RuleError("side must be long or short");
-      validate(s.entry); if (s.exit) validate(s.exit); else if (!s.stop_loss_pct && !s.take_profit_pct) throw new RuleError("Give an exit rule or a stop-loss / take-profit");
-      for (const k of ["stop_loss_pct", "take_profit_pct"]) s[k] = s[k] ? Number(s[k]) : null;
+      const s = Object.assign({}, RULE_DEF, clean(spec, RULE_DEF), { type });
+      s.symbols = expandSymbols(s.symbols, universes).sort();
+      if (!s.symbols.length) throw new RuleError("Add at least one symbol.");
+      s.side = /short|sell/i.test(String(s.side)) ? "short" : "long";
+      if (!s.entry) throw new RuleError("The strategy needs an entry rule.");
+      validate(s.entry);
+      if (s.exit) validate(s.exit);
+      s.stop_loss_pct = numOrNull(s.stop_loss_pct) || null; s.take_profit_pct = numOrNull(s.take_profit_pct) || null;
+      if (!s.exit && !s.stop_loss_pct && !s.take_profit_pct) throw new RuleError("Give an exit rule or a stop-loss / take-profit.");
+      s.position_size_pct = Math.min(100, Math.max(1, numOr(s.position_size_pct, 100)));
+      s.capital = numOr(s.capital, RULE_DEF.capital); s.cost_pct = numOr(s.cost_pct, RULE_DEF.cost_pct);
       return s;
     }
     if (type === "rotation") {
-      const s = Object.assign({}, ROT_DEF, clean(spec), { type });
+      const s = Object.assign({}, ROT_DEF, clean(spec, ROT_DEF), { type });
+      if (Array.isArray(s.universe)) s.universe = expandSymbols(s.universe, universes);
+      else if (universes[groupKey(s.universe)]) s.universe = groupKey(s.universe);
+      else { const list = expandSymbols(String(s.universe), universes); if (list.length > 1) s.universe = list; else throw new RuleError(`Unknown universe '${s.universe}'. Use one of: ${Object.keys(universes).join(", ")}, or a list of symbols.`); }
       if (spec.trend_filter === null || spec.trend_filter === false) s.trend_filter = null;
-      for (const k of ["lookback", "skip", "top_n"]) s[k] = Math.trunc(Number(s[k]));
-      if (!["weekly", "monthly"].includes(s.rebalance)) throw new RuleError("rebalance must be weekly or monthly");
-      if (!["momentum", "risk_adj"].includes(s.score)) throw new RuleError("score must be momentum or risk_adj");
-      if (s.top_n < 1 || s.lookback < 5) throw new RuleError("top_n >= 1 and lookback >= 5 required");
+      else if (spec.trend_filter === true) s.trend_filter = { symbol: "NIFTY", sma: 200 };
+      else if (typeof s.trend_filter === "number") s.trend_filter = { symbol: "NIFTY", sma: s.trend_filter };
+      else if (s.trend_filter) s.trend_filter = { symbol: symKey(s.trend_filter.symbol || "NIFTY"), sma: Math.trunc(numOr(s.trend_filter.sma, 200)) };
+      s.lookback = Math.trunc(numOr(s.lookback, 126)); s.skip = Math.max(0, Math.trunc(numOr(s.skip, 21))); s.top_n = Math.trunc(numOr(s.top_n, 5));
+      s.rebalance = /week/i.test(String(s.rebalance)) ? "weekly" : "monthly";
+      s.score = /risk|sharpe|vol/i.test(String(s.score)) ? "risk_adj" : "momentum";
+      s.min_score = numOrNull(s.min_score); if (s.min_score != null && Math.abs(s.min_score) >= 1) s.min_score /= 100;
+      s.rebalance_band_pct = numOr(s.rebalance_band_pct, 1); s.capital = numOr(s.capital, ROT_DEF.capital); s.cost_pct = numOr(s.cost_pct, ROT_DEF.cost_pct);
+      if (s.top_n < 1 || s.lookback < 5) throw new RuleError("Hold at least 1 name and rank over at least 5 days.");
       return s;
     }
     if (type === "option_selling") {
-      const s = Object.assign({}, OPT_DEF, clean(spec), { type });
-      s.underlying = String(s.underlying).toUpperCase();
-      const base = UNDERLYINGS[s.underlying] || { lot_size: 1, strike_step: 50, expiry: "monthly" };
-      for (const k of ["lot_size", "strike_step", "expiry"]) if (s[k] == null) s[k] = base[k];
-      if (!["strangle", "straddle", "iron_condor", "short_put", "short_call"].includes(s.structure)) throw new RuleError("Unknown option structure");
-      if (!(s.delta > 0 && s.delta < 0.5)) throw new RuleError("delta must be between 0 and 0.5");
+      const s = Object.assign({}, OPT_DEF, clean(spec, OPT_DEF), { type });
+      s.underlying = symKey(s.underlying);
+      if (!UNDERLYINGS[s.underlying]) throw new RuleError(`Option selling works on NIFTY or BANKNIFTY here, not '${s.underlying}'.`);
+      const base = UNDERLYINGS[s.underlying];
+      for (const k of ["lot_size", "strike_step"]) s[k] = Math.trunc(numOr(s[k], base[k]));
+      s.expiry = /week/i.test(String(s.expiry)) ? "weekly" : /month/i.test(String(s.expiry)) ? "monthly" : base.expiry;
+      const st = groupKey(s.structure);
+      s.structure = st.includes("condor") ? "iron_condor" : st.includes("straddle") ? "straddle" : st.includes("put") ? "short_put" : st.includes("call") ? "short_call" : "strangle";
+      // strikes: delta written as 0.15 or 15 both mean 15 delta
+      if (!/otm|pct|percent/i.test(String(s.strike_mode)) && !(spec.strike_mode == null && spec.delta == null && spec.otm_pct != null)) {
+        s.strike_mode = "delta"; let d = numOr(s.delta, 0.15); if (d >= 1 && d < 50) d /= 100;
+        if (!(d > 0 && d < 0.5)) throw new RuleError("Delta should be between 1 and 49 (e.g. 15 delta = 0.15).");
+        s.delta = d;
+      } else { s.strike_mode = "otm_pct"; s.otm_pct = numOr(s.otm_pct, 2); if (!(s.otm_pct > 0 && s.otm_pct < 30)) throw new RuleError("% out of the money should be between 0 and 30."); }
+      s.lots = Math.max(1, Math.trunc(numOr(s.lots, 1))); s.wing_width = numOr(s.wing_width, 500); s.min_dte = Math.trunc(numOr(s.min_dte, 2)); s.exit_dte = Math.trunc(numOr(s.exit_dte, 0));
+      s.expiry_weekday = Math.trunc(numOr(s.expiry_weekday, 1));
+      s.stop_loss_mult = numOrNull(s.stop_loss_mult); s.profit_target_pct = numOrNull(s.profit_target_pct);
+      if (s.profit_target_pct != null && s.profit_target_pct > 0 && s.profit_target_pct <= 1) s.profit_target_pct *= 100;
+      s.min_vix = numOrNull(s.min_vix); s.max_vix = numOrNull(s.max_vix); s.iv_mult = numOr(s.iv_mult, 1);
+      s.capital = numOr(s.capital, OPT_DEF.capital); s.fee_per_order = numOr(s.fee_per_order, 20); s.cost_pct_premium = numOr(s.cost_pct_premium, 0.15);
       return s;
     }
-    throw new RuleError(`Unknown strategy type '${type}'`);
+    throw new RuleError(`Unknown strategy type '${spec.type}'. Use rule, rotation or option_selling.`);
   }
   function symbolsNeeded(s, universes) {
     if (s.type === "rule") return s.symbols;
-    if (s.type === "rotation") { const u = Array.isArray(s.universe) ? s.universe.map((x) => String(x).toUpperCase()) : (universes[String(s.universe).toLowerCase()] || []); return u.concat(s.trend_filter ? [s.trend_filter.symbol] : []); }
+    if (s.type === "rotation") { const u = Array.isArray(s.universe) ? s.universe : (universes[s.universe] || []); return u.concat(s.trend_filter ? [s.trend_filter.symbol] : []); }
     return [s.underlying, s.vix_symbol];
   }
   function run(spec, frames, universes, opt = {}) {
     const o = { rf: 0.065, startDay: opt.start ? dayOf(opt.start) : null, endDay: opt.end ? dayOf(opt.end) : null };
     let res;
     if (spec.type === "rule") res = runRule(spec, frames, o);
-    else if (spec.type === "rotation") res = runRotation(spec, frames, o, Array.isArray(spec.universe) ? spec.universe.map((x) => String(x).toUpperCase()) : universes[String(spec.universe).toLowerCase()]);
+    else if (spec.type === "rotation") res = runRotation(spec, frames, o, Array.isArray(spec.universe) ? spec.universe : universes[spec.universe]);
     else res = runOptions(spec, frames, o);
     // benchmark: NIFTY buy & hold on the same dates
     if (frames.NIFTY && res.days.length > 1) {

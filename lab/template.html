@@ -272,7 +272,7 @@ Choose ONE "type":
     "min_score":0 to buy only positive momentum or null,"trend_filter":{"symbol":"NIFTY","sma":200} or null}
 3) "option_selling" — systematic short index options, model-priced with India VIX. Fields:
    {"type":"option_selling","name":str,"underlying":"NIFTY" (weekly, Tuesday expiry)|"BANKNIFTY" (monthly),"structure":"strangle"|"straddle"|"iron_condor"|"short_put"|"short_call",
-    "strike_mode":"delta"|"otm_pct","delta":0.05-0.45,"otm_pct":number,"wing_width":points for iron_condor,"stop_loss_mult":exit when cost to close >= this x credit (null = none),
+    "strike_mode":"delta"|"otm_pct","delta":decimal 0.05-0.45 (15 delta = 0.15),"otm_pct":number,"wing_width":points for iron_condor,"stop_loss_mult":exit when cost to close >= this x credit (null = none),
     "profit_target_pct":exit when this % of credit is captured (null = none),"exit_dte":close N days before expiry (0 = hold),"lots":int,"min_vix":number|null,"max_vix":number|null}
 
 EXPRESSION LANGUAGE for entry/exit (evaluated on each bar; signal at close, filled at next day's open):

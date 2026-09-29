@@ -54,8 +54,13 @@ class OptionSellingAgent(BaseAgent):
             raise ValueError("expiry must be weekly or monthly")
         if s["strike_mode"] not in ("delta", "otm_pct"):
             raise ValueError("strike_mode must be delta or otm_pct")
-        if not 0 < float(s["delta"]) < 0.5:
-            raise ValueError("delta must be between 0 and 0.5")
+        if s["strike_mode"] == "delta":
+            d = float(s["delta"] if s.get("delta") is not None else 0.15)
+            if 1 <= d < 50:  # "15 delta" written as 15
+                d /= 100
+            if not 0 < d < 0.5:
+                raise ValueError("delta should be between 1 and 49 (15 delta = 0.15)")
+            s["delta"] = d
 
     def symbols(self) -> list[str]:
         return [self.spec["underlying"], self.spec["vix_symbol"]]
