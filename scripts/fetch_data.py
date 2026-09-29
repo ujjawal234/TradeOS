@@ -1,18 +1,28 @@
-"""Download daily OHLCV history from Yahoo Finance into data/prices/<SYMBOL>.csv.
+"""Download the tradable universe and daily OHLCV history from NSE/Yahoo into data/.
 
-Runs on GitHub Actions (which has open internet). Prices are split- and dividend-adjusted
-(auto_adjust=True). Usage:  python scripts/fetch_data.py [--years 15]
+Runs on GitHub Actions (open internet). Steps:
+ 1. Constituent lists from NSE archives: Nifty 50, Nifty 200 (with industry) and the F&O list
+    (with lot sizes). Falls back to the last saved data/universe.json if NSE is unreachable.
+ 2. Daily prices from Yahoo Finance (split- and dividend-adjusted), 15 years on first run and
+    incremental afterwards. A symbol is fully re-downloaded when its recent adjusted prices no
+    longer match what is stored (a dividend or split re-adjusts all history).
+
+Usage:  python scripts/fetch_data.py [--years 15] [--full] [--only SYM1,SYM2]
 """
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import json
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
+import requests
 import yfinance as yf
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,36 +30,85 @@ sys.path.insert(0, str(ROOT))
 from tradeos.data.universe import INDICES, NIFTY50, SECTORS, to_yahoo  # noqa: E402
 
 OUT = ROOT / "data" / "prices"
+UNIVERSE_FILE = ROOT / "data" / "universe.json"
+UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/140.0 Safari/537.36", "Accept": "text/csv,*/*"}
+HOSTS = ["https://nsearchives.nseindia.com", "https://archives.nseindia.com"]
+INDEX_UNDERLYINGS = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50", "SENSEX", "BANKEX"}
 
-# Alternative Yahoo tickers to try when the default one has no history
 ALTERNATES = {
-    "NIFTYFMCG": ["NIFTY_FMCG.NS", "^CNXFMCG"], "NIFTYAUTO": ["NIFTY_AUTO.NS", "^CNXAUTO"],
-    "NIFTYMETAL": ["NIFTY_METAL.NS", "^CNXMETAL"], "NIFTYREALTY": ["NIFTY_REALTY.NS", "^CNXREALTY"],
-    "NIFTYENERGY": ["NIFTY_ENERGY.NS", "^CNXENERGY"], "NIFTYPSUBANK": ["NIFTY_PSU_BANK.NS", "^CNXPSUBANK"],
-    "NIFTYMEDIA": ["NIFTY_MEDIA.NS", "^CNXMEDIA"], "NIFTYINFRA": ["NIFTY_INFRA.NS", "^CNXINFRA"],
-    "NIFTYFIN": ["NIFTY_FIN_SERVICE.NS", "^CNXFIN", "^NSEFIN"],
+    "NIFTYFMCG": ["NIFTY_FMCG.NS"], "NIFTYAUTO": ["NIFTY_AUTO.NS"], "NIFTYMETAL": ["NIFTY_METAL.NS"],
+    "NIFTYREALTY": ["NIFTY_REALTY.NS"], "NIFTYENERGY": ["NIFTY_ENERGY.NS"], "NIFTYPSUBANK": ["NIFTY_PSU_BANK.NS"],
+    "NIFTYMEDIA": ["NIFTY_MEDIA.NS"], "NIFTYINFRA": ["NIFTY_INFRA.NS"], "NIFTYFIN": ["NIFTY_FIN_SERVICE.NS", "^CNXFIN"],
 }
 
 
-def fetch(symbol: str, start: str) -> pd.DataFrame:
-    best, used = None, None
-    for t in [to_yahoo(symbol)] + [a for a in ALTERNATES.get(symbol, []) if a != to_yahoo(symbol)]:
+# --------------------------------------------------------------------------- constituent lists
+def nse_csv(path: str) -> list[dict] | None:
+    for host in HOSTS:
         try:
-            df = fetch_ticker(t, start)
-        except Exception:
+            r = requests.get(host + path, headers=UA, timeout=30)
+            if r.status_code == 200 and len(r.text) > 200:
+                return list(csv.DictReader(io.StringIO(r.text)))
+        except Exception as e:
+            print(f"  {host}{path}: {e}")
+    return None
+
+
+def clean_row(d: dict) -> dict:
+    return {k.strip(): (v or "").strip() for k, v in d.items() if k}
+
+
+def load_universe() -> dict:
+    old = json.loads(UNIVERSE_FILE.read_text()) if UNIVERSE_FILE.exists() else {}
+    stocks: dict[str, dict] = {}
+    n50 = nse_csv("/content/indices/ind_nifty50list.csv")
+    n200 = nse_csv("/content/indices/ind_nifty200list.csv")
+    fno = nse_csv("/content/fo/fo_mktlots.csv")
+    got = {"nifty50": n50 is not None, "nifty200": n200 is not None, "fno": fno is not None}
+    print("NSE lists fetched:", got)
+    for row in map(clean_row, n200 or []):
+        s = row.get("Symbol")
+        if s:
+            stocks.setdefault(s, {})
+            stocks[s].update({"name": row.get("Company Name", ""), "industry": row.get("Industry", ""), "nifty200": True})
+    for row in map(clean_row, n50 or []):
+        s = row.get("Symbol")
+        if s:
+            stocks.setdefault(s, {})
+            stocks[s].update({"nifty50": True, "name": stocks[s].get("name") or row.get("Company Name", ""),
+                              "industry": stocks[s].get("industry") or row.get("Industry", "")})
+    for row in map(clean_row, fno or []):
+        s = (row.get("SYMBOL") or "").strip()
+        if not s or s.upper() == "SYMBOL" or s in INDEX_UNDERLYINGS:
             continue
-        if best is None or len(df) > len(best):
-            best, used = df, t
-        if len(best) > 200:
-            break
-    if best is None:
-        raise RuntimeError(f"{symbol}: no data from any ticker")
-    best.attrs["ticker"] = used
-    return best
+        lots = [v for k, v in row.items() if k not in ("UNDERLYING", "SYMBOL") and v.strip().isdigit()]
+        stocks.setdefault(s, {})
+        stocks[s].update({"fno": True, "lot_size": int(lots[0]) if lots else None,
+                          "name": stocks[s].get("name") or row.get("UNDERLYING", "")})
+    # keep what NSE didn't return this time from the previous file (so a blocked download never shrinks the universe)
+    for s, meta in (old.get("stocks") or {}).items():
+        if s not in stocks:
+            if (meta.get("nifty200") and not got["nifty200"]) or (meta.get("fno") and not got["fno"]) \
+                    or (meta.get("nifty50") and not got["nifty50"]):
+                stocks[s] = meta
+        else:
+            for k, v in meta.items():
+                stocks[s].setdefault(k, v)
+    if not stocks:  # first run and NSE unreachable: fall back to the built-in Nifty 50
+        stocks = {s: {"nifty50": True, "nifty200": True} for s in NIFTY50}
+    for s in NIFTY50:
+        if s not in stocks and not got["nifty50"]:
+            stocks[s] = {"nifty50": True}
+    for meta in stocks.values():
+        for k in ("nifty50", "nifty200", "fno"):
+            meta.setdefault(k, False)
+    return {"generated": date.today().isoformat(), "lists_fetched": got, "stocks": dict(sorted(stocks.items()))}
 
 
-def fetch_ticker(ticker: str, start: str) -> pd.DataFrame:
-    last_err = None
+# --------------------------------------------------------------------------- prices
+def yahoo_history(ticker: str, start: str) -> pd.DataFrame:
+    last = None
     for attempt in range(4):
         try:
             df = yf.Ticker(ticker).history(start=start, auto_adjust=True, actions=False)
@@ -59,39 +118,89 @@ def fetch_ticker(ticker: str, start: str) -> pd.DataFrame:
                 df.index = pd.DatetimeIndex(idx).normalize()
                 df.index.name = "date"
                 df = df[~df.index.duplicated(keep="last")].dropna(subset=["close"])
-                df = df[df["close"] > 0]
-                return df
-            last_err = "empty"
-        except Exception as e:  # rate limits etc.
-            last_err = str(e)
-        time.sleep(3 * (attempt + 1))
-    raise RuntimeError(f"{ticker}: {last_err}")
+                return df[df["close"] > 0].round(2)
+            last = "empty"
+        except Exception as e:
+            last = str(e)
+        time.sleep(2 * (attempt + 1))
+    raise RuntimeError(f"{ticker}: {last}")
+
+
+def update_symbol(sym: str, start15: str, full: bool) -> dict:
+    path = OUT / f"{sym}.csv"
+    tickers = [to_yahoo(sym)] + [t for t in ALTERNATES.get(sym, []) if t != to_yahoo(sym)]
+    old = pd.read_csv(path, index_col=0, parse_dates=True) if path.exists() and not full else None
+    if old is not None and len(old) > 200:
+        recent_start = (old.index[-1] - pd.Timedelta(days=12)).date().isoformat()
+        try:
+            new = yahoo_history(tickers[0], recent_start)
+            overlap = old.index.intersection(new.index)
+            drift = (new.loc[overlap, "close"] / old.loc[overlap, "close"] - 1).abs().max() if len(overlap) else 1
+            if len(overlap) >= 3 and drift < 0.005:
+                df = pd.concat([old[old.index < new.index[0]], new])
+                df.to_csv(path)
+                return {"symbol": sym, "rows": len(df), "mode": "incremental", "ticker": tickers[0]}
+        except Exception:
+            pass  # fall through to a full download
+    best, used = None, None
+    for t in tickers:
+        try:
+            df = yahoo_history(t, start15)
+        except Exception:
+            continue
+        if best is None or len(df) > len(best):
+            best, used = df, t
+        if len(best) > 200:
+            break
+    if best is None:
+        raise RuntimeError("no data")
+    best.to_csv(path)
+    return {"symbol": sym, "rows": len(best), "mode": "full", "ticker": used}
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--years", type=int, default=15)
+    ap.add_argument("--full", action="store_true")
+    ap.add_argument("--only", default="")
     args = ap.parse_args()
-    start = (date.today() - timedelta(days=int(args.years * 365.25) + 5)).isoformat()
     OUT.mkdir(parents=True, exist_ok=True)
-    symbols = list(dict.fromkeys(INDICES + ["INDIAVIX"] + SECTORS + NIFTY50))
-    manifest, failed = {}, {}
-    for s in symbols:
+    universe = load_universe()
+    UNIVERSE_FILE.write_text(json.dumps(universe, indent=1))
+    stocks = list(universe["stocks"])
+    print(f"Universe: {len(stocks)} stocks ({sum(m['nifty200'] for m in universe['stocks'].values())} Nifty 200, "
+          f"{sum(m['fno'] for m in universe['stocks'].values())} F&O)")
+    symbols = list(dict.fromkeys(INDICES + ["INDIAVIX"] + SECTORS + stocks))
+    if args.only:
+        symbols = [s.strip().upper() for s in args.only.split(",") if s.strip()]
+    start15 = (date.today() - timedelta(days=int(args.years * 365.25) + 5)).isoformat()
+    manifest_path = ROOT / "data" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {"symbols": {}}
+    failed = {}
+
+    def job(sym):
         try:
-            df = fetch(s, start)
-            df.round(2).to_csv(OUT / f"{s}.csv")
-            manifest[s] = {"yahoo": df.attrs.get("ticker", to_yahoo(s)), "rows": len(df), "first": str(df.index[0].date()),
-                           "last": str(df.index[-1].date())}
-            print(f"OK   {s:<14} {len(df):>5} rows {manifest[s]['first']} -> {manifest[s]['last']}")
+            return update_symbol(sym, start15, args.full)
         except Exception as e:
-            failed[s] = str(e)[:200]
-            print(f"FAIL {s:<14} {e}")
-        time.sleep(0.5)
-    (ROOT / "data" / "manifest.json").write_text(json.dumps(
-        {"generated": date.today().isoformat(), "start": start, "adjusted": True, "source": "Yahoo Finance",
-         "symbols": manifest, "failed": failed}, indent=1))
-    print(f"\n{len(manifest)} ok, {len(failed)} failed")
-    if len(manifest) < len(symbols) * 0.6:
+            return {"symbol": sym, "error": str(e)[:200]}
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        for r in pool.map(job, symbols):
+            s = r["symbol"]
+            if "error" in r:
+                failed[s] = r["error"]
+                print(f"FAIL {s:<14} {r['error']}")
+                continue
+            df = pd.read_csv(OUT / f"{s}.csv", index_col=0, parse_dates=True)
+            manifest["symbols"][s] = {"yahoo": r["ticker"], "rows": len(df), "first": str(df.index[0].date()),
+                                      "last": str(df.index[-1].date())}
+            print(f"OK   {s:<14} {len(df):>5} rows ({r['mode']})")
+    manifest.update({"generated": date.today().isoformat(), "start": start15, "adjusted": True,
+                     "source": "Yahoo Finance", "failed": failed})
+    manifest_path.write_text(json.dumps(manifest, indent=1))
+    ok = len(symbols) - len(failed)
+    print(f"\n{ok} ok, {len(failed)} failed")
+    if ok < len(symbols) * 0.6:
         sys.exit("Too many failures")
 
 
