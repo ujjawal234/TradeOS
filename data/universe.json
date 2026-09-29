@@ -1,0 +1,1798 @@
+{
+ "generated": "2026-09-29",
+ "lists_fetched": {
+  "nifty50": true,
+  "nifty200": true,
+  "fno": true
+ },
+ "stocks": {
+  "360ONE": {
+   "name": "360 ONE WAM Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 500,
+   "nifty50": false
+  },
+  "ABB": {
+   "name": "ABB India Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 125,
+   "nifty50": false
+  },
+  "ABCAPITAL": {
+   "name": "Aditya Birla Capital Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 3100,
+   "nifty50": false
+  },
+  "ADANIENSOL": {
+   "name": "Adani Energy Solutions Ltd.",
+   "industry": "Power",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 675,
+   "nifty50": false
+  },
+  "ADANIENT": {
+   "name": "Adani Enterprises Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 309
+  },
+  "ADANIGREEN": {
+   "name": "Adani Green Energy Ltd.",
+   "industry": "Power",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 600,
+   "nifty50": false
+  },
+  "ADANIPORTS": {
+   "name": "Adani Ports and Special Economic Zone Ltd.",
+   "industry": "Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 475
+  },
+  "ADANIPOWER": {
+   "name": "Adani Power Ltd.",
+   "industry": "Power",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 3550,
+   "nifty50": false
+  },
+  "ALKEM": {
+   "name": "Alkem Laboratories Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 125,
+   "nifty50": false
+  },
+  "AMBER": {
+   "fno": true,
+   "lot_size": 100,
+   "name": "AMBER ENTERPRISES (I) LTD",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "AMBUJACEM": {
+   "name": "Ambuja Cements Ltd.",
+   "industry": "Construction Materials",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1200,
+   "nifty50": false
+  },
+  "ANANDRATHI": {
+   "fno": true,
+   "lot_size": 250,
+   "name": "ANAND RATHI WEALTH LTD",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "ANGELONE": {
+   "fno": true,
+   "lot_size": 2500,
+   "name": "ANGEL ONE LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "APLAPOLLO": {
+   "name": "APL Apollo Tubes Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 350,
+   "nifty50": false
+  },
+  "APOLLOHOSP": {
+   "name": "Apollo Hospitals Enterprise Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 125
+  },
+  "ASHOKLEY": {
+   "name": "Ashok Leyland Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 5000,
+   "nifty50": false
+  },
+  "ASIANPAINT": {
+   "name": "Asian Paints Ltd.",
+   "industry": "Consumer Durables",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 250
+  },
+  "ASTRAL": {
+   "name": "Astral Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 425,
+   "nifty50": false
+  },
+  "ATGL": {
+   "name": "Adani Total Gas Ltd.",
+   "industry": "Oil Gas & Consumable Fuels",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "ATHERENERG": {
+   "fno": true,
+   "lot_size": 375,
+   "name": "ATHER ENERGY LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "AUBANK": {
+   "name": "AU Small Finance Bank Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1000,
+   "nifty50": false
+  },
+  "AUROPHARMA": {
+   "name": "Aurobindo Pharma Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 550,
+   "nifty50": false
+  },
+  "AXISBANK": {
+   "name": "Axis Bank Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 625
+  },
+  "BAJAJ-AUTO": {
+   "name": "Bajaj Auto Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 75
+  },
+  "BAJAJFINSV": {
+   "name": "Bajaj Finserv Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 300
+  },
+  "BAJAJHLDNG": {
+   "name": "Bajaj Holdings & Investment Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 75,
+   "nifty50": false
+  },
+  "BAJFINANCE": {
+   "name": "Bajaj Finance Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 750
+  },
+  "BANDHANBNK": {
+   "fno": true,
+   "lot_size": 3600,
+   "name": "BANDHAN BANK LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "BANKBARODA": {
+   "name": "Bank of Baroda",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 2925,
+   "nifty50": false
+  },
+  "BANKINDIA": {
+   "name": "Bank of India",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 5200,
+   "nifty50": false
+  },
+  "BDL": {
+   "name": "Bharat Dynamics Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 425,
+   "nifty50": false
+  },
+  "BEL": {
+   "name": "Bharat Electronics Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 1425
+  },
+  "BHARATFORG": {
+   "name": "Bharat Forge Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 500,
+   "nifty50": false
+  },
+  "BHARTIARTL": {
+   "name": "Bharti Airtel Ltd.",
+   "industry": "Telecommunication",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 475
+  },
+  "BHEL": {
+   "name": "Bharat Heavy Electricals Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 2625,
+   "nifty50": false
+  },
+  "BIOCON": {
+   "name": "Biocon Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 2500,
+   "nifty50": false
+  },
+  "BLUESTARCO": {
+   "name": "Blue Star Ltd.",
+   "industry": "Consumer Durables",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 325,
+   "nifty50": false
+  },
+  "BOSCHLTD": {
+   "name": "Bosch Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 25,
+   "nifty50": false
+  },
+  "BPCL": {
+   "name": "Bharat Petroleum Corporation Ltd.",
+   "industry": "Oil Gas & Consumable Fuels",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1975,
+   "nifty50": false
+  },
+  "BRITANNIA": {
+   "name": "Britannia Industries Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 125,
+   "nifty50": false
+  },
+  "BSE": {
+   "name": "BSE Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 200,
+   "nifty50": false
+  },
+  "CAMS": {
+   "fno": true,
+   "lot_size": 825,
+   "name": "COMPUTER AGE MNGT SER LTD",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "CANBK": {
+   "name": "Canara Bank",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 6750,
+   "nifty50": false
+  },
+  "CDSL": {
+   "fno": true,
+   "lot_size": 475,
+   "name": "CENTRAL DEPO SER (I) LTD",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "CGPOWER": {
+   "name": "CG Power and Industrial Solutions Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 850,
+   "nifty50": false
+  },
+  "CHOLAFIN": {
+   "name": "Cholamandalam Investment and Finance Company Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 625,
+   "nifty50": false
+  },
+  "CIPLA": {
+   "name": "Cipla Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 425
+  },
+  "COALINDIA": {
+   "name": "Coal India Ltd.",
+   "industry": "Oil Gas & Consumable Fuels",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 1350
+  },
+  "COCHINSHIP": {
+   "name": "Cochin Shipyard Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 400,
+   "nifty50": false
+  },
+  "COFORGE": {
+   "name": "Coforge Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 475,
+   "nifty50": false
+  },
+  "COLPAL": {
+   "name": "Colgate Palmolive (India) Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 275,
+   "nifty50": false
+  },
+  "CONCOR": {
+   "name": "Container Corporation of India Ltd.",
+   "industry": "Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1250,
+   "nifty50": false
+  },
+  "COROMANDEL": {
+   "name": "Coromandel International Ltd.",
+   "industry": "Chemicals",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "CROMPTON": {
+   "fno": true,
+   "lot_size": 2150,
+   "name": "CROMPT GREA CON ELEC LTD",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "CUMMINSIND": {
+   "name": "Cummins India Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 200,
+   "nifty50": false
+  },
+  "DABUR": {
+   "name": "Dabur India Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1250,
+   "nifty50": false
+  },
+  "DELHIVERY": {
+   "fno": true,
+   "lot_size": 2075,
+   "name": "DELHIVERY LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "DIVISLAB": {
+   "name": "Divi's Laboratories Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 100,
+   "nifty50": false
+  },
+  "DIXON": {
+   "name": "Dixon Technologies (India) Ltd.",
+   "industry": "Consumer Durables",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 50,
+   "nifty50": false
+  },
+  "DLF": {
+   "name": "DLF Ltd.",
+   "industry": "Realty",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 950,
+   "nifty50": false
+  },
+  "DMART": {
+   "name": "Avenue Supermarts Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 150,
+   "nifty50": false
+  },
+  "DRREDDY": {
+   "name": "Dr. Reddy's Laboratories Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 625
+  },
+  "EICHERMOT": {
+   "name": "Eicher Motors Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 100
+  },
+  "ENRIN": {
+   "name": "Siemens Energy India Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 175,
+   "nifty50": false
+  },
+  "ETERNAL": {
+   "name": "Eternal Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 2425
+  },
+  "EXIDEIND": {
+   "name": "Exide Industries Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "FEDERALBNK": {
+   "name": "Federal Bank Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 2500,
+   "nifty50": false
+  },
+  "FORCEMOT": {
+   "fno": true,
+   "lot_size": 25,
+   "name": "FORCE MOTORS LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "FORTIS": {
+   "name": "Fortis Healthcare Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 775,
+   "nifty50": false
+  },
+  "GAIL": {
+   "name": "GAIL (India) Ltd.",
+   "industry": "Oil Gas & Consumable Fuels",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 3550,
+   "nifty50": false
+  },
+  "GLENMARK": {
+   "name": "Glenmark Pharmaceuticals Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 375,
+   "nifty50": false
+  },
+  "GMRAIRPORT": {
+   "name": "GMR Airports Ltd.",
+   "industry": "Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 6975,
+   "nifty50": false
+  },
+  "GODFRYPHLP": {
+   "name": "Godfrey Phillips India Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 275,
+   "nifty50": false
+  },
+  "GODREJCP": {
+   "name": "Godrej Consumer Products Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 500,
+   "nifty50": false
+  },
+  "GODREJPROP": {
+   "name": "Godrej Properties Ltd.",
+   "industry": "Realty",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 325,
+   "nifty50": false
+  },
+  "GRASIM": {
+   "name": "Grasim Industries Ltd.",
+   "industry": "Construction Materials",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 250
+  },
+  "GROWW": {
+   "name": "Billionbrains Garage Ventures Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "GVT&D": {
+   "name": "GE Vernova T&D India Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 125,
+   "nifty50": false
+  },
+  "HAL": {
+   "name": "Hindustan Aeronautics Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 150,
+   "nifty50": false
+  },
+  "HAVELLS": {
+   "name": "Havells India Ltd.",
+   "industry": "Consumer Durables",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 500,
+   "nifty50": false
+  },
+  "HCLTECH": {
+   "name": "HCL Technologies Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 400
+  },
+  "HDFCAMC": {
+   "name": "HDFC Asset Management Company Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 300,
+   "nifty50": false
+  },
+  "HDFCBANK": {
+   "name": "HDFC Bank Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 650
+  },
+  "HDFCLIFE": {
+   "name": "HDFC Life Insurance Company Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 1100
+  },
+  "HEROMOTOCO": {
+   "name": "Hero MotoCorp Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 150,
+   "nifty50": false
+  },
+  "HINDALCO": {
+   "name": "Hindalco Industries Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 700
+  },
+  "HINDPETRO": {
+   "name": "Hindustan Petroleum Corporation Ltd.",
+   "industry": "Oil Gas & Consumable Fuels",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 2025,
+   "nifty50": false
+  },
+  "HINDUNILVR": {
+   "name": "Hindustan Unilever Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 300
+  },
+  "HINDZINC": {
+   "name": "Hindustan Zinc Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1225,
+   "nifty50": false
+  },
+  "HUDCO": {
+   "name": "Housing & Urban Development Corporation Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "HYUNDAI": {
+   "name": "Hyundai Motor India Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 275,
+   "nifty50": false
+  },
+  "ICICIAMC": {
+   "name": "ICICI Prudential Asset Management Company Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "ICICIBANK": {
+   "name": "ICICI Bank Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 700
+  },
+  "ICICIGI": {
+   "name": "ICICI Lombard General Insurance Company Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 325,
+   "nifty50": false
+  },
+  "ICICIPRULI": {
+   "fno": true,
+   "lot_size": 925,
+   "name": "ICICI PRU LIFE INS CO LTD",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "IDEA": {
+   "name": "Vodafone Idea Ltd.",
+   "industry": "Telecommunication",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 71475,
+   "nifty50": false
+  },
+  "IDFCFIRSTB": {
+   "name": "IDFC First Bank Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 9275,
+   "nifty50": false
+  },
+  "IEX": {
+   "fno": true,
+   "lot_size": 4350,
+   "name": "INDIAN ENERGY EXC LTD",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "INDHOTEL": {
+   "name": "Indian Hotels Co. Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1000,
+   "nifty50": false
+  },
+  "INDIANB": {
+   "name": "Indian Bank",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1000,
+   "nifty50": false
+  },
+  "INDIGO": {
+   "name": "InterGlobe Aviation Ltd.",
+   "industry": "Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 150
+  },
+  "INDUSINDBK": {
+   "name": "IndusInd Bank Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 700,
+   "nifty50": false
+  },
+  "INDUSTOWER": {
+   "name": "Indus Towers Ltd.",
+   "industry": "Telecommunication",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1700,
+   "nifty50": false
+  },
+  "INFY": {
+   "name": "Infosys Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 400
+  },
+  "INOXWIND": {
+   "fno": true,
+   "lot_size": 6400,
+   "name": "INOX WIND LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "IOC": {
+   "name": "Indian Oil Corporation Ltd.",
+   "industry": "Oil Gas & Consumable Fuels",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 4875,
+   "nifty50": false
+  },
+  "IRCTC": {
+   "name": "Indian Railway Catering And Tourism Corporation Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "IREDA": {
+   "name": "Indian Renewable Energy Development Agency Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 4525,
+   "nifty50": false
+  },
+  "IRFC": {
+   "name": "Indian Railway Finance Corporation Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 5425,
+   "nifty50": false
+  },
+  "ITC": {
+   "name": "ITC Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 1725
+  },
+  "JINDALSTEL": {
+   "name": "Jindal Steel Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 625,
+   "nifty50": false
+  },
+  "JIOFIN": {
+   "name": "Jio Financial Services Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 2350
+  },
+  "JSWENERGY": {
+   "name": "JSW Energy Ltd.",
+   "industry": "Power",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1075,
+   "nifty50": false
+  },
+  "JSWSTEEL": {
+   "name": "JSW Steel Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 675
+  },
+  "JUBLFOOD": {
+   "name": "Jubilant Foodworks Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1250,
+   "nifty50": false
+  },
+  "KALYANKJIL": {
+   "name": "Kalyan Jewellers India Ltd.",
+   "industry": "Consumer Durables",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1350,
+   "nifty50": false
+  },
+  "KAYNES": {
+   "fno": true,
+   "lot_size": 150,
+   "name": "KAYNES TECHNOLOGY IND LTD",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "KEI": {
+   "name": "KEI Industries Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 175,
+   "nifty50": false
+  },
+  "KFINTECH": {
+   "fno": true,
+   "lot_size": 575,
+   "name": "KFIN TECHNOLOGIES LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "KOTAKBANK": {
+   "name": "Kotak Mahindra Bank Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 2000
+  },
+  "KPITTECH": {
+   "name": "KPIT Technologies Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 775,
+   "nifty50": false
+  },
+  "LAURUSLABS": {
+   "name": "Laurus Labs Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 850,
+   "nifty50": false
+  },
+  "LENSKART": {
+   "name": "Lenskart Solutions Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "LGEINDIA": {
+   "name": "LG Electronics India Ltd.",
+   "industry": "Consumer Durables",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "LICHSGFIN": {
+   "name": "LIC Housing Finance Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1000,
+   "nifty50": false
+  },
+  "LICI": {
+   "fno": true,
+   "lot_size": 1400,
+   "name": "LIFE INSURA CORP OF INDIA",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "LODHA": {
+   "name": "Lodha Developers Ltd.",
+   "industry": "Realty",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 625,
+   "nifty50": false
+  },
+  "LT": {
+   "name": "Larsen & Toubro Ltd.",
+   "industry": "Construction",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 175
+  },
+  "LTF": {
+   "name": "L&T Finance Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 2250,
+   "nifty50": false
+  },
+  "LTM": {
+   "name": "LTM Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 150,
+   "nifty50": false
+  },
+  "LUPIN": {
+   "name": "Lupin Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 425,
+   "nifty50": false
+  },
+  "M&M": {
+   "name": "Mahindra & Mahindra Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 200
+  },
+  "M&MFIN": {
+   "name": "Mahindra & Mahindra Financial Services Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "MAHABANK": {
+   "fno": true,
+   "lot_size": 6500,
+   "name": "BANK OF MAHARASHTRA",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "MANAPPURAM": {
+   "fno": true,
+   "lot_size": 3000,
+   "name": "MANAPPURAM FINANCE LTD",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "MANKIND": {
+   "name": "Mankind Pharma Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 250,
+   "nifty50": false
+  },
+  "MARICO": {
+   "name": "Marico Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1200,
+   "nifty50": false
+  },
+  "MARUTI": {
+   "name": "Maruti Suzuki India Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 50
+  },
+  "MAXHEALTH": {
+   "name": "Max Healthcare Institute Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 525
+  },
+  "MAZDOCK": {
+   "name": "Mazagoan Dock Shipbuilders Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 225,
+   "nifty50": false
+  },
+  "MCX": {
+   "name": "Multi Commodity Exchange of India Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 225,
+   "nifty50": false
+  },
+  "MFSL": {
+   "name": "Max Financial Services Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 400,
+   "nifty50": false
+  },
+  "MOTHERSON": {
+   "name": "Samvardhana Motherson International Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 6150,
+   "nifty50": false
+  },
+  "MOTILALOFS": {
+   "name": "Motilal Oswal Financial Services Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 775,
+   "nifty50": false
+  },
+  "MPHASIS": {
+   "name": "MphasiS Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 275,
+   "nifty50": false
+  },
+  "MRF": {
+   "name": "MRF Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "MUTHOOTFIN": {
+   "name": "Muthoot Finance Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 275,
+   "nifty50": false
+  },
+  "NAM-INDIA": {
+   "fno": true,
+   "lot_size": 625,
+   "name": "NIPPON L I A M LTD",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "NATIONALUM": {
+   "name": "National Aluminium Co. Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1875,
+   "nifty50": false
+  },
+  "NAUKRI": {
+   "name": "Info Edge (India) Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 550,
+   "nifty50": false
+  },
+  "NBCC": {
+   "fno": true,
+   "lot_size": 6500,
+   "name": "NBCC (INDIA) LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "NESTLEIND": {
+   "name": "Nestle India Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 500
+  },
+  "NHPC": {
+   "name": "NHPC Ltd.",
+   "industry": "Power",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 6950,
+   "nifty50": false
+  },
+  "NIFTYFPI": {
+   "fno": true,
+   "lot_size": 1100,
+   "name": "NIFTY FPI 150",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "NMDC": {
+   "name": "NMDC Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 6750,
+   "nifty50": false
+  },
+  "NTPC": {
+   "name": "NTPC Ltd.",
+   "industry": "Power",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 1500
+  },
+  "NYKAA": {
+   "name": "FSN E-Commerce Ventures Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 3125,
+   "nifty50": false
+  },
+  "OBEROIRLTY": {
+   "name": "Oberoi Realty Ltd.",
+   "industry": "Realty",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 350,
+   "nifty50": false
+  },
+  "OFSS": {
+   "name": "Oracle Financial Services Software Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 100,
+   "nifty50": false
+  },
+  "OIL": {
+   "name": "Oil India Ltd.",
+   "industry": "Oil Gas & Consumable Fuels",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1400,
+   "nifty50": false
+  },
+  "ONGC": {
+   "name": "Oil & Natural Gas Corporation Ltd.",
+   "industry": "Oil Gas & Consumable Fuels",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 2250
+  },
+  "PAGEIND": {
+   "name": "Page Industries Ltd.",
+   "industry": "Textiles",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 20,
+   "nifty50": false
+  },
+  "PATANJALI": {
+   "name": "Patanjali Foods Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1075,
+   "nifty50": false
+  },
+  "PAYTM": {
+   "name": "One 97 Communications Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 725,
+   "nifty50": false
+  },
+  "PERSISTENT": {
+   "name": "Persistent Systems Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 125,
+   "nifty50": false
+  },
+  "PETRONET": {
+   "fno": true,
+   "lot_size": 1900,
+   "name": "PETRONET LNG LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "PFC": {
+   "name": "Power Finance Corporation Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1300,
+   "nifty50": false
+  },
+  "PGEL": {
+   "fno": true,
+   "lot_size": 950,
+   "name": "PG ELECTROPLAST LTD",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "PHOENIXLTD": {
+   "name": "Phoenix Mills Ltd.",
+   "industry": "Realty",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 350,
+   "nifty50": false
+  },
+  "PIDILITIND": {
+   "name": "Pidilite Industries Ltd.",
+   "industry": "Chemicals",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 500,
+   "nifty50": false
+  },
+  "PIIND": {
+   "name": "PI Industries Ltd.",
+   "industry": "Chemicals",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 175,
+   "nifty50": false
+  },
+  "PNB": {
+   "name": "Punjab National Bank",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 8000,
+   "nifty50": false
+  },
+  "PNBHOUSING": {
+   "fno": true,
+   "lot_size": 650,
+   "name": "PNB HOUSING FIN LTD.",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "POLICYBZR": {
+   "name": "PB Fintech Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 350,
+   "nifty50": false
+  },
+  "POLYCAB": {
+   "name": "Polycab India Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 125,
+   "nifty50": false
+  },
+  "POWERGRID": {
+   "name": "Power Grid Corporation of India Ltd.",
+   "industry": "Power",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 1900
+  },
+  "POWERINDIA": {
+   "name": "Hitachi Energy India Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 25,
+   "nifty50": false
+  },
+  "PREMIERENE": {
+   "name": "Premier Energies Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 650,
+   "nifty50": false
+  },
+  "PRESTIGE": {
+   "name": "Prestige Estates Projects Ltd.",
+   "industry": "Realty",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 450,
+   "nifty50": false
+  },
+  "RADICO": {
+   "name": "Radico Khaitan Ltd",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 150,
+   "nifty50": false
+  },
+  "RBLBANK": {
+   "fno": true,
+   "lot_size": 3175,
+   "name": "RBL BANK LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "RECLTD": {
+   "name": "REC Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1575,
+   "nifty50": false
+  },
+  "RELIANCE": {
+   "name": "Reliance Industries Ltd.",
+   "industry": "Oil Gas & Consumable Fuels",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 500
+  },
+  "RVNL": {
+   "name": "Rail Vikas Nigam Ltd.",
+   "industry": "Construction",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1925,
+   "nifty50": false
+  },
+  "SAGILITY": {
+   "fno": true,
+   "lot_size": 12000,
+   "name": "SAGILITY LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "SAIL": {
+   "name": "Steel Authority of India Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 4700,
+   "nifty50": false
+  },
+  "SBICARD": {
+   "name": "SBI Cards and Payment Services Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 800,
+   "nifty50": false
+  },
+  "SBILIFE": {
+   "name": "SBI Life Insurance Company Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 375
+  },
+  "SBIN": {
+   "name": "State Bank of India",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 750
+  },
+  "SHREECEM": {
+   "name": "Shree Cement Ltd.",
+   "industry": "Construction Materials",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 25,
+   "nifty50": false
+  },
+  "SHRIRAMFIN": {
+   "name": "Shriram Finance Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 825
+  },
+  "SIEMENS": {
+   "name": "Siemens Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 175,
+   "nifty50": false
+  },
+  "SOLARINDS": {
+   "name": "Solar Industries India Ltd.",
+   "industry": "Chemicals",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 50,
+   "nifty50": false
+  },
+  "SONACOMS": {
+   "fno": true,
+   "lot_size": 1225,
+   "name": "SONA BLW PRECISION FRGS L",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "SRF": {
+   "name": "SRF Ltd.",
+   "industry": "Chemicals",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 200,
+   "nifty50": false
+  },
+  "SUNPHARMA": {
+   "name": "Sun Pharmaceutical Industries Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 350
+  },
+  "SUPREMEIND": {
+   "name": "Supreme Industries Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 175,
+   "nifty50": false
+  },
+  "SUZLON": {
+   "name": "Suzlon Energy Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 12700,
+   "nifty50": false
+  },
+  "SWIGGY": {
+   "name": "Swiggy Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1825,
+   "nifty50": false
+  },
+  "TATACAP": {
+   "name": "Tata Capital Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "TATACOMM": {
+   "name": "Tata Communications Ltd.",
+   "industry": "Telecommunication",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "TATACONSUM": {
+   "name": "Tata Consumer Products Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 550
+  },
+  "TATAELXSI": {
+   "name": "Tata Elxsi Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 125,
+   "nifty50": false
+  },
+  "TATAINVEST": {
+   "name": "Tata Investment Corporation Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "TATAPOWER": {
+   "name": "Tata Power Co. Ltd.",
+   "industry": "Power",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1450,
+   "nifty50": false
+  },
+  "TATASTEEL": {
+   "name": "Tata Steel Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 2750
+  },
+  "TCS": {
+   "name": "Tata Consultancy Services Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 225
+  },
+  "TECHM": {
+   "name": "Tech Mahindra Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 600
+  },
+  "TIINDIA": {
+   "name": "Tube Investments of India Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 200,
+   "nifty50": false
+  },
+  "TITAN": {
+   "name": "Titan Company Ltd.",
+   "industry": "Consumer Durables",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 175
+  },
+  "TMCV": {
+   "name": "Tata Motors Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
+  "TMPV": {
+   "name": "Tata Motors Passenger Vehicles Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 1600
+  },
+  "TORNTPHARM": {
+   "name": "Torrent Pharmaceuticals Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 125,
+   "nifty50": false
+  },
+  "TRENT": {
+   "name": "Trent Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 225
+  },
+  "TVSMOTOR": {
+   "name": "TVS Motor Company Ltd.",
+   "industry": "Automobile and Auto Components",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 175,
+   "nifty50": false
+  },
+  "UJJIVANSFB": {
+   "fno": true,
+   "lot_size": 8000,
+   "name": "UJJIVAN SMALL FINANC BANK",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "ULTRACEMCO": {
+   "name": "UltraTech Cement Ltd.",
+   "industry": "Construction Materials",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 50
+  },
+  "UNIONBANK": {
+   "name": "Union Bank of India",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 4425,
+   "nifty50": false
+  },
+  "UNITDSPR": {
+   "name": "United Spirits Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 400,
+   "nifty50": false
+  },
+  "UNOMINDA": {
+   "fno": true,
+   "lot_size": 550,
+   "name": "UNO MINDA LIMITED",
+   "nifty50": false,
+   "nifty200": false
+  },
+  "UPL": {
+   "name": "UPL Ltd.",
+   "industry": "Chemicals",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1355,
+   "nifty50": false
+  },
+  "VBL": {
+   "name": "Varun Beverages Ltd.",
+   "industry": "Fast Moving Consumer Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1275,
+   "nifty50": false
+  },
+  "VEDL": {
+   "name": "Vedanta Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 1150,
+   "nifty50": false
+  },
+  "VMM": {
+   "name": "Vishal Mega Mart Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 4850,
+   "nifty50": false
+  },
+  "VOLTAS": {
+   "name": "Voltas Ltd.",
+   "industry": "Consumer Durables",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 375,
+   "nifty50": false
+  },
+  "WAAREEENER": {
+   "name": "Waaree Energies Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 175,
+   "nifty50": false
+  },
+  "WIPRO": {
+   "name": "Wipro Ltd.",
+   "industry": "Information Technology",
+   "nifty200": true,
+   "nifty50": true,
+   "fno": true,
+   "lot_size": 3000
+  },
+  "YESBANK": {
+   "name": "Yes Bank Ltd.",
+   "industry": "Financial Services",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 31100,
+   "nifty50": false
+  },
+  "ZYDUSLIFE": {
+   "name": "Zydus Lifesciences Ltd.",
+   "industry": "Healthcare",
+   "nifty200": true,
+   "fno": true,
+   "lot_size": 900,
+   "nifty50": false
+  }
+ }
+}
