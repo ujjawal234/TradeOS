@@ -129,16 +129,18 @@ def combine_equity(curves: list[pd.Series], capitals: list[float]) -> pd.Series:
     return total
 
 
-def benchmark(provider, equity: pd.Series, symbol: str = "NIFTY") -> tuple[pd.Series | None, dict]:
+def benchmark(provider, equity: pd.Series, symbol: str = "NIFTY", rf: float = 0.0) -> tuple[pd.Series | None, dict]:
+    """Buy-and-hold `symbol` on the strategy's dates, scaled to its starting equity.
+    Uses the last close on or before each date, and the same risk-free rate as the strategy."""
     try:
-        b = provider.history(symbol, start=equity.index[0], end=equity.index[-1])["close"]
+        b = provider.history(symbol, end=equity.index[-1])["close"]
     except Exception:
         return None, {}
-    b = b.reindex(equity.index).ffill().dropna()
+    b = b.reindex(b.index.union(equity.index)).ffill().reindex(equity.index).dropna()
     if len(b) < 2:
         return None, {}
     curve = b / b.iloc[0] * equity.iloc[0]
-    m = compute_metrics(curve)
+    m = compute_metrics(curve, None, rf)
     return curve, {k: m.get(k) for k in ("total_return_pct", "cagr_pct", "sharpe", "max_drawdown_pct")}
 
 

@@ -136,7 +136,7 @@ class Manager:
         trades = res.get("trades", [])
         summary = {k: v for k, v in res.items() if k != "trades"}
         if equity is not None and len(equity) > 1:
-            bench_curve, bench = benchmark(self.provider, equity)
+            bench_curve, bench = benchmark(self.provider, equity, rf=self.settings.risk_free)
             summary["benchmark_nifty"] = bench
             if save:
                 folder = self.settings.backtests_dir / f"{aid}_{datetime.now():%Y%m%d_%H%M%S}"

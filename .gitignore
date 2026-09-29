@@ -3,3 +3,4 @@
 tradeos_data/
 __pycache__/
 *.pyc
+lab/build/

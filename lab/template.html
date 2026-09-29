@@ -1,0 +1,550 @@
+<title>TradeOS Strategy Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one working column — composer, then the rules Claude used, then a results report read top-down (summary before detail). */
+:root {
+  --bg: #F2F4F7; --surface: #FFFFFF; --sunken: #EBEFF5; --ink: #111A27; --muted: #566174; --line: #DCE1E9;
+  --accent: #2C5BD9; --accent-ink: #FFFFFF; --series-a: #2C5BD9; --series-b: #C27A1A;
+  --good: #11784A; --bad: #BF3528; --dd-fill: rgba(191, 53, 40, 0.16); --focus: #2C5BD9;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  --radius: 10px; --step--1: 0.8125rem; --step-0: 0.9375rem; --step-1: 1.125rem; --step-2: 1.5rem; --step-3: 2rem;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0C1118; --surface: #141B25; --sunken: #1A2330; --ink: #E6EBF2; --muted: #9AA5B5; --line: #263142;
+  --accent: #6D93F0; --accent-ink: #0C1118; --series-a: #5A82E3; --series-b: #BE7F2A;
+  --good: #4CC38A; --bad: #F06A5E; --dd-fill: rgba(240, 106, 94, 0.18); --focus: #8FB0FF; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0C1118; --surface: #141B25; --sunken: #1A2330; --ink: #E6EBF2; --muted: #9AA5B5; --line: #263142;
+  --accent: #6D93F0; --accent-ink: #0C1118; --series-a: #5A82E3; --series-b: #BE7F2A;
+  --good: #4CC38A; --bad: #F06A5E; --dd-fill: rgba(240, 106, 94, 0.18); --focus: #8FB0FF; color-scheme: dark; }
+
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: var(--step-0); line-height: 1.5; }
+.wrap { max-width: 1160px; margin: 0 auto; padding-inline: 20px; padding-block: 20px 56px; display: grid; gap: 18px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font-size: var(--step-1); }
+.num, table, .kpi .v, .mono { font-variant-numeric: tabular-nums; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; min-width: 0; }
+.eyebrow { font-size: var(--step--1); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.muted { color: var(--muted); }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 20px; }
+.brand { display: grid; gap: 2px; }
+.brand h1 { font-size: var(--step-3); line-height: 1.05; }
+.brand h1 span { color: var(--accent); }
+.databadge { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-static { font-size: var(--step--1); padding: 4px 10px; border-radius: 999px; background: var(--sunken); color: var(--muted); white-space: nowrap; }
+
+/* composer */
+.composer { display: grid; gap: 12px; }
+.composer label[for="prompt"] { font-weight: 600; }
+#prompt { width: 100%; min-height: 92px; resize: vertical; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); line-height: 1.45; box-sizing: border-box; }
+.examples { display: flex; flex-wrap: wrap; gap: 8px; }
+.ex { border: 1px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: 999px; cursor: pointer; font-size: var(--step--1); }
+.ex:hover { border-color: var(--accent); color: var(--accent); }
+.ex[aria-pressed="true"] { background: var(--sunken); border-color: var(--accent); }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.field { display: grid; gap: 4px; }
+.field label { font-size: var(--step--1); color: var(--muted); }
+.field input { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); width: 150px; box-sizing: border-box; }
+.field input.narrow { width: 96px; }
+.btn { border: 0; border-radius: 8px; padding: 10px 18px; font-weight: 600; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: 0.55; cursor: progress; }
+.btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); padding: 7px 12px; font-weight: 500; }
+.grow { flex: 1 1 auto; }
+.status { margin: 0; min-height: 1.4em; font-size: var(--step--1); color: var(--muted); }
+.status.err { color: var(--bad); }
+
+/* rules card */
+.rules-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.pill { font-size: var(--step--1); font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--sunken); color: var(--accent); }
+.rules-head .spacer { flex: 1; }
+#explain { margin: 10px 0 12px; max-width: 70ch; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; }
+.kv dt { color: var(--muted); font-size: var(--step--1); padding-top: 2px; }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+code, .code { font-family: var(--font-mono); font-size: 0.86em; background: var(--sunken); padding: 2px 6px; border-radius: 5px; }
+.symlist { display: flex; flex-wrap: wrap; gap: 4px; }
+.symlist span { font-family: var(--font-mono); font-size: 0.8em; padding: 1px 6px; border-radius: 4px; background: var(--sunken); }
+.assume { margin: 12px 0 0; padding-left: 18px; color: var(--muted); font-size: var(--step--1); }
+#editor { margin-top: 14px; display: grid; gap: 8px; }
+#specJson { width: 100%; min-height: 220px; font-family: var(--font-mono); font-size: 0.82rem; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); box-sizing: border-box; resize: vertical; }
+
+/* results */
+.results { display: grid; gap: 18px; }
+.verdict { font-family: var(--font-display); font-size: var(--step-2); line-height: 1.2; margin: 0; max-width: 40ch; text-wrap: balance; }
+.verdict .up { color: var(--good); } .verdict .down { color: var(--bad); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 2px; align-content: start; }
+.kpi .k { font-size: var(--step--1); color: var(--muted); }
+.kpi .v { font-family: var(--font-display); font-size: var(--step-2); font-weight: 700; line-height: 1.15; }
+.kpi .b { font-size: var(--step--1); color: var(--muted); }
+.chart-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: var(--step--1); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 18px; height: 3px; border-radius: 2px; display: inline-block; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-left: auto; }
+.seg button { border: 0; background: transparent; padding: 5px 10px; font-size: var(--step--1); cursor: pointer; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--sunken); color: var(--ink); font-weight: 600; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .axis text { fill: var(--muted); font-size: 11px; font-family: var(--font-body); }
+.chart .grid line { stroke: var(--line); stroke-width: 1; }
+.chart .endlabel { font-size: 11px; font-weight: 600; fill: var(--ink); font-family: var(--font-body); }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: var(--step--1); box-shadow: 0 6px 20px rgba(10, 20, 40, 0.14); white-space: nowrap; z-index: 2; }
+.tip b { font-weight: 600; }
+.tip .row { display: flex; align-items: center; gap: 6px; }
+.tip i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+.subchart-title { margin: 14px 0 4px; font-size: var(--step--1); color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+.tablewrap { overflow-x: auto; max-width: 100%; }
+.tablewrap.tall { max-height: 460px; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+th { text-align: left; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); padding: 6px 8px; white-space: nowrap; position: sticky; top: 0; background: var(--surface); }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td.r, th.r { text-align: right; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.card h2 { margin-bottom: 10px; }
+.card h2 small { font-family: var(--font-body); font-weight: 400; font-size: var(--step--1); color: var(--muted); margin-left: 6px; }
+.notes ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); font-size: var(--step--1); display: grid; gap: 4px; }
+.notes summary { cursor: pointer; font-weight: 600; }
+.loading { opacity: 0.5; transition: opacity .2s; }
+@media (max-width: 560px) { .field input { width: 130px; } .brand h1 { font-size: var(--step-2); } .verdict { font-size: var(--step-1); } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">TradeOS · NSE backtesting</span>
+      <h1>Strategy <span>Lab</span></h1>
+    </div>
+    <div class="databadge" id="databadge"><span class="chip-static">Loading price data…</span></div>
+  </header>
+
+  <section class="card composer" aria-labelledby="composerLabel">
+    <label id="composerLabel" for="prompt">Describe a strategy in plain words</label>
+    <textarea id="prompt" spellcheck="true" placeholder="e.g. Buy bank stocks when the 20-day EMA crosses above the 50-day EMA and RSI is above 50. Exit when it crosses back. 8% stop loss."></textarea>
+    <div class="examples" id="examples" aria-label="Example strategies"></div>
+    <div class="controls">
+      <div class="field"><label for="start">From</label><input id="start" type="date"></div>
+      <div class="field"><label for="end">To</label><input id="end" type="date"></div>
+      <div class="field"><label for="capital">Capital (₹)</label><input id="capital" type="number" min="10000" step="100000" value="1000000"></div>
+      <div class="field"><label for="cost">Cost per side %</label><input id="cost" class="narrow" type="number" min="0" step="0.01" value="0.12"></div>
+      <div class="grow"></div>
+      <button class="btn" id="run" type="button">Backtest</button>
+    </div>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="card" id="rulesCard" aria-labelledby="rulesTitle" hidden>
+    <div class="rules-head">
+      <h2 id="rulesTitle">Rules tested</h2>
+      <span class="pill" id="typePill"></span>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="editToggle" type="button" aria-expanded="false" aria-controls="editor">Edit rules</button>
+    </div>
+    <p id="explain"></p>
+    <dl class="kv" id="rulesList"></dl>
+    <ul class="assume" id="assumptions"></ul>
+    <div id="editor" hidden>
+      <label class="eyebrow" for="specJson">Rules as JSON — change any value and run again</label>
+      <textarea id="specJson" spellcheck="false"></textarea>
+      <div><button class="btn" id="runJson" type="button">Run these rules</button></div>
+    </div>
+  </section>
+
+  <section class="results" id="results" hidden aria-live="polite">
+    <p class="verdict" id="verdict"></p>
+    <div class="kpis" id="kpis"></div>
+    <div class="card">
+      <div class="chart-head">
+        <h2 style="margin:0">Growth of capital</h2>
+        <div class="legend" id="legend"></div>
+        <div class="seg" role="group" aria-label="Scale">
+          <button type="button" id="scaleLin" aria-pressed="true">Linear</button>
+          <button type="button" id="scaleLog" aria-pressed="false">Log</button>
+        </div>
+      </div>
+      <div class="chart" id="equityChart"></div>
+      <p class="subchart-title">Drawdown from previous peak</p>
+      <div class="chart" id="ddChart"></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h2>Year by year</h2><div class="tablewrap" id="yearly"></div></div>
+      <div class="card"><h2 id="breakdownTitle">Breakdown</h2><div class="tablewrap" id="breakdown"></div></div>
+    </div>
+    <div class="card"><h2 id="tradesTitle">Trades</h2><div class="tablewrap tall" id="trades"></div></div>
+    <details class="card notes">
+      <summary>How this backtest works</summary>
+      <ul id="notes"></ul>
+    </details>
+  </section>
+</div>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+(function () {
+  "use strict";
+  const E = window.TradeEngine;
+  const $ = (id) => document.getElementById(id);
+  const state = { manifest: null, frames: {}, sample: null, spec: null, meta: null, res: null, log: false, busy: false };
+
+  // ---------------------------------------------------------------- formatting (Indian conventions)
+  const minus = (s) => s.replace(/^-/, "−");
+  const inr = (x) => x == null || !isFinite(x) ? "–" : minus("₹" + Math.round(x).toLocaleString("en-IN"));
+  const inrShort = (x) => { if (!isFinite(x)) return "–"; const a = Math.abs(x), s = x < 0 ? "−" : "";
+    if (a >= 1e7) return s + "₹" + (a / 1e7).toFixed(a >= 1e8 ? 0 : 2) + " Cr"; if (a >= 1e5) return s + "₹" + (a / 1e5).toFixed(a >= 1e6 ? 1 : 2) + " L"; return s + "₹" + Math.round(a).toLocaleString("en-IN"); };
+  const pct = (x, d = 1, signed = true) => x == null || !isFinite(x) ? "–" : minus(((signed && x > 0) ? "+" : "") + x.toFixed(d) + "%");
+  const n2 = (x) => x == null || !isFinite(x) ? "–" : minus(x.toFixed(2));
+  const cls = (x) => x > 0 ? "pos" : x < 0 ? "neg" : "";
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const fmtDate = (iso) => { const d = new Date(iso + "T00:00:00Z"); return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }); };
+
+  // ---------------------------------------------------------------- examples (work without Claude)
+  const EXAMPLES = [
+    { label: "Bank stocks EMA trend", text: "Buy the big bank stocks when the 20-day EMA crosses above the 50-day EMA and RSI(14) is above 50. Exit when the 20 EMA crosses back below the 50 EMA. 8% stop loss.",
+      spec: { type: "rule", name: "Bank stocks EMA trend", symbols: ["banks"], entry: "cross_above(ema(close, 20), ema(close, 50)) and rsi(close, 14) > 50", exit: "cross_below(ema(close, 20), ema(close, 50))", stop_loss_pct: 8,
+        explanation: "Each of the six large private and PSU banks is traded on its own: enter when the 20-day EMA crosses above the 50-day EMA while RSI(14) is above 50, exit on the opposite cross or an 8% stop.", assumptions: ["'Big bank stocks' = HDFCBANK, ICICIBANK, SBIN, AXISBANK, KOTAKBANK, INDUSINDBK"] } },
+    { label: "Nifty golden cross", text: "Buy Nifty when the 50-day moving average crosses above the 200-day, sell when it crosses back below.",
+      spec: { type: "rule", name: "Nifty golden cross", symbols: ["NIFTY"], entry: "cross_above(sma(close, 50), sma(close, 200))", exit: "cross_below(sma(close, 50), sma(close, 200))",
+        explanation: "Hold the Nifty index from a 50/200-day golden cross until the next death cross.", assumptions: ["Trades the index level directly (think Nifty ETF); no stop loss"] } },
+    { label: "55-day breakouts", text: "On all Nifty 50 stocks, buy a close above the previous 55-day high when volume is at least 1.5x its 20-day average. Exit on a close below the previous 20-day low. 6% stop loss.",
+      spec: { type: "rule", name: "55-day breakouts", symbols: ["nifty50"], entry: "close > shift(highest(high, 55), 1) and volume > 1.5 * sma(volume, 20)", exit: "close < shift(lowest(low, 20), 1)", stop_loss_pct: 6,
+        explanation: "Donchian-style breakout on each Nifty 50 stock with a volume filter; capital is split equally across the 50 names.", assumptions: ["Uses today's Nifty 50 list for the whole period (survivorship bias)"] } },
+    { label: "RSI(2) pullbacks", text: "Buy Nifty and Bank Nifty when RSI(2) drops below 10 while the index is above its 200-day average. Sell when it closes above the 5-day average.",
+      spec: { type: "rule", name: "RSI(2) pullbacks", symbols: ["NIFTY", "BANKNIFTY"], entry: "rsi(close, 2) < 10 and close > sma(close, 200)", exit: "close > sma(close, 5)",
+        explanation: "Short-term mean reversion: buy sharp dips inside a long-term uptrend, exit on the first bounce above the 5-day average.", assumptions: ["Half the capital on each index"] } },
+    { label: "Nifty 50 momentum", text: "Hold the 10 strongest Nifty 50 stocks by 6-month return (skip the latest month), rebalance monthly, go to cash when Nifty is below its 200-day average.",
+      spec: { type: "rotation", name: "Nifty 50 momentum", universe: "nifty50", lookback: 126, skip: 21, top_n: 10, rebalance: "monthly", score: "momentum", min_score: 0, trend_filter: { symbol: "NIFTY", sma: 200 },
+        explanation: "Every month, rank Nifty 50 stocks by return from 7 months ago to 1 month ago and hold the top 10 equally; stay in cash while Nifty trades below its 200-day average.", assumptions: ["Only stocks with positive momentum are bought"] } },
+    { label: "Nifty weekly strangle", text: "Sell Nifty weekly 15-delta strangles. Stop out at 2x the credit, book profit at 50% of the credit.",
+      spec: { type: "option_selling", name: "Nifty weekly strangle", underlying: "NIFTY", structure: "strangle", strike_mode: "delta", delta: 0.15, stop_loss_mult: 2, profit_target_pct: 50, lots: 1,
+        explanation: "Each week sell one lot of the Nifty call and put nearest to 15 delta for the next Tuesday expiry; exit at 2x credit, at 50% profit, or at expiry.", assumptions: ["Options are priced with Black-Scholes using India VIX as volatility (no skew)", "Lot size 65 (current NSE size) applied to the whole history"] } },
+  ];
+
+  // ---------------------------------------------------------------- data
+  async function loadManifest() {
+    const r = await fetch("data/manifest.json"); if (!r.ok) throw new Error("Price data is missing from this page.");
+    const m = await r.json(); state.manifest = m;
+    const syms = Object.keys(m.symbols), firsts = syms.map((s) => m.symbols[s].first).sort(), lasts = syms.map((s) => m.symbols[s].last).sort();
+    const minD = firsts[0], maxD = lasts[lasts.length - 1];
+    $("databadge").innerHTML = `<span class="chip-static">${syms.length} NSE symbols</span><span class="chip-static">${fmtDate(minD)} – ${fmtDate(maxD)}</span><span class="chip-static">Daily · adjusted</span>`;
+    $("start").min = minD; $("start").max = maxD; $("end").min = minD; $("end").max = maxD;
+    $("start").value = "2012-01-01"; $("end").value = maxD;
+    if ((m.universes.sectors || []).length >= 6) EXAMPLES.splice(5, 0, { label: "Sector rotation", text: "Every week, hold the 3 strongest Nifty sector indices by 3-month return (skip the last week).",
+      spec: { type: "rotation", name: "Sector rotation", universe: "sectors", lookback: 63, skip: 5, top_n: 3, rebalance: "weekly", score: "momentum", min_score: null, trend_filter: null,
+        explanation: "Weekly relative-strength rotation across Nifty sector indices, holding the top 3 equally.", assumptions: ["Sector indices are held as if through sector ETFs"] } });
+  }
+  async function ensureFrames(symbols) {
+    const need = symbols.filter((s) => !state.frames[s]);
+    let done = 0;
+    const one = async (s) => { const r = await fetch(`data/${encodeURIComponent(s)}.json`); if (!r.ok) throw new Error(`No price file for ${s}`);
+      state.frames[s] = E.frame(await r.json()); done++; if (need.length > 3) setStatus(`Loading price history… ${done} of ${need.length}`); };
+    for (let i = 0; i < need.length; i += 8) await Promise.all(need.slice(i, i + 8).map(one));
+  }
+
+  // ---------------------------------------------------------------- Claude translation
+  function buildPrompt(text) {
+    const m = state.manifest, syms = Object.keys(m.symbols).sort(), u = m.universes;
+    return `You convert a trader's plain-English strategy for Indian markets (NSE) into a JSON spec for a daily-bar backtester.
+Reply with ONLY one JSON object, no prose.
+
+AVAILABLE SYMBOLS (15 years of daily data): ${syms.join(", ")}
+NAMED GROUPS you may use inside "symbols" or as "universe": ${Object.entries(u).map(([k, v]) => `${k} = [${v.join(", ")}]`).join("; ")}
+
+Choose ONE "type":
+1) "rule" — each symbol traded independently with entry/exit conditions. Fields:
+   {"type":"rule","name":str,"symbols":[tickers or group names],"entry":expr,"exit":expr or "","side":"long"|"short",
+    "stop_loss_pct":number|null,"take_profit_pct":number|null,"position_size_pct":number (default 100)}
+2) "rotation" — rank a universe by past return and hold the top N equally. Fields:
+   {"type":"rotation","name":str,"universe":"nifty50"|"sectors"|"indices"|[tickers],"lookback":trading days (21≈1 month, 63≈3m, 126≈6m, 252≈1y),
+    "skip":recent days excluded (21 = skip last month, 0 = none),"top_n":int,"rebalance":"weekly"|"monthly","score":"momentum"|"risk_adj",
+    "min_score":0 to buy only positive momentum or null,"trend_filter":{"symbol":"NIFTY","sma":200} or null}
+3) "option_selling" — systematic short index options, model-priced with India VIX. Fields:
+   {"type":"option_selling","name":str,"underlying":"NIFTY" (weekly, Tuesday expiry)|"BANKNIFTY" (monthly),"structure":"strangle"|"straddle"|"iron_condor"|"short_put"|"short_call",
+    "strike_mode":"delta"|"otm_pct","delta":0.05-0.45,"otm_pct":number,"wing_width":points for iron_condor,"stop_loss_mult":exit when cost to close >= this x credit (null = none),
+    "profit_target_pct":exit when this % of credit is captured (null = none),"exit_dte":close N days before expiry (0 = hold),"lots":int,"min_vix":number|null,"max_vix":number|null}
+
+EXPRESSION LANGUAGE for entry/exit (evaluated on each bar; signal at close, filled at next day's open):
+Variables: open, high, low, close, volume, hl2, dow (0=Mon..4=Fri)
+Functions: sma(x,n) ema(x,n) wma(x,n) rsi(x,n=14) atr(n=14) atr_pct(n=14) macd(x,fast=12,slow=26) macd_signal(x,fast=12,slow=26,signal=9)
+ bb_upper(x,n=20,k=2) bb_lower(x,n=20,k=2) highest(x,n) lowest(x,n) (include today — use shift(highest(high,55),1) for breakouts)
+ shift(x,n=1) prev(x) change(x,n=1) roc(x,n=1) (% change) stdev(x,n) zscore(x,n) volatility(x,n=20) (annualised %)
+ cross_above(a,b) cross_below(a,b) (true only on the crossing bar) count_true(cond,n) abs(x) max(a,b) min(a,b)
+Operators: + - * / %, > >= < <= == !=, and, or, not. Numbers are plain literals. No other names exist.
+A price level alert like "crosses 3000" is cross_above(close, 3000).
+
+Also include:
+ "explanation": 1-2 plain sentences restating exactly what you encoded,
+ "assumptions": short strings for every choice the trader did not state (symbols picked, defaults filled, interpretations).
+Only use symbols from the list. If the strategy needs data or instruments not available here (intraday bars, fundamentals, options on stocks, news), reply {"unsupported":"<one sentence why and what is possible instead>"}.
+
+Strategy: """${text.slice(0, 4000)}"""`;
+  }
+  async function translate(text) {
+    if (!state.sample) throw new Error("Turning plain words into rules needs Claude, which isn't available in this view. Pick an example, or open “Edit rules” to write them directly.");
+    setStatus("Claude is turning your description into rules… this usually takes 10–40 seconds.");
+    try { return await state.sample.json(buildPrompt(text), { modelTier: "default" }); }
+    catch (e) {
+      const why = { not_granted: "Claude access was declined for this page, so it can't read plain-English strategies. Pick an example or edit the rules directly.",
+        sampling_disabled: "Claude isn't available for this account. Pick an example or edit the rules directly.",
+        rate_limited: "Too many requests just now. Wait a minute and press Backtest again.", invalid_json: "Claude's answer couldn't be read as rules. Rephrase the strategy a little and try again.",
+        refused: "Claude declined this request. Rephrase the strategy and try again.", session_expired: "Your Claude session expired. Sign in again, then retry." }[e && e.code];
+      throw new Error(why || "Couldn't reach Claude just now. Try again in a moment.");
+    }
+  }
+
+  // ---------------------------------------------------------------- run
+  function setStatus(msg, err = false) { const s = $("status"); s.textContent = msg; s.classList.toggle("err", err); }
+  function setBusy(b) { state.busy = b; $("run").disabled = b; $("runJson").disabled = b; $("results").classList.toggle("loading", b); }
+
+  async function onBacktest() {
+    if (state.busy) return;
+    const text = $("prompt").value.trim();
+    if (!text) { setStatus("Describe a strategy first, or pick one of the examples.", true); return; }
+    setBusy(true);
+    try {
+      const ex = EXAMPLES.find((e) => e.text === text);
+      let raw = ex ? JSON.parse(JSON.stringify(ex.spec)) : await translate(text);
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Claude's answer wasn't a strategy. Try rephrasing.");
+      if (raw.unsupported) throw new Error("Can't test this here: " + raw.unsupported);
+      await runRaw(raw);
+    } catch (e) { setStatus(e.message || String(e), true); }
+    finally { setBusy(false); }
+  }
+  async function runRaw(raw) {
+    const meta = { name: raw.name || "Custom strategy", explanation: raw.explanation || "", assumptions: Array.isArray(raw.assumptions) ? raw.assumptions : [] };
+    const clean = Object.assign({}, raw); delete clean.name; delete clean.explanation; delete clean.assumptions;
+    const cap = Number($("capital").value), cost = Number($("cost").value);
+    if (cap > 0) clean.capital = cap;
+    if (cost >= 0 && clean.type !== "option_selling") clean.cost_pct = cost;
+    let spec;
+    try { spec = E.normalize(clean, state.manifest.universes); }
+    catch (e) { showRules(clean, meta); throw new Error("These rules can't run: " + e.message + " Open “Edit rules” to fix them."); }
+    const needed = [...new Set(E.symbolsNeeded(spec, state.manifest.universes).concat(["NIFTY"]))];
+    const missing = needed.filter((s) => !state.manifest.symbols[s]);
+    if (missing.length) { showRules(spec, meta); throw new Error(`No data for ${missing.join(", ")}. Use NSE tickers from the data set (Nifty 50 stocks and the main indices).`); }
+    await ensureFrames(needed);
+    setStatus("Running the backtest…");
+    await new Promise((r) => setTimeout(r, 20));
+    const t0 = performance.now();
+    const res = E.run(spec, state.frames, state.manifest.universes, { start: $("start").value || null, end: $("end").value || null });
+    if (!res.days || res.days.length < 2) throw new Error("No trading days in that date range. Widen the From/To dates.");
+    state.spec = spec; state.meta = meta; state.res = res;
+    showRules(spec, meta); renderResults();
+    setStatus(`Tested ${fmtDate(res.metrics.start)} to ${fmtDate(res.metrics.end)} in ${Math.max(1, Math.round(performance.now() - t0))} ms.`);
+  }
+
+  // ---------------------------------------------------------------- rules card
+  const TYPE_LABEL = { rule: "Rule strategy", rotation: "Momentum rotation", option_selling: "Option selling" };
+  function showRules(spec, meta) {
+    $("rulesCard").hidden = false;
+    $("rulesTitle").textContent = meta.name;
+    $("typePill").textContent = TYPE_LABEL[spec.type] || spec.type;
+    $("explain").textContent = meta.explanation || "";
+    $("explain").hidden = !meta.explanation;
+    const rows = [];
+    const syms = (list) => `<div class="symlist">${list.map((s) => `<span>${esc(s)}</span>`).join("")}</div>`;
+    if (spec.type === "rule") {
+      rows.push(["Symbols", syms(Array.isArray(spec.symbols) ? spec.symbols : [spec.symbols])], ["Entry", `<code>${esc(spec.entry)}</code>`], ["Exit", spec.exit ? `<code>${esc(spec.exit)}</code>` : "Stop loss / target only"],
+        ["Direction", spec.side === "short" ? "Short" : "Long"], ["Stop loss", spec.stop_loss_pct ? spec.stop_loss_pct + "%" : "None"], ["Take profit", spec.take_profit_pct ? spec.take_profit_pct + "%" : "None"],
+        ["Position size", `${spec.position_size_pct}% of each symbol's share of capital`]);
+    } else if (spec.type === "rotation") {
+      const uni = Array.isArray(spec.universe) ? spec.universe : (state.manifest.universes[spec.universe] || []);
+      rows.push(["Universe", `${Array.isArray(spec.universe) ? "Custom list" : esc(spec.universe)} · ${uni.length} symbols`], ["Ranking", `${spec.score === "risk_adj" ? "Return ÷ volatility" : "Return"} over ${spec.lookback} trading days, skipping the latest ${spec.skip}`],
+        ["Holdings", `Top ${spec.top_n}, equal weight`], ["Rebalance", spec.rebalance === "weekly" ? "Weekly" : "Monthly"],
+        ["Momentum floor", spec.min_score == null ? "None" : `Only buy above ${spec.min_score * 100}%`], ["Trend filter", spec.trend_filter ? `Cash when ${spec.trend_filter.symbol} is below its ${spec.trend_filter.sma}-day average` : "None"]);
+    } else if (spec.type === "option_selling") {
+      rows.push(["Underlying", `${spec.underlying} · ${spec.expiry} expiry · lot ${spec.lot_size} × ${spec.lots}`], ["Structure", spec.structure.replace("_", " ")],
+        ["Strikes", spec.strike_mode === "delta" ? `Nearest to ${spec.delta} delta` : `${spec.otm_pct}% out of the money`], ...(spec.structure === "iron_condor" ? [["Wings", `${spec.wing_width} points`]] : []),
+        ["Stop loss", spec.stop_loss_mult ? `${spec.stop_loss_mult}× credit` : "None"], ["Profit target", spec.profit_target_pct ? `${spec.profit_target_pct}% of credit` : "None"],
+        ["VIX filter", spec.min_vix || spec.max_vix ? `${spec.min_vix || "–"} to ${spec.max_vix || "–"}` : "None"]);
+    }
+    if (spec.capital) rows.push(["Capital", inr(spec.capital)]);
+    $("rulesList").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+    $("assumptions").innerHTML = meta.assumptions.map((a) => `<li>${esc(a)}</li>`).join("");
+    const editable = Object.assign({ name: meta.name }, spec, { explanation: meta.explanation, assumptions: meta.assumptions });
+    $("specJson").value = JSON.stringify(editable, null, 2);
+  }
+
+  // ---------------------------------------------------------------- results
+  function yearly(days, eq) {
+    const out = new Map(); let prevEnd = eq[0];
+    for (let i = 0; i < days.length; i++) {
+      const y = new Date(days[i] * 864e5).getUTCFullYear(), nxt = i + 1 < days.length ? new Date(days[i + 1] * 864e5).getUTCFullYear() : null;
+      if (nxt !== y) { out.set(y, (eq[i] / prevEnd - 1) * 100); prevEnd = eq[i]; }
+    }
+    return out;
+  }
+  function renderResults() {
+    const { res, spec } = state, m = res.metrics, b = res.benchMetrics || {};
+    $("results").hidden = false;
+    const beat = m.cagr_pct - (b.cagr_pct ?? 0);
+    $("verdict").innerHTML = `${pct(m.cagr_pct)} a year vs Nifty's ${pct(b.cagr_pct)} — <span class="${beat >= 0 ? "up" : "down"}">${beat >= 0 ? "ahead" : "behind"} by ${Math.abs(beat).toFixed(1)} points</span>. Worst fall ${pct(m.max_drawdown_pct)} vs ${pct(b.max_drawdown_pct)}.`;
+    const count = spec.type === "rule" ? ["Trades", String(m.trades ?? 0), `${pct(m.win_rate_pct, 1, false)} winners · PF ${n2(m.profit_factor)}`]
+      : spec.type === "rotation" ? ["Rebalances", String(m.rebalances), `${m.executions} orders · fees ${inrShort(m.total_fees)}`]
+      : ["Option cycles", String(m.cycles), `${pct(m.win_rate_pct, 1, false)} winners · PF ${n2(m.profit_factor)}`];
+    const tiles = [["CAGR", pct(m.cagr_pct), `Nifty ${pct(b.cagr_pct)}`], ["Total return", pct(m.total_return_pct, 0), `Nifty ${pct(b.total_return_pct, 0)}`],
+      ["Max drawdown", pct(m.max_drawdown_pct), `Nifty ${pct(b.max_drawdown_pct)}`], ["Sharpe", n2(m.sharpe), `Nifty ${n2(b.sharpe)} · rf 6.5%`], count,
+      ["Final value", inrShort(m.end_equity), `from ${inrShort(m.start_equity)}`]];
+    $("kpis").innerHTML = tiles.map(([k, v, s]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${s}</span></div>`).join("");
+    $("legend").innerHTML = `<span><i style="background:var(--series-a)"></i>${esc(state.meta.name)}</span><span><i style="background:var(--series-b)"></i>Nifty 50 buy &amp; hold</span>`;
+    drawCharts();
+    // yearly
+    const ys = yearly(res.days, res.eq), yb = res.bench ? yearly(res.days, res.bench) : new Map();
+    $("yearly").innerHTML = `<table><thead><tr><th>Year</th><th class="r">Strategy</th><th class="r">Nifty</th><th class="r">Difference</th></tr></thead><tbody>${[...ys.entries()].reverse().map(([y, v]) => {
+      const bv = yb.get(y), d = bv == null ? null : v - bv; return `<tr><td>${y}</td><td class="r ${cls(v)}">${pct(v)}</td><td class="r ${cls(bv)}">${pct(bv)}</td><td class="r ${cls(d)}">${d == null ? "–" : pct(d)}</td></tr>`; }).join("")}</tbody></table>`;
+    // breakdown
+    if (spec.type === "rule") {
+      $("breakdownTitle").innerHTML = "By symbol";
+      const rows = Object.entries(res.perSymbol).sort((a, b) => (b[1].total_return_pct ?? -1e9) - (a[1].total_return_pct ?? -1e9));
+      $("breakdown").innerHTML = `<table><thead><tr><th>Symbol</th><th class="r">Return</th><th class="r">CAGR</th><th class="r">Max DD</th><th class="r">Trades</th><th class="r">Win %</th></tr></thead><tbody>${rows.map(([s, r]) => r.note
+        ? `<tr><td>${esc(s)}</td><td colspan="5" class="muted">${esc(r.note)}</td></tr>`
+        : `<tr><td>${esc(s)}</td><td class="r ${cls(r.total_return_pct)}">${pct(r.total_return_pct, 0)}</td><td class="r">${pct(r.cagr_pct)}</td><td class="r">${pct(r.max_drawdown_pct)}</td><td class="r">${r.trades ?? 0}</td><td class="r">${pct(r.win_rate_pct, 0, false)}</td></tr>`).join("")}</tbody></table>`;
+    } else if (spec.type === "rotation") {
+      $("breakdownTitle").innerHTML = `Leaders right now <small>as of ${fmtDate(m.end)}</small>`;
+      $("breakdown").innerHTML = `<table><thead><tr><th>#</th><th>Symbol</th><th class="r">Momentum score</th></tr></thead><tbody>${res.ranking.map(([s, v], i) => `<tr><td>${i + 1}</td><td>${esc(s)}</td><td class="r ${cls(v)}">${spec.score === "risk_adj" ? n2(v / 100) : pct(v)}</td></tr>`).join("")}</tbody></table>`;
+    } else {
+      $("breakdownTitle").innerHTML = "How cycles ended";
+      const g = {}; for (const c of res.trades) { const x = g[c.reason] || (g[c.reason] = { n: 0, pnl: 0 }); x.n++; x.pnl += c.pnl; }
+      $("breakdown").innerHTML = `<table><thead><tr><th>Exit</th><th class="r">Cycles</th><th class="r">Total P&amp;L</th><th class="r">Avg P&amp;L</th></tr></thead><tbody>${Object.entries(g).sort((a, b) => b[1].n - a[1].n).map(([k, x]) =>
+        `<tr><td>${esc(k)}</td><td class="r">${x.n}</td><td class="r ${cls(x.pnl)}">${inr(x.pnl)}</td><td class="r ${cls(x.pnl)}">${inr(x.pnl / x.n)}</td></tr>`).join("")}</tbody></table>`;
+    }
+    // trades
+    const T = res.trades.slice().reverse(), LIM = 300, shown = T.slice(0, LIM);
+    let head, body;
+    if (spec.type === "rule") {
+      head = `<th>Symbol</th><th>Entry</th><th class="r">Entry ₹</th><th>Exit</th><th class="r">Exit ₹</th><th class="r">Qty</th><th class="r">P&amp;L</th><th class="r">Return</th><th>Why</th><th class="r">Days</th>`;
+      body = shown.map((t) => t.open ? `<tr><td>${esc(t.symbol)}</td><td>${fmtDate(t.entry_date)}</td><td class="r">${n2(t.entry_price)}</td><td class="muted">open</td><td></td><td class="r">${t.qty}</td><td class="r ${cls(t.unrealized)}">${inr(t.unrealized)}</td><td></td><td class="muted">still held</td><td></td></tr>`
+        : `<tr><td>${esc(t.symbol)}</td><td>${fmtDate(t.entry_date)}</td><td class="r">${n2(t.entry_price)}</td><td>${fmtDate(t.exit_date)}</td><td class="r">${n2(t.exit_price)}</td><td class="r">${t.qty}</td><td class="r ${cls(t.pnl)}">${inr(t.pnl)}</td><td class="r ${cls(t.return_pct)}">${pct(t.return_pct)}</td><td>${esc(t.reason)}</td><td class="r">${t.bars}</td></tr>`).join("");
+    } else if (spec.type === "rotation") {
+      head = `<th>Date</th><th>Symbol</th><th>Side</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Value</th><th class="r">Fees</th>`;
+      body = shown.map((t) => `<tr><td>${fmtDate(t.date)}</td><td>${esc(t.symbol)}</td><td class="${t.qty > 0 ? "pos" : "neg"}">${t.qty > 0 ? "Buy" : "Sell"}</td><td class="r">${Math.abs(t.qty) < 100 && Math.abs(t.qty) % 1 ? Math.abs(t.qty).toFixed(2) : Math.abs(Math.round(t.qty))}</td><td class="r">${n2(t.price)}</td><td class="r">${inr(Math.abs(t.qty * t.price))}</td><td class="r">${inr(t.fees)}</td></tr>`).join("");
+    } else {
+      head = `<th>Entry</th><th>Exit</th><th>Expiry</th><th class="r">Credit</th><th class="r">P&amp;L</th><th>Why</th>`;
+      body = shown.map((t) => `<tr><td>${fmtDate(t.entry_date)}</td><td>${fmtDate(t.exit_date)}</td><td>${fmtDate(t.expiry)}</td><td class="r">${inr(t.credit)}</td><td class="r ${cls(t.pnl)}">${inr(t.pnl)}</td><td>${esc(t.reason)}</td></tr>`).join("");
+    }
+    const label = spec.type === "rotation" ? "Orders" : spec.type === "option_selling" ? "Option cycles" : "Trades";
+    $("tradesTitle").innerHTML = `${label} <small>${T.length.toLocaleString("en-IN")} total${T.length > LIM ? `, latest ${LIM} shown` : ""}</small>`;
+    $("trades").innerHTML = T.length ? `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>` : `<p class="muted">No trades in this period — the entry condition never fired.</p>`;
+    // notes
+    const notes = ["Prices: daily bars from Yahoo Finance, adjusted for splits and dividends.",
+      "Survivorship bias: stocks are today's Nifty 50 members for the whole period, which flatters stock strategies.",
+      "Benchmark: Nifty 50 price index, scaled to the same starting capital. Sharpe ratios use a 6.5% risk-free rate."];
+    if (spec.type === "rule") notes.unshift("Signals are read at the close and filled at the next day's open. Stops and targets fill intraday at the level, or at the open when price gaps past it.",
+      `Capital is split equally across ${spec.symbols.length} symbol${spec.symbols.length > 1 ? "s" : ""}. Costs: ${spec.cost_pct}% of trade value per side (brokerage, STT, exchange and stamp charges).`);
+    if (spec.type === "rotation") notes.unshift("Rankings use closes up to the previous day; rebalancing trades at that day's close. Positions within 1% of target are left alone to save costs.", `Costs: ${spec.cost_pct}% of each order's value.`);
+    if (spec.type === "option_selling") notes.unshift("Options are priced with Black-Scholes using India VIX as implied volatility. Real out-of-the-money puts trade richer (skew), so real credits and losses differ.",
+      "Stops are checked on daily closes, so real intraday stop-outs would often happen earlier.", `Lot size ${spec.lot_size} (current NSE size) is used for the whole history. Costs: ₹${spec.fee_per_order} per order plus ${spec.cost_pct_premium}% of premium.`);
+    $("notes").innerHTML = notes.map((n) => `<li>${esc(n)}</li>`).join("");
+  }
+
+  // ---------------------------------------------------------------- charts (hand-built SVG)
+  function niceTicks(lo, hi, count) {
+    const span = hi - lo || Math.abs(hi) || 1, step0 = span / count, mag = Math.pow(10, Math.floor(Math.log10(step0))), err = step0 / mag;
+    const step = (err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1) * mag, out = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(+v.toFixed(10));
+    return out;
+  }
+  function logTicks(lo, hi) {
+    const out = [], cands = [1, 2, 5]; for (let e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++) for (const c of cands) { const v = c * Math.pow(10, e); if (v >= lo && v <= hi) out.push(v); }
+    return out.length > 7 ? out.filter((v) => /^1/.test(String(v))) : out;
+  }
+  function chart(el, days, series, opt) {
+    const W = Math.max(300, el.clientWidth || 600), H = opt.height, padL = 64, padR = opt.endLabels ? (W < 520 ? 76 : 118) : 16, padT = 10, padB = 24;
+    const x0 = days[0], x1 = days[days.length - 1], iw = W - padL - padR, ih = H - padT - padB;
+    let lo = Infinity, hi = -Infinity; for (const s of series) for (const v of s.values) if (isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    if (opt.zeroTop) hi = 0;
+    if (!isFinite(lo)) return;
+    const useLog = opt.log && lo > 0;
+    if (!useLog) { const padv = (hi - lo) * 0.05 || 1; lo = opt.zeroTop ? lo - padv : lo - padv; hi = opt.zeroTop ? 0 : hi + padv; }
+    const fy = useLog ? (v) => padT + ih - (Math.log(v) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)) * ih : (v) => padT + ih - (v - lo) / (hi - lo) * ih;
+    const fx = (d) => padL + (d - x0) / (x1 - x0 || 1) * iw;
+    const yt = useLog ? logTicks(lo, hi) : niceTicks(lo, hi, 4);
+    // x ticks: years
+    const y0 = new Date(x0 * 864e5).getUTCFullYear(), y1 = new Date(x1 * 864e5).getUTCFullYear(), every = Math.max(1, Math.ceil((y1 - y0 + 1) / Math.max(2, Math.floor(iw / 70))));
+    const xt = []; for (let y = y0 + 1; y <= y1; y++) if ((y - y0 - 1) % every === 0) xt.push([y, Date.UTC(y, 0, 1) / 864e5]);
+    const step = Math.max(1, Math.floor(days.length / (iw * 1.5)));
+    const path = (vals) => { let d = "", pen = false; for (let i = 0; i < days.length; i += (i + step < days.length ? step : 1)) { const v = vals[i]; if (!isFinite(v) || (useLog && v <= 0)) { pen = false; continue; } d += (pen ? "L" : "M") + fx(days[i]).toFixed(1) + " " + fy(v).toFixed(1); pen = true; } return d; };
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.aria)}"><g class="grid">${yt.map((v) => `<line x1="${padL}" x2="${W - padR}" y1="${fy(v).toFixed(1)}" y2="${fy(v).toFixed(1)}"/>`).join("")}</g>`;
+    svg += `<g class="axis">${yt.map((v) => `<text x="${padL - 8}" y="${(fy(v) + 4).toFixed(1)}" text-anchor="end">${opt.fmt(v)}</text>`).join("")}${xt.map(([y, d]) => `<text x="${fx(d).toFixed(1)}" y="${H - 6}" text-anchor="middle">${y}</text>`).join("")}</g>`;
+    for (const s of series) {
+      if (s.area) svg += `<path d="${path(s.values)} L${fx(x1).toFixed(1)} ${fy(0).toFixed(1)} L${fx(x0).toFixed(1)} ${fy(0).toFixed(1)} Z" fill="var(--dd-fill)" stroke="none"/>`;
+      svg += `<path d="${path(s.values)}" fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }
+    if (opt.endLabels) {
+      const ends = series.map((s) => ({ s, v: s.values[s.values.length - 1] })).filter((e) => isFinite(e.v)).map((e) => ({ ...e, y: fy(e.v) })).sort((a, b) => a.y - b.y);
+      for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 26) ends[i].y = ends[i - 1].y + 26;
+      for (const e of ends) svg += `<circle cx="${fx(x1).toFixed(1)}" cy="${fy(e.v).toFixed(1)}" r="4" fill="${e.s.color}" stroke="var(--surface)" stroke-width="2"/><text class="endlabel" x="${(fx(x1) + 10).toFixed(1)}" y="${(e.y - 1).toFixed(1)}">${esc(e.s.short)}</text><text class="endlabel" x="${(fx(x1) + 10).toFixed(1)}" y="${(e.y + 12).toFixed(1)}" style="font-weight:500;fill:var(--muted)">${opt.fmtEnd(e.v)}</text>`;
+    }
+    svg += `<line class="xh" x1="0" x2="0" y1="${padT}" y2="${padT + ih}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden"/>`;
+    svg += series.map((s, i) => `<circle class="dot${i}" r="4.5" fill="${s.color}" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`).join("");
+    svg += `<rect x="${padL}" y="${padT}" width="${iw}" height="${ih}" fill="transparent" style="cursor:crosshair"/></svg><div class="tip" hidden></div>`;
+    el.innerHTML = svg;
+    const svgEl = el.querySelector("svg"), tip = el.querySelector(".tip"), xh = el.querySelector(".xh");
+    const hide = () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); series.forEach((_, i) => el.querySelector(".dot" + i).setAttribute("visibility", "hidden")); };
+    svgEl.addEventListener("pointerleave", hide);
+    svgEl.addEventListener("pointermove", (ev) => {
+      const r = svgEl.getBoundingClientRect(), sx = (ev.clientX - r.left) * W / r.width;
+      if (sx < padL || sx > W - padR) { hide(); return; }
+      const d = x0 + (sx - padL) / iw * (x1 - x0); let a = 0, b = days.length - 1;
+      while (b - a > 1) { const mid = (a + b) >> 1; if (days[mid] < d) a = mid; else b = mid; }
+      const i = Math.abs(days[a] - d) < Math.abs(days[b] - d) ? a : b, X = fx(days[i]);
+      xh.setAttribute("x1", X); xh.setAttribute("x2", X); xh.setAttribute("visibility", "visible");
+      series.forEach((s, k) => { const c = el.querySelector(".dot" + k), v = s.values[i]; if (isFinite(v) && (!useLog || v > 0)) { c.setAttribute("cx", X); c.setAttribute("cy", fy(v)); c.setAttribute("visibility", "visible"); } else c.setAttribute("visibility", "hidden"); });
+      tip.innerHTML = `<b>${fmtDate(E.isoOf(days[i]))}</b>` + series.map((s) => `<div class="row"><i style="background:${s.color}"></i>${esc(s.short)}: <b>${opt.fmtTip(s.values[i])}</b></div>`).join("");
+      tip.hidden = false;
+      const px = X / W * r.width, tw = tip.offsetWidth; tip.style.left = Math.min(Math.max(0, px + 12), r.width - tw) + "px"; tip.style.top = "6px";
+    });
+  }
+  function drawdown(vals) { const o = new Float64Array(vals.length); let pk = -Infinity; for (let i = 0; i < vals.length; i++) { const v = vals[i]; if (!isFinite(v)) { o[i] = NaN; continue; } pk = Math.max(pk, v); o[i] = (v / pk - 1) * 100; } return o; }
+  function drawCharts() {
+    const r = state.res; if (!r) return;
+    const A = { short: "Strategy", color: "var(--series-a)", values: r.eq, width: 2 }, B = { short: "Nifty", color: "var(--series-b)", values: r.bench || [], width: 1.6 };
+    chart($("equityChart"), r.days, r.bench ? [B, A] : [A], { height: 300, log: state.log, endLabels: true, aria: "Portfolio value over time, strategy versus Nifty", fmt: inrShort, fmtEnd: inrShort, fmtTip: inr });
+    chart($("ddChart"), r.days, r.bench ? [{ ...B, values: drawdown(r.bench), width: 1.2 }, { ...A, values: drawdown(r.eq), area: true, color: "var(--bad)", width: 1.4 }] : [{ ...A, values: drawdown(r.eq), area: true, color: "var(--bad)" }],
+      { height: 130, zeroTop: true, endLabels: true, aria: "Drawdown over time", fmt: (v) => minus(Math.round(v) + "%"), fmtEnd: (v) => pct(v), fmtTip: (v) => pct(v) });
+  }
+  let rsT; new ResizeObserver(() => { clearTimeout(rsT); rsT = setTimeout(drawCharts, 120); }).observe($("equityChart"));
+
+  // ---------------------------------------------------------------- wiring
+  function renderExamples(active) {
+    $("examples").innerHTML = EXAMPLES.map((e, i) => `<button type="button" class="ex" data-i="${i}" aria-pressed="${i === active}">${esc(e.label)}</button>`).join("");
+  }
+  $("examples").addEventListener("click", (ev) => {
+    const b = ev.target.closest(".ex"); if (!b) return; const i = +b.dataset.i;
+    $("prompt").value = EXAMPLES[i].text; renderExamples(i); onBacktest();
+  });
+  $("prompt").addEventListener("input", () => { const i = EXAMPLES.findIndex((e) => e.text === $("prompt").value.trim()); renderExamples(i); });
+  $("run").addEventListener("click", onBacktest);
+  $("prompt").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) onBacktest(); });
+  $("editToggle").addEventListener("click", () => { const ed = $("editor"), open = ed.hidden; ed.hidden = !open; $("editToggle").setAttribute("aria-expanded", String(open)); $("editToggle").textContent = open ? "Hide editor" : "Edit rules"; });
+  $("runJson").addEventListener("click", async () => {
+    if (state.busy) return; setBusy(true);
+    try { let raw; try { raw = JSON.parse($("specJson").value); } catch (e) { throw new Error("The rules aren't valid JSON: " + e.message); } await runRaw(raw); }
+    catch (e) { setStatus(e.message || String(e), true); } finally { setBusy(false); }
+  });
+  const setScale = (log) => { state.log = log; $("scaleLin").setAttribute("aria-pressed", String(!log)); $("scaleLog").setAttribute("aria-pressed", String(log)); drawCharts(); };
+  $("scaleLin").addEventListener("click", () => setScale(false)); $("scaleLog").addEventListener("click", () => setScale(true));
+
+  (async () => {
+    try { await loadManifest(); } catch (e) { setStatus(e.message, true); return; }
+    renderExamples(0); $("prompt").value = EXAMPLES[0].text;
+    setBusy(true);
+    try { await runRaw(JSON.parse(JSON.stringify(EXAMPLES[0].spec))); setStatus("Showing an example. Describe your own strategy above and press Backtest."); }
+    catch (e) { setStatus(e.message, true); } finally { setBusy(false); }
+    try { state.sample = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch (e) { state.sample = null; }
+    if (!state.sample) setStatus("Examples and the rules editor work here. Plain-English strategies need Claude, which isn't available in this view.");
+  })();
+})();
+</script>
