@@ -36,10 +36,21 @@ UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.3
 HOSTS = ["https://nsearchives.nseindia.com", "https://archives.nseindia.com"]
 INDEX_UNDERLYINGS = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50", "SENSEX", "BANKEX"}
 
+# Every index we try; each key maps to Yahoo tickers tried in order. Keys with no real history are dropped later.
+EXTRA_INDICES = {
+    "NIFTYNEXT50": ["^NSMIDCP"], "NIFTY100": ["^CNX100"], "NIFTY200": ["^CNX200"], "NIFTY500": ["^CRSLDX"],
+    "NIFTYMIDCAP50": ["^NSEMDCP50"], "NIFTYMIDCAP100": ["NIFTY_MIDCAP_100.NS", "^CNXMIDCAP"], "NIFTYMIDSELECT": ["NIFTY_MID_SELECT.NS"],
+    "NIFTYSMALLCAP100": ["^CNXSC", "NIFTY_SMLCAP_100.NS"], "NIFTYPSE": ["^CNXPSE"], "NIFTYMNC": ["^CNXMNC"],
+    "NIFTYCONSUMPTION": ["^CNXCONSUM"], "NIFTYCOMMODITIES": ["^CNXCMDT"], "NIFTYSERVICES": ["^CNXSERVICE"],
+    "NIFTYPVTBANK": ["NIFTY_PVT_BANK.NS"], "NIFTYHEALTHCARE": ["NIFTY_HEALTHCARE.NS"], "NIFTYOILGAS": ["NIFTY_OIL_AND_GAS.NS"],
+    "NIFTYCONSDURABLES": ["NIFTY_CONSR_DURBL.NS"], "NIFTYCPSE": ["NIFTY_CPSE.NS"], "NIFTYDIVOPPS50": ["NIFTY_DIV_OPPS_50.NS"],
+    "BANKEX": ["BSE-BANK.BO"], "BSE100": ["BSE-100.BO"], "BSE500": ["BSE-500.BO"], "BSEMIDCAP": ["BSE-MIDCAP.BO"], "BSESMALLCAP": ["BSE-SMLCAP.BO"],
+}
 ALTERNATES = {
     "NIFTYFMCG": ["NIFTY_FMCG.NS"], "NIFTYAUTO": ["NIFTY_AUTO.NS"], "NIFTYMETAL": ["NIFTY_METAL.NS"],
     "NIFTYREALTY": ["NIFTY_REALTY.NS"], "NIFTYENERGY": ["NIFTY_ENERGY.NS"], "NIFTYPSUBANK": ["NIFTY_PSU_BANK.NS"],
     "NIFTYMEDIA": ["NIFTY_MEDIA.NS"], "NIFTYINFRA": ["NIFTY_INFRA.NS"], "NIFTYFIN": ["NIFTY_FIN_SERVICE.NS", "^CNXFIN"],
+    **EXTRA_INDICES,
 }
 
 
@@ -80,7 +91,7 @@ def load_universe() -> dict:
                               "industry": stocks[s].get("industry") or row.get("Industry", "")})
     for row in map(clean_row, fno or []):
         s = (row.get("SYMBOL") or "").strip()
-        if not s or s.upper() == "SYMBOL" or s in INDEX_UNDERLYINGS:
+        if not s or s.upper() == "SYMBOL" or s in INDEX_UNDERLYINGS or s.upper().startswith("NIFTY"):
             continue
         lots = [v for k, v in row.items() if k not in ("UNDERLYING", "SYMBOL") and v.strip().isdigit()]
         stocks.setdefault(s, {})
@@ -128,7 +139,7 @@ def yahoo_history(ticker: str, start: str) -> pd.DataFrame:
 
 def update_symbol(sym: str, start15: str, full: bool) -> dict:
     path = OUT / f"{sym}.csv"
-    tickers = [to_yahoo(sym)] + [t for t in ALTERNATES.get(sym, []) if t != to_yahoo(sym)]
+    tickers = ALTERNATES[sym] if sym in EXTRA_INDICES else [to_yahoo(sym)] + [t for t in ALTERNATES.get(sym, []) if t != to_yahoo(sym)]
     old = pd.read_csv(path, index_col=0, parse_dates=True) if path.exists() and not full else None
     if old is not None and len(old) > 200:
         recent_start = (old.index[-1] - pd.Timedelta(days=12)).date().isoformat()
@@ -170,7 +181,7 @@ def main() -> None:
     stocks = list(universe["stocks"])
     print(f"Universe: {len(stocks)} stocks ({sum(m['nifty200'] for m in universe['stocks'].values())} Nifty 200, "
           f"{sum(m['fno'] for m in universe['stocks'].values())} F&O)")
-    symbols = list(dict.fromkeys(INDICES + ["INDIAVIX"] + SECTORS + stocks))
+    symbols = list(dict.fromkeys(INDICES + ["INDIAVIX"] + SECTORS + list(EXTRA_INDICES) + stocks))
     if args.only:
         symbols = [s.strip().upper() for s in args.only.split(",") if s.strip()]
     start15 = (date.today() - timedelta(days=int(args.years * 365.25) + 5)).isoformat()
