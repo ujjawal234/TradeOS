@@ -1,0 +1,4 @@
+{"symbols": ["RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS", "LT"],
+ "entry": "cross_above(ema(close, 20), ema(close, 50)) and close > sma(close, 200)",
+ "exit": "cross_below(ema(close, 20), ema(close, 50))",
+ "stop_loss_pct": 8, "capital": 1000000}

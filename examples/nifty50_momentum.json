@@ -1,0 +1,2 @@
+{"universe": "nifty50", "lookback": 126, "skip": 21, "top_n": 10, "rebalance": "monthly",
+ "score": "risk_adj", "trend_filter": {"symbol": "NIFTY", "sma": 200}}

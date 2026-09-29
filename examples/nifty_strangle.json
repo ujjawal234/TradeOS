@@ -1,0 +1,2 @@
+{"underlying": "NIFTY", "structure": "strangle", "strike_mode": "delta", "delta": 0.15,
+ "stop_loss_mult": 2.0, "profit_target_pct": 50, "max_vix": 22, "lots": 1}

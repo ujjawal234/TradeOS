@@ -1,0 +1,2 @@
+{"underlying": "BANKNIFTY", "structure": "iron_condor", "delta": 0.2, "wing_width": 1000,
+ "stop_loss_mult": 2.0, "profit_target_pct": 60, "exit_dte": 1}

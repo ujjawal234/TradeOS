@@ -1,0 +1,9 @@
+pandas>=2.0
+numpy>=1.24
+yfinance>=0.2.40
+anthropic>=0.40
+matplotlib>=3.7
+pypdf>=4.0
+requests>=2.31
+pytest>=7.0
+# optional: python-docx (read .docx reports)

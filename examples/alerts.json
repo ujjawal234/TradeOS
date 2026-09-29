@@ -1,0 +1,7 @@
+{"trigger": "cross",
+ "alerts": [
+  {"symbol": "RELIANCE", "above": 3000, "message": "Reliance crossed 3000"},
+  {"symbol": "NIFTY", "expr": "cross_below(close, sma(close, 200))", "message": "Nifty lost 200 DMA"},
+  {"symbol": "HDFCBANK", "expr": "rsi(close, 14) < 30", "message": "HDFC Bank oversold"},
+  {"symbol": "INDIAVIX", "above": 20, "message": "VIX above 20 - review option selling"}
+ ]}

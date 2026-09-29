@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tradeos"
+version = "0.1.0"
+description = "Agentic research, backtesting and paper-trading system for Indian markets"
+requires-python = ">=3.10"
+dependencies = ["pandas>=2.0", "numpy>=1.24", "yfinance>=0.2.40", "anthropic>=0.40",
+                "matplotlib>=3.7", "pypdf>=4.0", "requests>=2.31"]
+
+[project.scripts]
+tradeos = "tradeos.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["tradeos*"]

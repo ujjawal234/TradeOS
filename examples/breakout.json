@@ -1,0 +1,3 @@
+{"symbols": ["HDFCBANK", "ICICIBANK", "SBIN", "AXISBANK", "KOTAKBANK"],
+ "entry": "close > shift(highest(high, 55), 1) and volume > 1.5 * sma(volume, 20)",
+ "exit": "close < shift(lowest(low, 20), 1)", "stop_loss_pct": 6}
