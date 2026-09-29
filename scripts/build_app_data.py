@@ -32,7 +32,16 @@ SECTOR_SHORT = {
     "Telecommunication": ("SEC_TELECOM", "Telecom"), "Services": ("SEC_SERVICES", "Services"),
 }
 INDEX_NAMES = {"NIFTY": "Nifty 50", "BANKNIFTY": "Nifty Bank", "SENSEX": "BSE Sensex", "INDIAVIX": "India VIX",
-               "NIFTYIT": "Nifty IT", "NIFTYPHARMA": "Nifty Pharma", "NIFTYBANK": "Nifty Bank index", "NIFTYFIN": "Nifty Financial Services"}
+               "NIFTYIT": "Nifty IT", "NIFTYPHARMA": "Nifty Pharma", "NIFTYBANK": "Nifty Bank index", "NIFTYFIN": "Nifty Financial Services",
+               "NIFTYFMCG": "Nifty FMCG", "NIFTYAUTO": "Nifty Auto", "NIFTYMETAL": "Nifty Metal", "NIFTYREALTY": "Nifty Realty",
+               "NIFTYENERGY": "Nifty Energy", "NIFTYPSUBANK": "Nifty PSU Bank", "NIFTYMEDIA": "Nifty Media", "NIFTYINFRA": "Nifty Infrastructure",
+               "NIFTYNEXT50": "Nifty Next 50", "NIFTY100": "Nifty 100", "NIFTY200": "Nifty 200", "NIFTY500": "Nifty 500",
+               "NIFTYMIDCAP50": "Nifty Midcap 50", "NIFTYMIDCAP100": "Nifty Midcap 100", "NIFTYMIDSELECT": "Nifty Midcap Select",
+               "NIFTYSMALLCAP100": "Nifty Smallcap 100", "NIFTYPSE": "Nifty PSE", "NIFTYMNC": "Nifty MNC", "NIFTYCONSUMPTION": "Nifty India Consumption",
+               "NIFTYCOMMODITIES": "Nifty Commodities", "NIFTYSERVICES": "Nifty Services Sector", "NIFTYPVTBANK": "Nifty Private Bank",
+               "NIFTYHEALTHCARE": "Nifty Healthcare", "NIFTYOILGAS": "Nifty Oil & Gas", "NIFTYCONSDURABLES": "Nifty Consumer Durables",
+               "NIFTYCPSE": "Nifty CPSE", "NIFTYDIVOPPS50": "Nifty Dividend Opportunities 50", "BANKEX": "BSE Bankex", "BSE100": "BSE 100",
+               "BSE500": "BSE 500", "BSEMIDCAP": "BSE Midcap", "BSESMALLCAP": "BSE Smallcap"}
 
 
 def enc_full(df: pd.DataFrame) -> dict:
@@ -107,7 +116,7 @@ def main(out: Path) -> None:
     universes = {
         "nifty50": members(lambda m: m["n50"]), "nifty200": members(lambda m: m["n200"]),
         "fno": members(lambda m: m["fno"]), "all": members(lambda m: True),
-        "sectors": sorted(sectors), "indices": [s for s in ["NIFTY", "BANKNIFTY", "SENSEX", "NIFTYIT", "NIFTYPHARMA", "NIFTYFIN"] if s in symbols],
+        "sectors": sorted(sectors), "indices": sorted(s for s, m in symbols.items() if m["kind"] == "index" and s not in ("INDIAVIX", "NIFTYBANK")),
         "banks": [s for s in ["HDFCBANK", "ICICIBANK", "SBIN", "AXISBANK", "KOTAKBANK", "INDUSINDBK", "BANKBARODA", "PNB", "CANBK", "FEDERALBNK", "IDFCFIRSTB", "AUBANK", "UNIONBANK", "BANKINDIA", "INDIANB"] if s in symbols],
         **industries,
     }
