@@ -359,7 +359,9 @@ def adjust(g: pd.DataFrame, gaps: set = frozenset(), acts: list | None = None, s
             else:
                 st["ratio_rejected"] = st.get("ratio_rejected", 0) + 1
         if "demerger" in kinds and not applied and f[t] == 1.0 and moves:
-            gap = opn[t] / c if 0.02 < opn[t] / c < 0.97 else close[t] / c
+            go, gc = (opn[t] / c if opn[t] > 0 else 1.0), close[t] / c
+            # the ex-date open is normally the discovered price; if it opened near the old price and then collapsed, use the close
+            gap = gc if (abs(np.log(go)) < 0.15 and abs(np.log(gc)) > 0.3) or not (0.02 < go < 0.97) else go
             if 0.02 < gap < 0.97:
                 f[t] *= gap
                 st["demergers"] = st.get("demergers", 0) + 1
@@ -386,7 +388,7 @@ def adjust(g: pd.DataFrame, gaps: set = frozenset(), acts: list | None = None, s
         if abs(np.log(rc)) < 0.6:
             continue
         for k in (0.5, 0.25, 0.2, 0.1):
-            if abs(np.log(rc / k)) < 0.06 and abs(np.log(ro / k)) < 0.08:
+            if abs(np.log(rc / k)) < 0.06 and abs(np.log(ro / k)) < 0.12:
                 base = np.nanmedian(val[t - 20:t])
                 if base > 0 and val[t] < 4 * base:
                     f[t] = k
