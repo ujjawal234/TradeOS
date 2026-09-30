@@ -1,0 +1,1689 @@
+{
+ "asof": "2024-07-12",
+ "underlyings": {
+  "BANKNIFTY": {
+   "kind": "index",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 15.0,
+   "expiries": 7,
+   "b": "o00"
+  },
+  "FINNIFTY": {
+   "kind": "index",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 40.0,
+   "expiries": 7,
+   "b": "o00"
+  },
+  "MIDCPNIFTY": {
+   "kind": "index",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 75.0,
+   "expiries": 7,
+   "b": "o00"
+  },
+  "NIFTY": {
+   "kind": "index",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 25.0,
+   "expiries": 8,
+   "b": "o00"
+  },
+  "NIFTYNXT50": {
+   "kind": "index",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 10.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "AARTIIND": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ABB": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 125.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ABBOTINDIA": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 20.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ABCAPITAL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 5400.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ABFRL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2600.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ACC": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ADANIENT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ADANIPORTS": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 400.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ALKEM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 100.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "AMBUJACEM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 900.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "APOLLOHOSP": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 125.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "APOLLOTYRE": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1700.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ASHOKLEY": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 5000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ASIANPAINT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 200.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ASTRAL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 367.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ATUL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 100.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "AUBANK": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "AUROPHARMA": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 550.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "AXISBANK": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 625.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BAJAJ-AUTO": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 75.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BAJAJFINSV": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BAJFINANCE": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 125.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BALKRISIND": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BALRAMCHIN": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1600.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BANDHANBNK": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2800.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BANKBARODA": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2925.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BATAINDIA": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 375.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BEL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2850.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BERGEPAINT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1320.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BHARATFORG": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BHARTIARTL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 475.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BHEL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2625.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BIOCON": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BOSCHLTD": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 25.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BPCL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1800.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BRITANNIA": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 200.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "BSOFT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "CANBK": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 6750.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "CANFINHOME": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 975.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "CHAMBLFERT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1900.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "CHOLAFIN": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 625.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "CIPLA": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 650.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "COALINDIA": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2100.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "COFORGE": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 150.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "COLPAL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 350.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "CONCOR": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "COROMANDEL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 700.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "CROMPTON": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1800.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "CUB": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 5000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "CUMMINSIND": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "DABUR": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1250.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "DALBHARAT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 275.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "DEEPAKNTR": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "DIVISLAB": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 200.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "DIXON": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 100.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "DLF": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 825.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "DRREDDY": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 125.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "EICHERMOT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 175.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ESCORTS": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 275.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "EXIDEIND": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1800.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "FEDERALBNK": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 5000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "GAIL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 4575.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "GLENMARK": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 725.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "GMRAIRPORT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 11250.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "GNFC": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "GODREJCP": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "GODREJPROP": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 225.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "GRANULES": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "GRASIM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 250.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "GUJENERGY": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1250.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "HAL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "HAVELLS": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "HCLTECH": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 350.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "HDFCAMC": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 150.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "HDFCBANK": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 550.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "HDFCLIFE": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1100.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "HEROMOTOCO": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 150.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "HINDALCO": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1400.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "HINDCOPPER": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2650.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "HINDPETRO": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2025.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "HINDUNILVR": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ICICIBANK": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 700.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ICICIGI": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ICICIPRULI": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "IDEA": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 40000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "IDFC": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 5000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "IDFCFIRSTB": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 7500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "IEX": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 3750.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "IGL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1375.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "INDHOTEL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "INDIACEM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2900.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "INDIAMART": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "INDIGO": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "INDUSINDBK": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "INDUSTOWER": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 3400.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "INFY": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 400.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "IOC": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 4875.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "IPCALAB": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 650.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "IRCTC": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 875.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ITC": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1600.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "JINDALSTEL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 625.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "JKCEMENT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 125.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "JSWSTEEL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 675.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "JUBLFOOD": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1250.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "KOTAKBANK": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 400.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "LALPATHLAB": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "LAURUSLABS": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1700.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "LICHSGFIN": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "LT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 150.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "LTF": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 4462.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "LTM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 150.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "LTTS": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 100.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "LUPIN": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 425.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "M&M": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 350.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "M&MFIN": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "MANAPPURAM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 3000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "MARICO": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1200.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "MARUTI": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 50.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "MCX": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 200.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "METROPOLIS": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 400.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "MFSL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 800.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "MGL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 400.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "MOTHERSON": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 7100.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "MPHASIS": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 275.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "MRF": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 5.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "MUTHOOTFIN": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 550.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "NATIONALUM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 3750.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "NAUKRI": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 150.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "NAVINFLUOR": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 175.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "NESTLEIND": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 200.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "NMDC": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 4500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "NTPC": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "OBEROIRLTY": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 700.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "OFSS": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 100.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ONGC": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1925.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "PAGEIND": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 15.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "PEL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 750.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "PERSISTENT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 200.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "PETRONET": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 3000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "PFC": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "PIDILITIND": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 250.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "PIIND": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 250.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "PNB": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 8000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "POLYCAB": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 125.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "POWERGRID": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 3600.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "PVRINOX": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 407.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "RAMCOCEM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 850.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "RBLBANK": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "RECLTD": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "RELIANCE": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 250.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "SAIL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 4000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "SBICARD": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 800.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "SBILIFE": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 375.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "SBIN": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 750.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "SHREECEM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 25.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "SHRIRAMFIN": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "SIEMENS": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 150.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "SRF": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 375.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "SUNPHARMA": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 350.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "SUNTV": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "SYNGENE": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1000.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TATACHEM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 550.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TATACOMM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TATACONSUM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 450.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TATAPOWER": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1350.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TATASTEEL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 5500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TCS": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 175.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TECHM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 600.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TITAN": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 175.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TMPV": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 550.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TORNTPHARM": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 250.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TRENT": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 200.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "TVSMOTOR": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 350.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "UBL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 400.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ULTRACEMCO": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 100.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "UNITDSPR": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 700.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "UPL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "VEDL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 2300.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "VOLTAS": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 600.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "WIPRO": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 1500.0,
+   "expiries": 3,
+   "b": "o00"
+  },
+  "ZEEL": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-06-27",
+   "days": 6,
+   "lot": null,
+   "expiries": 1,
+   "b": "o00"
+  },
+  "ZYDUSLIFE": {
+   "kind": "stock",
+   "first": "2024-06-20",
+   "last": "2024-07-12",
+   "days": 17,
+   "lot": 900.0,
+   "expiries": 3,
+   "b": "o00"
+  }
+ },
+ "method": "NSE F&O bhavcopy. Price = close when the contract traded that day, else NSE's settlement (theoretical) price; negative in the data = not traded that day. Chains keep the nearest two expiries and nearest two monthly expiries, each with a fixed strike set chosen the first day it is used (moneyness grid around its forward). IV = Black-76 on the put-call-parity forward, r = 6.5%; iv30 interpolated in total variance."
+}
