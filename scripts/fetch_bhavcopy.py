@@ -432,7 +432,14 @@ def main() -> None:
                   "bhavcopy, adjusted for splits, bonuses and rights (price only, no dividends).",
         "universes": uni}, indent=1))
     print(f"Corporate actions applied: {ca_stats}; one-day moves beyond ±40% left: {len(jumps)}", flush=True)
-    (OUT / "_report.json").write_text(json.dumps({**info, "download": dl, "corporate_actions": {**ca_info, **ca_stats}, "big_moves_left": jumps[:200], "gap_days": sorted(str(x)[:10] for x in gaps), "symbol_change_rows_moved": moved, "members": len(members),
+    # diagnostics: NSE's records near each unexplained move, and split/bonus texts the parser could not read
+    ca["cur"] = [current(a, b) for a, b in zip(ca["sym"], ca["ex"])]
+    for j in jumps[:200]:
+        near = ca[(ca["cur"] == j[0]) & ((ca["ex"] - pd.Timestamp(j[1])).abs() <= pd.Timedelta(days=20))]
+        j.append([f"{str(r.ex)[:10]} {r.purpose}" for r in near.itertuples()][:4])
+    kw = ca[ca["purpose"].str.upper().str.contains("SPLIT|SUB|BONUS|CONSOL|FV|FACE", regex=True, na=False)]
+    unread = sorted({p for p in kw["purpose"] if not any(k == "ratio" for k, _ in parse_purpose(p))})
+    (OUT / "_report.json").write_text(json.dumps({**info, "download": dl, "corporate_actions": {**ca_info, **ca_stats}, "big_moves_left": jumps[:200], "unread_split_texts": unread[:300], "gap_days": sorted(str(x)[:10] for x in gaps), "symbol_change_rows_moved": moved, "members": len(members),
         "members_no_longer_trading": len(stale), "examples_no_longer_trading": stale[:60], "adjustments": adj_stats,
         "adjustment_examples": examples, "sizes": {k: [len(x[1]) for x in v][-3:] for k, v in uni.items()}}, indent=1))
     print(f"Wrote {len(members)} price files; {len(stale)} of them stopped trading (delisted, merged or suspended). Adjustments: {adj_stats}", flush=True)
