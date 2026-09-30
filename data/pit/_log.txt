@@ -1,12 +1,11 @@
-Bhavcopy: 3 weekdays to fetch (5752 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 1 new files; not available: {'http 404': 2}
+Bhavcopy: 2 weekdays to fetch (5752 calendar days since 2011-01-01)
+  0/2 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 2}
 Loaded 3903 trading days, 6,535,826 rows, 3,827 tickers
 Symbol changes: 1056
-Corporate actions: 1 price-report files to fetch
-  0/1 scanned, 1 files
-Corporate actions: 51,471 distinct records from 3898 files (new 1; not available {})
+Corporate actions: 0 price-report files to fetch
+Corporate actions: 51,471 distinct records from 3898 files (new 0; not available {})
 Gap days ignored for adjustments: 0 []
 Reviews: 31 (2011-09-30 … 2026-09-30); stocks ever in the top 200: 591
-Corporate actions applied: {'dividends': 7918, 'ratio_applied': 323, 'inferred_splits': 5, 'demergers': 67, 'outside_data': 96, 'rights': 60, 'ratio_rejected': 48}; one-day moves beyond ±40% left: 30
-Wrote 591 price files; 88 of them stopped trading (delisted, merged or suspended). Adjustments: {'tickers_adjusted': 389, 'events': 1592, 'small_events': 1033}
+Corporate actions applied: {'dividends': 7957, 'ratio_applied': 327, 'inferred_splits': 6, 'demergers': 67, 'outside_data': 98, 'rights': 61, 'ratio_rejected': 49}; one-day moves beyond ±40% left: 30
+Wrote 591 price files; 88 of them stopped trading (delisted, merged or suspended). Adjustments: {'tickers_adjusted': 392, 'events': 1600, 'small_events': 1036}

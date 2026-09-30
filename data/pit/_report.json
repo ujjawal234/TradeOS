@@ -36,23 +36,23 @@
  "first": "2011-01-03",
  "last": "2026-09-30",
  "download": {
-  "new_files": 1,
+  "new_files": 0,
   "not_available": {
    "http 404": 2
   }
  },
  "corporate_actions": {
   "files": 3898,
-  "new": 1,
+  "new": 0,
   "not_available": {},
   "records": 51471,
-  "dividends": 7918,
-  "ratio_applied": 323,
-  "inferred_splits": 5,
+  "dividends": 7957,
+  "ratio_applied": 327,
+  "inferred_splits": 6,
   "demergers": 67,
-  "outside_data": 96,
-  "rights": 60,
-  "ratio_rejected": 48
+  "outside_data": 98,
+  "rights": 61,
+  "ratio_rejected": 49
  },
  "big_moves_left": [
   [
@@ -450,9 +450,9 @@
   "PUNJLLOYD"
  ],
  "adjustments": {
-  "tickers_adjusted": 389,
-  "events": 1592,
-  "small_events": 1033
+  "tickers_adjusted": 392,
+  "events": 1600,
+  "small_events": 1036
  },
  "adjustment_examples": {
   "20MICRONS": [
@@ -701,6 +701,16 @@
     0.5
    ]
   ],
+  "ANANDRATHI": [
+   [
+    "2025-03-05",
+    0.5
+   ],
+   [
+    "2026-06-03",
+    0.5
+   ]
+  ],
   "ANANTRAJ": [
    [
     "2020-10-06",
@@ -915,12 +925,6 @@
    [
     "2015-07-20",
     0.5
-   ]
-  ],
-  "AURUM": [
-   [
-    "2022-04-12",
-    0.74812
    ]
   ]
  },
