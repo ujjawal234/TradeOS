@@ -46,11 +46,11 @@
   "new": 0,
   "not_available": {},
   "records": 51471,
-  "dividends": 14601,
-  "ratio_applied": 628,
+  "dividends": 14623,
+  "ratio_applied": 630,
   "inferred_splits": 13,
   "rights": 125,
-  "outside_data": 219,
+  "outside_data": 220,
   "demergers": 115,
   "ratio_rejected": 81
  },
@@ -1508,9 +1508,9 @@
   "EXCELCROP"
  ],
  "adjustments": {
-  "tickers_adjusted": 838,
-  "events": 3085,
-  "small_events": 2021
+  "tickers_adjusted": 839,
+  "events": 3088,
+  "small_events": 2022
  },
  "adjustment_examples": {
   "20MICRONS": [
