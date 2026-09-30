@@ -1,5 +1,6 @@
-F&O bhavcopy: 0 trading days to fetch of 17
-Downloaded 0 new F&O files; not available: {}
+F&O bhavcopy: 30 trading days to fetch of 30
+  0/30 scanned, 1 files, 2s
+Downloaded 30 new F&O files; not available: {}
 Symbol changes: 1056
-  built 0/17 days (2024-06-20), 187 underlyings, 0s
-Options: 187 underlyings, 0.7 MB gzip in 1 bundles
+  built 0/30 days (2012-01-02), 233 underlyings, 0s
+Options: 234 underlyings, 0.5 MB gzip in 2 bundles
