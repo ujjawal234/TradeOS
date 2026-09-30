@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["data/REQUEST_OPTIONS", "scripts/fetch_fo.py", ".github/workflows/options-data.yml"]
+    paths: ["data/REQUEST_OPTIONS", "scripts/fetch_fo.py", "scripts/fetch_participants.py", ".github/workflows/options-data.yml"]
   schedule:
     - cron: "40 13 * * 1-5"          # 19:10 IST on weekdays (the job waits for the day's F&O file)
 
@@ -50,6 +50,23 @@ jobs:
           start = date.fromisoformat(f"{have[-1][:4]}-{have[-1][4:6]}-{have[-1][6:8]}") if have else date(2011, 1, 1)
           B.download(start - timedelta(days=3), cache, 8)
           PY
+      - name: Restore participant cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .part_cache
+          key: part-${{ github.run_id }}
+          restore-keys: part-
+      - name: Participant-wise OI/volume (FII, DII, Pro, Client) and FII/DII cash flows
+        continue-on-error: true
+        run: |
+          mkdir -p data/flows
+          python scripts/fetch_participants.py 2>&1 | tail -20
+      - name: Save participant cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .part_cache
+          key: part-${{ github.run_id }}
       - name: Download F&O bhavcopies and build option data
         run: |
           mkdir -p data/options
@@ -77,7 +94,7 @@ jobs:
         run: |
           git config user.name "tradeos-bot"
           git config user.email "tradeos-bot@users.noreply.github.com"
-          git add data/options/
+          git add data/options/ data/flows/
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
           git commit -m "data: option prices $(date -u +%Y-%m-%d)"
           for i in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 5; done

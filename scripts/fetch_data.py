@@ -46,11 +46,19 @@ EXTRA_INDICES = {
     "NIFTYCONSDURABLES": ["NIFTY_CONSR_DURBL.NS"], "NIFTYCPSE": ["NIFTY_CPSE.NS"], "NIFTYDIVOPPS50": ["NIFTY_DIV_OPPS_50.NS"],
     "BANKEX": ["BSE-BANK.BO"], "BSE100": ["BSE-100.BO"], "BSE500": ["BSE-500.BO"], "BSEMIDCAP": ["BSE-MIDCAP.BO"], "BSESMALLCAP": ["BSE-SMLCAP.BO"],
 }
+# World markets, rates, currencies and commodities (Yahoo). Keys become app symbols in the "global" group.
+GLOBAL = {
+    "SPX": "^GSPC", "NASDAQ": "^IXIC", "DOWJONES": "^DJI", "RUSSELL2000": "^RUT", "USVIX": "^VIX", "NIKKEI": "^N225", "HANGSENG": "^HSI",
+    "SHANGHAI": "000001.SS", "KOSPI": "^KS11", "TAIWAN": "^TWII", "FTSE100": "^FTSE", "DAX": "^GDAXI", "CAC40": "^FCHI", "EUROSTOXX50": "^STOXX50E",
+    "MSCI_EM": "EEM", "US10Y": "^TNX", "US2Y": "^IRX", "DXY": "DX-Y.NYB", "USDINR": "INR=X", "EURINR": "EURINR=X", "GBPINR": "GBPINR=X", "JPYINR": "JPYINR=X",
+    "GOLD": "GC=F", "SILVER": "SI=F", "CRUDE": "CL=F", "BRENT": "BZ=F", "NATGAS": "NG=F", "COPPER": "HG=F", "BITCOIN": "BTC-USD", "ETHEREUM": "ETH-USD",
+}
 ALTERNATES = {
     "NIFTYFMCG": ["NIFTY_FMCG.NS"], "NIFTYAUTO": ["NIFTY_AUTO.NS"], "NIFTYMETAL": ["NIFTY_METAL.NS"],
     "NIFTYREALTY": ["NIFTY_REALTY.NS"], "NIFTYENERGY": ["NIFTY_ENERGY.NS"], "NIFTYPSUBANK": ["NIFTY_PSU_BANK.NS"],
     "NIFTYMEDIA": ["NIFTY_MEDIA.NS"], "NIFTYINFRA": ["NIFTY_INFRA.NS"], "NIFTYFIN": ["NIFTY_FIN_SERVICE.NS", "^CNXFIN"],
     **EXTRA_INDICES,
+    **{k: [v] for k, v in GLOBAL.items()},
 }
 
 
@@ -75,9 +83,15 @@ def load_universe() -> dict:
     stocks: dict[str, dict] = {}
     n50 = nse_csv("/content/indices/ind_nifty50list.csv")
     n200 = nse_csv("/content/indices/ind_nifty200list.csv")
+    n500 = nse_csv("/content/indices/ind_nifty500list.csv")
     fno = nse_csv("/content/fo/fo_mktlots.csv")
-    got = {"nifty50": n50 is not None, "nifty200": n200 is not None, "fno": fno is not None}
+    got = {"nifty50": n50 is not None, "nifty200": n200 is not None, "nifty500": n500 is not None, "fno": fno is not None}
     print("NSE lists fetched:", got)
+    for row in map(clean_row, n500 or []):
+        s = row.get("Symbol")
+        if s:
+            stocks.setdefault(s, {})
+            stocks[s].update({"name": row.get("Company Name", ""), "industry": row.get("Industry", ""), "nifty500": True})
     for row in map(clean_row, n200 or []):
         s = row.get("Symbol")
         if s:
@@ -101,7 +115,7 @@ def load_universe() -> dict:
     for s, meta in (old.get("stocks") or {}).items():
         if s not in stocks:
             if (meta.get("nifty200") and not got["nifty200"]) or (meta.get("fno") and not got["fno"]) \
-                    or (meta.get("nifty50") and not got["nifty50"]):
+                    or (meta.get("nifty50") and not got["nifty50"]) or (meta.get("nifty500") and not got["nifty500"]):
                 stocks[s] = meta
         else:
             for k, v in meta.items():
@@ -112,8 +126,10 @@ def load_universe() -> dict:
         if s not in stocks and not got["nifty50"]:
             stocks[s] = {"nifty50": True}
     for meta in stocks.values():
-        for k in ("nifty50", "nifty200", "fno"):
+        for k in ("nifty50", "nifty200", "nifty500", "fno"):
             meta.setdefault(k, False)
+        if meta["nifty200"] or meta["nifty50"]:
+            meta["nifty500"] = True
     return {"generated": date.today().isoformat(), "lists_fetched": got, "stocks": dict(sorted(stocks.items()))}
 
 
@@ -139,7 +155,7 @@ def yahoo_history(ticker: str, start: str) -> pd.DataFrame:
 
 def update_symbol(sym: str, start15: str, full: bool) -> dict:
     path = OUT / f"{sym}.csv"
-    tickers = ALTERNATES[sym] if sym in EXTRA_INDICES else [to_yahoo(sym)] + [t for t in ALTERNATES.get(sym, []) if t != to_yahoo(sym)]
+    tickers = ALTERNATES[sym] if (sym in EXTRA_INDICES or sym in GLOBAL) else [to_yahoo(sym)] + [t for t in ALTERNATES.get(sym, []) if t != to_yahoo(sym)]
     old = pd.read_csv(path, index_col=0, parse_dates=True) if path.exists() and not full else None
     if old is not None and len(old) > 200:
         recent_start = (old.index[-1] - pd.Timedelta(days=12)).date().isoformat()
@@ -181,7 +197,7 @@ def main() -> None:
     stocks = list(universe["stocks"])
     print(f"Universe: {len(stocks)} stocks ({sum(m['nifty200'] for m in universe['stocks'].values())} Nifty 200, "
           f"{sum(m['fno'] for m in universe['stocks'].values())} F&O)")
-    symbols = list(dict.fromkeys(INDICES + ["INDIAVIX"] + SECTORS + list(EXTRA_INDICES) + stocks))
+    symbols = list(dict.fromkeys(INDICES + ["INDIAVIX"] + SECTORS + list(EXTRA_INDICES) + list(GLOBAL) + stocks))
     if args.only:
         symbols = [s.strip().upper() for s in args.only.split(",") if s.strip()]
     start15 = (date.today() - timedelta(days=int(args.years * 365.25) + 5)).isoformat()

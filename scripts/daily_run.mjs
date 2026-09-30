@@ -8,6 +8,9 @@ import path from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
+const zlibM = require("node:zlib"), fsM = require("node:fs");
+// JSON file, gzip or plain (x.json.gz preferred when both could exist)
+const readJ = (f) => { const js = JSON.parse(fsM.readFileSync(f, "utf8")); return js && typeof js.b64gz === "string" ? JSON.parse(zlibM.gunzipSync(Buffer.from(js.b64gz, "base64")).toString("utf8")) : js; };
 const here = path.dirname(new URL(import.meta.url).pathname);
 const E = require(path.join(here, "..", "lab", "engine.js"));
 const [dir, agentsFile, outFile] = process.argv.slice(2);
@@ -26,7 +29,7 @@ function ensureOptions(syms, kind) {
   for (const x of new Set(syms)) {
     if (!U[x] || !U[x][kind] || optLoaded[kind].has(x)) continue;
     const k = U[x][kind];
-    const js = (optFiles[k] ||= JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(data, "opt", `${k}.json.gz`))).toString("utf8")));
+    const js = (optFiles[k] ||= readJ(path.join(data, "opt", `${k}.json`)));
     for (const [y, p] of Object.entries(js)) { if (kind === "c") E.setOptions(y, p); else E.setOptionSummary(y, p); optLoaded[kind].add(y); }
   }
 }
@@ -36,7 +39,7 @@ const bundleCache = {};
 const fullFrame = (s) => {
   if (full[s]) return full[s];
   const pb = man.symbols[s] && man.symbols[s].pb; // NSE-sourced stocks live in the shared bundles (data/pit/full/<b>.json)
-  if (pb) { const js = (bundleCache[pb] ||= JSON.parse(fs.readFileSync(path.join(data, "pit", "full", `${pb}.json`), "utf8"))); full[s] = E.frame(js[s]); }
+  if (pb) { const js = (bundleCache[pb] ||= readJ(path.join(data, "pit", "full", `${pb}.json`))); full[s] = E.frame(js[s]); }
   else full[s] = E.frame(JSON.parse(fs.readFileSync(path.join(data, "p", `${s}.json`), "utf8")));
   full[s].sym = s; return full[s];
 };
@@ -46,11 +49,11 @@ let pitLight = null, pitBundles = {}; const pitFull = {};
 if (man.pit && fs.existsSync(path.join(pitDir, "membership.json"))) {
   const mem = JSON.parse(fs.readFileSync(path.join(pitDir, "membership.json"), "utf8"));
   E.setPit(mem); pitBundles = mem.bundles || {};
-  pitLight = E.framesFromPack(JSON.parse(fs.readFileSync(path.join(pitDir, "closes.json"), "utf8")));
+  pitLight = E.framesFromPack(readJ(path.join(pitDir, "closes.json")));
 }
 const pitSyms = new Set(Object.entries(man.universes).filter(([k]) => /pit$/.test(k)).flatMap(([, v]) => v));
 function pitFrame(s) {
-  if (!pitFull[s]) for (const [k, raw] of Object.entries(JSON.parse(fs.readFileSync(path.join(pitDir, "full", `${pitBundles[s]}.json`), "utf8")))) pitFull[k] = E.frame(raw);
+  if (!pitFull[s]) for (const [k, raw] of Object.entries(readJ(path.join(pitDir, "full", `${pitBundles[s]}.json`)))) pitFull[k] = E.frame(raw);
   return pitFull[s];
 }
 function framesFor(spec) {
@@ -64,7 +67,7 @@ function framesFor(spec) {
   for (const s of need) {
     if (pk && pitSyms.has(s)) { if (!pitLight) throw new Error("point-in-time data missing"); out[s] = E.needsFull(spec) ? pitFrame(s) : pitLight[s]; continue; }
     if (!man.symbols[s]) throw new Error(`no data for ${s}`);
-    out[s] = E.needsFull(spec) && man.symbols[s].kind !== "basket" ? fullFrame(s) : light[s];
+    out[s] = E.needsFull(spec) && !["basket", "series"].includes(man.symbols[s].kind) ? fullFrame(s) : light[s];
   }
   return out;
 }

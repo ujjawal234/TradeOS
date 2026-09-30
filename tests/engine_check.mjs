@@ -4,6 +4,9 @@
 //        e.g. git show <commit>:lab/engine.js > /tmp/old_engine.js
 import fs from "node:fs"; import path from "node:path"; import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
+const zlibM = require("node:zlib"), fsM = require("node:fs");
+// JSON file, gzip or plain (x.json.gz preferred when both could exist)
+const readJ = (f) => { const js = JSON.parse(fsM.readFileSync(f, "utf8")); return js && typeof js.b64gz === "string" ? JSON.parse(zlibM.gunzipSync(Buffer.from(js.b64gz, "base64")).toString("utf8")) : js; };
 const here = path.dirname(new URL(import.meta.url).pathname);
 const [dir, oldPath] = process.argv.slice(2);
 if (!dir) { console.error("usage: node tests/engine_check.mjs <app_build_dir> [old_engine.js]"); process.exit(2); }
@@ -12,19 +15,19 @@ const man = JSON.parse(fs.readFileSync(path.join(dir, "data", "manifest.json")))
 const light = E.framesFromPack(JSON.parse(fs.readFileSync(path.join(dir, "data", "closes.json"))));
 const full = {}, bcache = {};
 const ff = (s) => { if (full[s]) return full[s]; const pb = man.symbols[s] && man.symbols[s].pb;
-  full[s] = pb ? E.frame((bcache[pb] ||= JSON.parse(fs.readFileSync(path.join(dir, "data", "pit", "full", `${pb}.json`))))[s]) : E.frame(JSON.parse(fs.readFileSync(path.join(dir, "data", "p", `${s}.json`)))); full[s].sym = s; return full[s]; };
+  full[s] = pb ? E.frame((bcache[pb] ||= readJ(path.join(dir, "data", "pit", "full", `${pb}.json`)))[s]) : E.frame(JSON.parse(fs.readFileSync(path.join(dir, "data", "p", `${s}.json`)))); full[s].sym = s; return full[s]; };
 let shares = null; try { shares = JSON.parse(fs.readFileSync(path.join(dir, "data", "shares.json"))); } catch (e) { /* optional */ }
 E.setData({ meta: man.symbols, shares });
 const pitDir = path.join(dir, "data", "pit"), hasPit = fs.existsSync(path.join(pitDir, "membership.json"));
-const pitLight = hasPit ? E.framesFromPack(JSON.parse(fs.readFileSync(path.join(pitDir, "closes.json")))) : {};
+const pitLight = hasPit ? E.framesFromPack(readJ(path.join(pitDir, "closes.json"))) : {};
 const pitMem = hasPit ? JSON.parse(fs.readFileSync(path.join(pitDir, "membership.json"))) : {}; if (hasPit) E.setPit(pitMem);
-const pitFull = {}; const pitFrame = (s) => { if (!pitFull[s]) for (const [k, raw] of Object.entries(JSON.parse(fs.readFileSync(path.join(pitDir, "full", `${pitMem.bundles[s]}.json`))))) pitFull[k] = E.frame(raw); return pitFull[s]; };
+const pitFull = {}; const pitFrame = (s) => { if (!pitFull[s]) for (const [k, raw] of Object.entries(readJ(path.join(pitDir, "full", `${pitMem.bundles[s]}.json`)))) pitFull[k] = E.frame(raw); return pitFull[s]; };
 function framesFor(Eng, spec) {
   const need = [...new Set(Eng.symbolsNeeded(spec, man.universes).concat(["NIFTY"]))], useFull = Eng.needsFull ? Eng.needsFull(spec) : spec.type === "rule", out = {};
   const pk = Eng.usesPit ? Eng.usesPit(spec) : null;
   for (const s of need) {
     if (pk && pitLight[s]) { out[s] = useFull ? pitFrame(s) : pitLight[s]; continue; }
-    if (!man.symbols[s]) throw new Error("no data for " + s); out[s] = useFull && man.symbols[s].kind !== "basket" ? ff(s) : light[s]; }
+    if (!man.symbols[s]) throw new Error("no data for " + s); out[s] = useFull && !["basket", "series"].includes(man.symbols[s].kind) ? ff(s) : light[s]; }
   return out;
 }
 let fail = 0;

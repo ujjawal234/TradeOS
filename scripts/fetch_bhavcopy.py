@@ -44,7 +44,7 @@ UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.3
       "Accept": "*/*", "Referer": "https://www.nseindia.com/"}
 UDIFF_FROM = date(2024, 7, 8)
 SERIES = {"EQ", "BE", "BZ"}
-SIZES = {"top200pit": 200, "top100pit": 100}
+SIZES = {"top500pit": 500, "top200pit": 200, "top100pit": 100}
 COLS = ["sym", "series", "isin", "open", "high", "low", "close", "prev", "vol", "val"]
 
 
@@ -492,8 +492,31 @@ def main() -> None:
             acts.setdefault(cur, []).append((r.ex, kind, val))
     ca_stats: dict = {}
     adj_stats, examples, ends, jumps = {"tickers_adjusted": 0, "events": 0, "small_events": 0}, {}, {}, []
+    # market breadth among the point-in-time top 500 (members from the day after each review), from adjusted closes
+    tdays = pd.DatetimeIndex(sorted(df["date"].unique()))
+    br = pd.DataFrame(0.0, index=tdays, columns=["n", "adv", "dec", "n200", "a200", "n50", "a50", "n252", "h52", "l52"])
+    rev = [(pd.Timestamp(d), set(x)) for d, x in uni.get("top500pit", [])]
+
+    def member_mask(sym, idx):
+        m = np.zeros(len(idx), dtype=bool)
+        for k, (d, members_k) in enumerate(rev):
+            if sym in members_k:
+                end = rev[k + 1][0] if k + 1 < len(rev) else pd.Timestamp.max
+                m |= (idx > d) & (idx <= end)
+        return m
     for sym, g in df[df["sym"].isin(keep)].groupby("sym", sort=True):
         out, events = adjust(g.sort_values("date").reset_index(drop=True), gaps, sorted(acts.get(sym, [])), ca_stats)
+        if rev:
+            cs = out.set_index("date")["close"].astype(float)
+            mk = member_mask(sym, cs.index)
+            if mk.any():
+                ret = cs.pct_change()
+                s200, s50 = cs.rolling(200).mean(), cs.rolling(50).mean()
+                hi, lo = cs.rolling(252).max(), cs.rolling(252).min()
+                cols = {"n": ret.notna(), "adv": ret > 0, "dec": ret < 0, "n200": s200.notna(), "a200": cs > s200, "n50": s50.notna(), "a50": cs > s50,
+                        "n252": hi.notna(), "h52": (cs >= hi) & hi.notna(), "l52": (cs <= lo) & lo.notna()}
+                for c_, v_ in cols.items():
+                    br[c_] = br[c_].add((v_ & mk).astype(float).reindex(br.index, fill_value=0.0), fill_value=0.0)
         r = np.log(out["close"].to_numpy()[1:] / out["close"].to_numpy()[:-1])
         for i in np.nonzero(np.abs(r) > 0.4)[0]:  # large one-day moves left after adjusting: listed for review
             jumps.append([sym, str(out["date"].iloc[i + 1])[:10], round(float(np.exp(r[i])), 3)])
@@ -506,6 +529,11 @@ def main() -> None:
         out["date"] = out["date"].dt.strftime("%Y-%m-%d")
         out.round({"open": 4, "high": 4, "low": 4, "close": 4}).to_csv(prices / f"{sym}.csv", index=False)
         ends[sym] = out["date"].iloc[-1]
+    if rev:
+        br = br[br["n"] > 0]
+        br.index.name = "date"
+        br.astype(int).to_csv(OUT / "breadth.csv")
+        print(f"Breadth: {len(br)} days, members per day {int(br['n'].median())} (median)", flush=True)
     stale = sorted(s for s, d in ends.items() if d < info["last"])
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "membership.json").write_text(json.dumps({

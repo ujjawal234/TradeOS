@@ -241,11 +241,18 @@ def analyse(sym, a, lo, hi, d_ord: int, spot: float, q: IVQueue) -> dict:
         fi = np.flatnonzero(fut)[np.argsort(ex[fut], kind="stable")]
         out["F"] = float(c[fi[0]] if c[fi[0]] > 0 else s[fi[0]])
         out["foi"] = float(oi[fut].sum())
+        if len(fi) > 1:
+            out["F2"] = float(c[fi[1]] if c[fi[1]] > 0 else s[fi[1]])
+        if out["foi"] > 0:
+            out["roll"] = float(oi[fi[1:]].sum() / out["foi"] * 100)  # % of futures OI already in later months
+        e0 = int(ex[fi[0]]); out["_fdte"] = date(e0 // 10000, e0 // 100 % 100, e0 % 100).toordinal() - d_ord
     lots = lot[np.isfinite(lot)]
     if len(lots):
         out["lot"] = float(lots[0])
     us = u[np.isfinite(u)]
     out["S"] = float(np.median(us)) if len(us) else spot
+    if out["F"] == out["F"] and out["S"] == out["S"] and out["S"] > 0 and "_fdte" in out:
+        out["basis"] = (out["F"] / out["S"] - 1) * 365 / max(out["_fdte"], 1) * 100  # annualised futures premium, %
     op = ~fut
     chains = {}
     if not op.any():
@@ -373,7 +380,7 @@ def eq_close(eq_cache: Path, d: date) -> dict:
     return dict(zip(df["sym"].astype(str), df["close"].astype(float)))
 
 
-SUMK = ["F", "S", "iv30", "ivn", "ivx", "st", "dte", "pcr", "pcrv", "mp", "sk", "foi", "coi", "poi", "lot"]
+SUMK = ["F", "F2", "basis", "roll", "S", "iv30", "ivn", "ivx", "st", "dte", "pcr", "pcrv", "mp", "sk", "foi", "coi", "poi", "lot"]
 
 
 def build(days: list[date], cache: Path, eq_cache: Path, debug: bool) -> dict:
@@ -502,7 +509,7 @@ def raw_sample(cache: Path, days: list[date]) -> dict:
     return out
 
 
-SCALE = {"iv30": 1000, "ivn": 1000, "ivx": 1000, "st": 1000, "dte": 1, "pcr": 1000, "pcrv": 1000, "mp": 100, "sk": 1000, "foi": 1, "coi": 1, "poi": 1}
+SCALE = {"F2": 100, "basis": 100, "roll": 10, "iv30": 1000, "ivn": 1000, "ivx": 1000, "st": 1000, "dte": 1, "pcr": 1000, "pcrv": 1000, "mp": 100, "sk": 1000, "foi": 1, "coi": 1, "poi": 1}
 
 
 def ints(vals, mult):

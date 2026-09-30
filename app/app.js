@@ -83,13 +83,13 @@
     $("dataChip").textContent = `${stocks} stocks · data to ${fmtDate(S.lastDay)}`;
   }
   async function ensureFull(symbols, onProgress) {
-    const need = symbols.filter((s) => !S.full[s] && S.man.symbols[s] && S.man.symbols[s].kind !== "basket");
+    const need = symbols.filter((s) => !S.full[s] && S.man.symbols[s] && !["basket", "series"].includes(S.man.symbols[s].kind));
     let done = 0;
     const one = async (s) => { const r = await fetch(`data/p/${encodeURIComponent(s)}.json`); if (!r.ok) throw new Error(`No price file for ${s}`); S.full[s] = E.frame(await r.json()); S.full[s].sym = s; done++; if (onProgress && need.length > 4) onProgress(done, need.length); };
     // NSE-sourced stocks live in the shared bundles of 25 (data/pit/full/<b>.json)
     const byBundle = need.filter((s) => S.man.symbols[s].pb), own = need.filter((s) => !S.man.symbols[s].pb);
     const keys = [...new Set(byBundle.map((s) => S.man.symbols[s].pb))];
-    const oneB = async (k) => { if (!S.bundleP[k]) S.bundleP[k] = fetch(`data/pit/full/${k}.json`).then((r) => { if (!r.ok) throw new Error(`Price bundle ${k} is missing`); return r.json(); }).catch((e) => { delete S.bundleP[k]; throw e; });
+    const oneB = async (k) => { if (!S.bundleP[k]) S.bundleP[k] = fetchJsonGz(`data/pit/full/${k}.json`).catch((e) => { delete S.bundleP[k]; throw e; });
       const js = await S.bundleP[k]; for (const [s, raw] of Object.entries(js)) { if (!S.full[s]) { S.full[s] = E.frame(raw); S.full[s].sym = s; } if (!S.pitFull[s]) S.pitFull[s] = S.full[s]; } done += byBundle.filter((s) => S.man.symbols[s].pb === k).length; if (onProgress && need.length > 4) onProgress(done, need.length); };
     for (let i = 0; i < keys.length; i += 6) await Promise.all(keys.slice(i, i + 6).map(oneB));
     for (let i = 0; i < own.length; i += 10) await Promise.all(own.slice(i, i + 10).map(one));
@@ -99,26 +99,25 @@
   function ensurePit() {
     if (!S.man.pit) return Promise.reject(new Error("The point-in-time (survivorship-free) data hasn't been built yet."));
     if (!pitReady) pitReady = (async () => {
-      const [mem, pack] = await Promise.all([fetch("data/pit/membership.json").then((r) => r.json()), fetch("data/pit/closes.json").then((r) => r.json())]);
+      const [mem, pack] = await Promise.all([fetch("data/pit/membership.json").then((r) => r.json()), fetchJsonGz("data/pit/closes.json")]);
       E.setPit(mem); S.pitLight = E.framesFromPack(pack); S.pitBundles = mem.bundles || {};
     })().catch((e) => { pitReady = null; throw e; });
     return pitReady;
   }
   async function ensurePitFull(symbols, onProgress) {
     const keys = [...new Set(symbols.filter((s) => !S.pitFull[s] && S.pitBundles[s]).map((s) => S.pitBundles[s]))]; let done = 0;
-    const one = async (k) => { if (!S.bundleP[k]) S.bundleP[k] = fetch(`data/pit/full/${k}.json`).then((r) => { if (!r.ok) throw new Error(`Point-in-time price file ${k} is missing`); return r.json(); }).catch((e) => { delete S.bundleP[k]; throw e; });
+    const one = async (k) => { if (!S.bundleP[k]) S.bundleP[k] = fetchJsonGz(`data/pit/full/${k}.json`).catch((e) => { delete S.bundleP[k]; throw e; });
       for (const [s, raw] of Object.entries(await S.bundleP[k])) if (!S.pitFull[s]) { S.pitFull[s] = E.frame(raw); S.pitFull[s].sym = s; } done++; if (onProgress && keys.length > 2) onProgress(done, keys.length); };
     for (let i = 0; i < keys.length; i += 6) await Promise.all(keys.slice(i, i + 6).map(one));
   }
   // ---- NSE option prices (data/opt): chains for option backtests, daily summaries for iv / pcr / skew... in rules
-  async function fetchJsonGz(url) {
+  async function fetchJsonGz(url) { // plain JSON, or {"b64gz": gzip+base64}
     const r = await fetch(url); if (!r.ok) throw new Error(`Option data file ${url.split("/").pop()} is missing`);
-    const buf = new Uint8Array(await r.arrayBuffer());
-    if (buf[0] === 0x1f && buf[1] === 0x8b) {
-      if (!window.DecompressionStream) throw new Error("This browser can't unpack the option data — update it or use Chrome/Safari/Firefox.");
-      return JSON.parse(await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
-    }
-    return JSON.parse(new TextDecoder().decode(buf));
+    const js = await r.json();
+    if (!js || typeof js.b64gz !== "string") return js;  // large files are gzip+base64 inside a small JSON wrapper
+    if (!window.DecompressionStream) throw new Error("This browser can't unpack the data files — update it or use Chrome, Safari or Firefox.");
+    const bin = atob(js.b64gz), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    return JSON.parse(await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
   }
   S.optFiles = {}; S.optLoaded = { c: new Set(), s: new Set() };
   async function ensureOptions(syms, kind, onProgress) { // kind "c" = chains, "s" = summaries
@@ -126,7 +125,7 @@
     const want = [...new Set(syms)].filter((x) => U[x] && U[x][kind] && !S.optLoaded[kind].has(x));
     const keys = [...new Set(want.map((x) => U[x][kind]))]; let done = 0;
     await Promise.all(keys.map(async (k) => {
-      if (!S.optFiles[k]) S.optFiles[k] = fetchJsonGz(`data/opt/${k}.json.gz`).catch((e) => { delete S.optFiles[k]; throw e; });
+      if (!S.optFiles[k]) S.optFiles[k] = fetchJsonGz(`data/opt/${k}.json`).catch((e) => { delete S.optFiles[k]; throw e; });
       const js = await S.optFiles[k];
       for (const [x, p] of Object.entries(js)) { if (kind === "c") E.setOptions(x, p); else E.setOptionSummary(x, p); S.optLoaded[kind].add(x); }
       delete S.optFiles[k]; done++; if (onProgress && keys.length > 1) onProgress(done, keys.length);
@@ -172,7 +171,7 @@
     if (test?.split) { const sp = E.splitMetrics(res, test.split); h.train_cagr = sp.train.strategy.cagr_pct; h.test_cagr = sp.test.strategy.cagr_pct; h.test_nifty_cagr = sp.test.nifty?.cagr_pct; h.verdict = sp.verdict; h.flags = sp.flags; }
     return h;
   }
-  const PIT_LABEL = { top200pit: "Top 200 point-in-time", top100pit: "Top 100 point-in-time" };
+  const PIT_LABEL = { top500pit: "Top 500 point-in-time", top200pit: "Top 200 point-in-time", top100pit: "Top 100 point-in-time" };
   function universeLabel(spec) {
     if (spec.type === "rule") return spec.symbols.length > 3 ? `${spec.symbols.length} symbols` : spec.symbols.join(", ");
     if (spec.type === "rotation") return Array.isArray(spec.universe) ? `${spec.universe.length} symbols` : (PIT_LABEL[spec.universe] || spec.universe);
@@ -397,12 +396,14 @@
     const groups = Object.entries(m.universes).map(([k, v]) => `${k} (${v.length})`).join(", ");
     const secs = Object.entries(m.sectors || {}).map(([k, v]) => `${k}=${v.label}`).join(", ");
     const nSh = S.sharesCount || 0;
-    return `DATA: daily OHLCV ${Object.values(m.symbols).map((s) => s.first).sort()[0]} to ${S.lastDay}; stocks split/dividend adjusted. Every symbol below can be traded, ranked, used in ref("SYMBOL", ...) or as a benchmark.
+    return `DATA: daily OHLCV ${Object.values(m.symbols).map((s) => s.first).sort()[0]} to ${S.lastDay}. Stocks (Nifty 500 + F&O, ${st.length} names): NSE's own daily prices adjusted for splits, bonuses, dividends, demergers and rights. Every symbol below can be traded, ranked, used in ref("SYMBOL", ...) or as a benchmark.
 Broad indices: ${byGroup("broad")}
 Sector indices: ${byGroup("sector")}
 Factor / strategy indices (real NSE series — use them as benchmarks to check a replica, e.g. "benchmark":"NIFTY200_MOMENTUM_30"): ${byGroup("factor")}
 Thematic indices: ${byGroup("theme")}
 Debt & cash (defensive / cash_symbol; NIFTY_1D_RATE_INDEX ≈ overnight money, aliases CASH/LIQUID; GSEC = 10-yr G-Sec): ${byGroup("debt")}
+Global markets, rates, currencies & commodities (Yahoo; tradable as assets or usable in ref(), e.g. ref("USVIX", close) or ref("CRUDE", roc(close,20))): ${byGroup("global")}
+${seriesBrief(m)}
 Derived (leveraged, inverse, futures, arbitrage, USD): ${byGroup("derived")}
 Equal-weight baskets of Nifty 200 members by industry (closes only): ${secs}.
 Named groups usable as "symbols" entries or "universe": ${groups}.
@@ -410,6 +411,12 @@ ${m.pit ? `SURVIVORSHIP-FREE universes (use these whenever the user wants no sur
 ${m.options ? optionsBrief(m.options) : "OPTION PRICES: not loaded in this build — option strategies use the Black-Scholes model on India VIX (index options only)."}
 Market-cap weights: ${nSh ? `share counts available for ${nSh} stocks (Yahoo; free float = today's ratio)` : "no share-count data loaded yet — mcap weights fall back to equal"}.
 Stocks (ticker=company): ${tick}`;
+  }
+  function seriesBrief(m) {
+    const ser = (g) => Object.entries(m.symbols).filter(([, v]) => v.kind === "series" && v.group === g).map(([k, v]) => `${k}=${v.name} (from ${v.first})`).join("; ");
+    const f = ser("flows"), b = ser("breadth");
+    return `${f ? `POSITIONING & FLOWS (NSE participant-wise open interest by FII, DII, Pro and Client, daily; data series, not tradable — use via ref("KEY", close), e.g. entry "ref(\"FII_IDXFUT_NET\", close) > 0"): ${f}` : ""}${b ? `
+MARKET BREADTH (point-in-time top 500 NSE stocks, daily; use via ref): ${b}` : ""}`;
   }
   function optionsBrief(o) {
     const U = Object.entries(o.underlyings || {}), idx = U.filter(([, u]) => u.kind === "index").map(([k, u]) => `${k} (from ${u.first})`), st = U.filter(([, u]) => u.kind === "stock");
@@ -451,7 +458,7 @@ RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime an
   adx(14) plus_di(14) minus_di(14) stoch_k(14) stoch_d(14,3) cci(20) mfi(14) williams_r(14) obv() vwap(20) corr(a,b,n) beta(a,b,n) cross_above(a,b) cross_below(a,b) abs max min log sqrt sign iff(cond,a,b) clip(x,lo,hi)
   ref("SYMBOL", expr): expr computed on another symbol, aligned by date — e.g. entry "close > sma(close,50) and ref(\\"NIFTY\\", close > sma(close,200))", or beta(ret(close,1), ref("NIFTY", ret(close,1)), 252).
  Operators + - * / % **, comparisons, and/or/not. No company fundamentals (only index P/E, P/B, DY), no intraday.
-SURVIVORSHIP: nifty50/nifty200/fno are TODAY's members over the whole history (flattering). top200pit/top100pit (if listed in DATA) are survivorship-free — use them when the user asks to remove survivorship bias; don't say it can't be done.
+SURVIVORSHIP: nifty50/nifty200/nifty500/fno are TODAY's members over the whole history (flattering). top500pit/top200pit/top100pit (if listed in DATA) are survivorship-free — use them when the user asks to remove survivorship bias; don't say it can't be done.
 TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (train before, test from) or null}.`;
 
   // ================================================================ tools Claude can call from the page
@@ -480,6 +487,30 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
     const out = list.map((s) => { const f = S.light[s]; if (!f || f.c.length <= days) return null; const c = f.c; return [s, +((c[c.length - 1] / c[c.length - 1 - days] - 1) * 100).toFixed(2)]; }).filter(Boolean).sort((a, b) => b[1] - a[1]);
     return { universe, days, top: out.slice(0, 12), bottom: out.slice(-6).reverse(), count: out.length };
   }
+  async function optionSnapshot(sym, onDate) {
+    const U = S.man.options?.underlyings || {};
+    if (!U[sym]) return { symbol: sym, error: `No NSE option data for ${sym}. Covered: ${Object.keys(U).length} underlyings (indices ${Object.keys(U).filter((k) => U[k].kind === "index").join(", ")} and F&O stocks).` };
+    await ensureOptions([sym], "c"); E.initOptionSummaries(); await ensureOptions([sym], "s");
+    const od = E.optionData(sym); if (!od) return { symbol: sym, error: "option data failed to load" };
+    const want = onDate ? E.dayOf(String(onDate).slice(0, 10)) : Infinity;
+    let i = od.d.length - 1; while (i > 0 && (od.d[i] > want || !od.ch[i])) i--;
+    const day = od.d[i], F = od.F[i], chains = (od.ch[i] || []).slice().sort((a, b) => a[0] - b[0]);
+    const r2x = (x) => x == null || !isFinite(x) ? null : Math.round(x * 100) / 100;
+    const out = { symbol: sym, date: E.isoOf(day), futures: r2x(F), spot: r2x(od.S[i]), expiries: [] };
+    for (const [ex, ks, C, P] of chains.slice(0, 3)) {
+      const T = ((ex - day) + 0.25) / 365, rows = [];
+      ks.forEach((K, j) => { if (Math.abs(K / F - 1) > 0.08) return;
+        const c = C[j], p = P[j], iv = (v, k) => v == null || v === 0 ? null : r2x(E.impliedVol(Math.abs(v), F, K, T, 0.065, k) * 100);
+        rows.push({ strike: K, call: c == null ? null : Math.abs(c), call_traded: c > 0, call_iv: iv(c, "CE"), put: p == null ? null : Math.abs(p), put_traded: p > 0, put_iv: iv(p, "PE") }); });
+      out.expiries.push({ expiry: E.isoOf(ex), days_left: ex - day, strikes: rows });
+    }
+    const f = S.light[sym] || S.pitLight?.[sym];
+    if (f) {
+      const val = (x) => { try { const v = E.evaluate(E.parse(x), Object.assign({}, f, { sym })); let k = v.length - 1; while (k > 0 && f.d[k] > day) k--; return r2x(v[k]); } catch (e) { return null; } };
+      Object.assign(out, { iv30_pct: val("iv"), iv_1y_percentile: val("pct_rank(iv,252)"), iv_near_pct: val("iv_near"), atm_straddle_pct: val("straddle"), put_call_oi_ratio: val("pcr"), put_call_volume_ratio: val("pcr_vol"), max_pain: val("max_pain"), skew_vol_pts: val("skew"), days_to_expiry: val("dte") });
+    }
+    return out;
+  }
   function agentBrief(a) { return { agent_id: a.id, name: a.name, type: a.type, status: a.status, version: a.version, universe: a.universe, cagr_pct: a.headline?.cagr, max_dd_pct: a.headline?.mdd, nifty_cagr_pct: a.headline?.nifty_cagr, paper_since: a.paper?.since || null }; }
   function makeTools(progress) {
     return [
@@ -494,6 +525,9 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
         inputSchema: { type: "object", properties: { universe: {}, days: { type: "number" } }, required: ["universe"] },
         execute: async (input) => { progress("Ranking " + (Array.isArray(input.universe) ? "your list" : input.universe) + "…"); return rankTool(input.universe, Math.max(5, Math.trunc(Number(input.days) || 63))); } },
       { name: "list_agents", description: "The team's existing agents with status and headline results.", execute: async () => [...S.agents.values()].map(agentBrief) },
+      ...(S.man.options ? [{ name: "option_data", description: "Real NSE option data for an index or F&O stock on a date (default latest): the chain for the nearest expiries (strike, call and put price, implied vol, whether it traded that day), futures price, 30-day ATM implied volatility with its 1-year percentile, put/call ratio, max pain and skew. Use it to answer questions about option prices, IV or positioning, and to check strikes before proposing an option strategy.",
+        inputSchema: { type: "object", properties: { symbol: { type: "string" }, date: { type: "string" } }, required: ["symbol"] },
+        execute: async (input) => { const sym = E.symKey(input.symbol); progress(`Reading ${sym} options…`); return optionSnapshot(sym, input.date); } }] : []),
     ];
   }
   // ---- tolerant reply parsing: a malformed or chatty answer should never be thrown away

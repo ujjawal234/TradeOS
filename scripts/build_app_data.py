@@ -11,6 +11,7 @@ Usage:  python scripts/build_app_data.py <out_dir>
 """
 from __future__ import annotations
 
+import gzip
 import json
 import shutil
 import re
@@ -63,6 +64,13 @@ SECTOR_SHORT = {
     "Realty": ("SEC_REALTY", "Realty"), "Construction Materials": ("SEC_CEMENT", "Cement & materials"),
     "Telecommunication": ("SEC_TELECOM", "Telecom"), "Services": ("SEC_SERVICES", "Services"),
 }
+GLOBAL_NAMES = {"SPX": "S&P 500 (US)", "NASDAQ": "Nasdaq Composite (US)", "DOWJONES": "Dow Jones (US)", "RUSSELL2000": "Russell 2000 (US)",
+    "USVIX": "CBOE VIX (US volatility)", "NIKKEI": "Nikkei 225 (Japan)", "HANGSENG": "Hang Seng (Hong Kong)", "SHANGHAI": "Shanghai Composite (China)",
+    "KOSPI": "KOSPI (Korea)", "TAIWAN": "Taiwan Weighted", "FTSE100": "FTSE 100 (UK)", "DAX": "DAX (Germany)", "CAC40": "CAC 40 (France)",
+    "EUROSTOXX50": "Euro Stoxx 50", "MSCI_EM": "MSCI Emerging Markets ETF (EEM, USD)", "US10Y": "US 10-year Treasury yield (%)", "US2Y": "US 13-week T-bill yield (%)",
+    "DXY": "US Dollar Index", "USDINR": "USD/INR", "EURINR": "EUR/INR", "GBPINR": "GBP/INR", "JPYINR": "JPY/INR", "GOLD": "Gold (USD/oz, COMEX)",
+    "SILVER": "Silver (USD/oz, COMEX)", "CRUDE": "WTI crude oil (USD/bbl)", "BRENT": "Brent crude (USD/bbl)", "NATGAS": "Natural gas (USD, NYMEX)",
+    "COPPER": "Copper (USD/lb, COMEX)", "BITCOIN": "Bitcoin (USD)", "ETHEREUM": "Ether (USD)"}
 INDEX_NAMES = {"NIFTY": "Nifty 50", "BANKNIFTY": "Nifty Bank", "SENSEX": "BSE Sensex", "INDIAVIX": "India VIX",
                "NIFTYIT": "Nifty IT", "NIFTYPHARMA": "Nifty Pharma", "NIFTYBANK": "Nifty Bank index", "NIFTYFIN": "Nifty Financial Services",
                "NIFTYFMCG": "Nifty FMCG", "NIFTYAUTO": "Nifty Auto", "NIFTYMETAL": "Nifty Metal", "NIFTYREALTY": "Nifty Realty",
@@ -128,6 +136,13 @@ def enc_full(df: pd.DataFrame) -> dict:
 
 
 PIT_DIR = ROOT / "data" / "pit"
+
+
+def packed(obj) -> str:
+    """large data files: gzip, then base64 inside a small JSON wrapper (artifacts serve .json but not .gz); the page unpacks
+    it with DecompressionStream. ~3x smaller than plain JSON."""
+    import base64
+    return json.dumps({"b64gz": base64.b64encode(gzip.compress(json.dumps(obj, separators=(",", ":")).encode(), 9)).decode()})
 
 
 def consensus_fix(nse: pd.DataFrame, yahoo: pd.Series | None, sym: str, repairs: list) -> pd.DataFrame:
@@ -209,12 +224,12 @@ def build_pit(dst: Path, universes: dict) -> dict | None:
         i0, i1 = int(cal.get_loc(df.index[0])), int(cal.get_loc(df.index[-1]))
         v = np.round(col.iloc[i0:i1 + 1].ffill().values * 100).astype("int64")
         pack["s"][sym] = {"i0": i0, "c0": int(v[0]), "c": np.diff(v, prepend=v[0]).tolist()}
-    (out / "closes.json").write_text(json.dumps(pack, separators=(",", ":")))
-    # full OHLCV in bundles of 25 stocks (an artifact version holds at most ~500 files)
+    (out / "closes.json").write_text(packed(pack))
+    # full OHLCV in gzip bundles of 25 stocks (an artifact version holds at most ~500 files and 256 MB)
     bundles, names = {}, sorted(frames)
     for i in range(0, len(names), 25):
         key = f"b{i // 25:02d}"
-        (out / "full" / f"{key}.json").write_text(json.dumps({s: enc_full(frames[s]) for s in names[i:i + 25]}, separators=(",", ":")))
+        (out / "full" / f"{key}.json").write_text(packed({s: enc_full(frames[s]) for s in names[i:i + 25]}))
         bundles.update({s: key for s in names[i:i + 25]})
     unis = {k: [[d, [s for s in syms if s in frames]] for d, syms in v] for k, v in mem["universes"].items()}
     (out / "membership.json").write_text(json.dumps({"asof": mem.get("asof"), "universes": unis, "bundles": bundles}, separators=(",", ":")))
@@ -230,6 +245,47 @@ def build_pit(dst: Path, universes: dict) -> dict | None:
     return info
 
 
+def extra_series() -> dict:
+    """{KEY: (series, description, group)} from data/flows (NSE participant-wise OI, FII/DII cash) and data/pit/breadth.csv"""
+    out = {}
+    f = ROOT / "data" / "flows" / "participant_oi.csv"
+    if f.exists():
+        p = pd.read_csv(f, index_col=0, parse_dates=True).sort_index()
+        names = {"FII": "FII/FPI", "DII": "DII", "PRO": "Proprietary traders", "CLIENT": "Clients (retail & others)"}
+        for w, wn in names.items():
+            def g(c):
+                return p[f"{w}_{c}"] if f"{w}_{c}" in p else None
+            L, Sh = g("fut_idx_long"), g("fut_idx_short")
+            if L is not None and Sh is not None:
+                out[f"{w}_IDXFUT_NET"] = (L - Sh, f"{wn}: index futures long minus short (contracts)", "flows")
+                out[f"{w}_IDXFUT_LONG_PCT"] = (L / (L + Sh) * 100, f"{wn}: index futures longs as % of their long+short", "flows")
+            L, Sh = g("fut_stk_long"), g("fut_stk_short")
+            if L is not None and Sh is not None:
+                out[f"{w}_STKFUT_NET"] = (L - Sh, f"{wn}: stock futures long minus short (contracts)", "flows")
+            for side, lab in (("call", "calls"), ("put", "puts")):
+                L, Sh = g(f"idx_{side}_long"), g(f"idx_{side}_short")
+                if L is not None and Sh is not None:
+                    out[f"{w}_IDX{side.upper()}_NET"] = (L - Sh, f"{wn}: index {lab} bought minus sold (open contracts)", "flows")
+    f = ROOT / "data" / "flows" / "fii_dii_cash.csv"
+    if f.exists():
+        c = pd.read_csv(f, index_col=0, parse_dates=True).sort_index()
+        for w in ("FII", "DII"):
+            if f"{w}_net" in c:
+                out[f"{w}_CASH_NET"] = (c[f"{w}_net"], f"{w} net buying in the cash market (₹ crore/day; history starts when collection began)", "flows")
+    f = PIT_DIR / "breadth.csv"
+    if f.exists():
+        b = pd.read_csv(f, index_col=0, parse_dates=True).sort_index()
+        n = b["n"].where(b["n"] > 0)
+        out["BREADTH_ADV_PCT"] = (b["adv"] / n * 100, "% of the top-500 stocks that rose today", "breadth")
+        out["BREADTH_AD_LINE"] = ((b["adv"] - b["dec"]).cumsum(), "Advance-decline line of the top-500 stocks (cumulative advances minus declines)", "breadth")
+        out["BREADTH_ABOVE200"] = (b["a200"] / b["n200"].where(b["n200"] > 0) * 100, "% of the top-500 stocks above their 200-day average", "breadth")
+        out["BREADTH_ABOVE50"] = (b["a50"] / b["n50"].where(b["n50"] > 0) * 100, "% of the top-500 stocks above their 50-day average", "breadth")
+        out["BREADTH_NEW_HIGHS"] = (b["h52"].astype(float), "Top-500 stocks at a 52-week closing high", "breadth")
+        out["BREADTH_NEW_LOWS"] = (b["l52"].astype(float), "Top-500 stocks at a 52-week closing low", "breadth")
+        out["BREADTH_HL_NET"] = ((b["h52"] - b["l52"]).astype(float), "52-week highs minus lows among the top-500 stocks", "breadth")
+    return out
+
+
 def copy_options(dst: Path, symbols: dict) -> dict | None:
     """NSE option prices (scripts/fetch_fo.py via scripts/get_options.py) -> data/opt, and their index for the manifest"""
     src = ROOT / ".options" / "opt"
@@ -238,8 +294,10 @@ def copy_options(dst: Path, symbols: dict) -> dict | None:
     out = dst / "opt"
     if out.exists():
         shutil.rmtree(out)
-    shutil.copytree(src, out)
-    (out / "index.json").unlink()
+    out.mkdir(parents=True)
+    import base64
+    for f in sorted(src.glob("*.json.gz")):  # gzip from the release -> base64 JSON wrapper the artifact can serve
+        (out / f.name[:-3]).write_text(json.dumps({"b64gz": base64.b64encode(f.read_bytes()).decode()}))
     idx = json.loads((src / "index.json").read_text())
     unders = {s: {k: v for k, v in u.items() if k in ("kind", "first", "last", "lot", "c", "s")} for s, u in idx.get("underlyings", {}).items()}
     size = sum(f.stat().st_size for f in out.glob("*"))
@@ -305,8 +363,9 @@ def main(out: Path) -> None:
                                   else "factor" if FACTOR_RX.search(name) else "theme")}
     for f in sorted(src.glob("*.csv")):
         s = f.stem
-        is_idx = s in INDEX_NAMES
-        if s in symbols or (use_nse and is_idx and s not in ("SENSEX", "BSE100", "BSE500", "BANKEX")):
+        is_glob = s in GLOBAL_NAMES
+        is_idx = s in INDEX_NAMES or is_glob
+        if s in symbols or (use_nse and is_idx and not is_glob and s not in ("SENSEX", "BSE100", "BSE500", "BANKEX")):
             continue  # NSE's official series replaces the Yahoo copy
         df = pd.read_csv(f, index_col=0, parse_dates=True).dropna(subset=["close"])
         df = df[~df.index.duplicated(keep="last")].sort_index()
@@ -320,10 +379,18 @@ def main(out: Path) -> None:
             (dst / "p" / f"{s}.json").write_text(json.dumps(enc_full(df), separators=(",", ":")))
         meta = uni.get(s, {})
         symbols[s] = {"first": str(df.index[0].date()), "last": str(df.index[-1].date()), "rows": len(df),
-                      "name": meta.get("name") or INDEX_NAMES.get(s, s), "industry": meta.get("industry") or ("Index" if s in INDEX_NAMES else ""),
-                      "n50": bool(meta.get("nifty50")), "n200": bool(meta.get("nifty200")), "fno": bool(meta.get("fno")),
+                      "name": meta.get("name") or GLOBAL_NAMES.get(s) or INDEX_NAMES.get(s, s), "industry": meta.get("industry") or ("Global" if is_glob else "Index" if is_idx else ""),
+                      "n50": bool(meta.get("nifty50")), "n200": bool(meta.get("nifty200")), "n500": bool(meta.get("nifty500") or meta.get("nifty200")), "fno": bool(meta.get("fno")),
                       "lot": meta.get("lot_size"), "kind": "index" if is_idx else "stock", **({} if is_idx else {"src": src_name}),
-                      **({"group": "broad", "source": "Yahoo"} if is_idx else {})}
+                      **({"group": "global" if is_glob else "broad", "source": "Yahoo"} if is_idx else {})}
+    # data series that aren't prices (participant positioning, cash flows, market breadth): closes only, kind "series"
+    for key, (ser, name, group) in extra_series().items():
+        ser = ser.replace([np.inf, -np.inf], np.nan).dropna()
+        if len(ser) < 20:
+            continue
+        frames[key] = pd.DataFrame({"open": ser, "high": ser, "low": ser, "close": ser, "volume": 0.0})
+        symbols[key] = {"first": str(ser.index[0].date()), "last": str(ser.index[-1].date()), "rows": len(ser), "name": name, "industry": "Data",
+                        "n50": False, "n200": False, "fno": False, "lot": None, "kind": "series", "group": group, "source": "NSE"}
     # legacy keys (earlier builds used these names; saved agents may still refer to them) -> same series
     LEGACY = {"NIFTYBANK": "BANKNIFTY", "NIFTYIT": "NIFTY_IT", "NIFTYPHARMA": "NIFTY_PHARMA", "NIFTYNEXT50": "NIFTYNXT50",
               "NIFTY100": "NIFTY_100", "NIFTY200": "NIFTY_200", "NIFTY500": "NIFTY_500", "NIFTYMIDCAP50": "NIFTY_MIDCAP_50",
@@ -375,11 +442,14 @@ def main(out: Path) -> None:
     for code, sec in sectors.items():
         industries[code[4:].lower()] = sec["members"]  # fin, auto, fmcg, metal, energy, ...
     universes = {
-        "nifty50": members(lambda m: m["n50"]), "nifty200": members(lambda m: m["n200"]),
+        "nifty50": members(lambda m: m["n50"]), "nifty200": members(lambda m: m["n200"]), "nifty500": members(lambda m: m.get("n500")),
+        "global": sorted(s_ for s_, m in symbols.items() if m.get("group") == "global"),
+        "flows": sorted(s_ for s_, m in symbols.items() if m.get("group") == "flows"),
+        "breadth": sorted(s_ for s_, m in symbols.items() if m.get("group") == "breadth"),
         "fno": members(lambda m: m["fno"]), "all": members(lambda m: True),
         "sectors": sorted(s for s, m in symbols.items() if m.get("group") == "sector" and not m.get("alias_of")) or sorted(sectors),
         "baskets": sorted(sectors),
-        "indices": sorted(s for s, m in symbols.items() if m["kind"] == "index" and s != "INDIAVIX" and not m.get("alias_of") and m.get("group") not in ("debt", "derived")),
+        "indices": sorted(s for s, m in symbols.items() if m["kind"] == "index" and s != "INDIAVIX" and not m.get("alias_of") and m.get("group") not in ("debt", "derived", "global", "flows", "breadth")),
         "debt": sorted(s for s, m in symbols.items() if m.get("group") == "debt" and not m.get("alias_of") and "CLEAN_PRICE" not in s),  # total-return series only
         "derived": sorted(s for s, m in symbols.items() if m.get("group") == "derived" and not m.get("alias_of")),
         "broad": sorted(s for s, m in symbols.items() if m.get("group") == "broad" and not m.get("alias_of")),
@@ -431,8 +501,8 @@ def main(out: Path) -> None:
                 out_sh[s] = {"f": v.get("float") or f_default, "s": split_adjusted(pts)}
         (dst / "shares.json").write_text(json.dumps(out_sh, separators=(",", ":")))
         print(f"shares: {len(out_sh)} stocks with share counts")
-    size = sum(p.stat().st_size for p in dst.rglob("*.json"))
-    kinds = {k: sum(1 for m in symbols.values() if m["kind"] == k) for k in ("stock", "index", "basket")}
+    size = sum(p.stat().st_size for p in dst.rglob("*") if p.is_file())
+    kinds = {k: sum(1 for m in symbols.values() if m["kind"] == k) for k in ("stock", "index", "basket", "series")}
     print(f"{kinds} | NSE indices: {len(nse)} | universes: {', '.join(f'{k}={len(v)}' for k, v in universes.items())} | {size / 1e6:.1f} MB -> {dst}")
 
 

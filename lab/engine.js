@@ -12,7 +12,7 @@
     "NIFTYPHARMA", "NIFTYFMCG", "NIFTYAUTO", "NIFTYMETAL", "NIFTYREALTY", "NIFTYENERGY", "NIFTYPSUBANK",
     "NIFTYMEDIA", "NIFTYINFRA", "NIFTYFIN"]);
   // indices and sector baskets are held in fractional units; stocks in whole shares ("BSE" alone is BSE Ltd, a stock)
-  const isIndex = (s) => INDEX_KEYS.has(s) || s.startsWith("^") || s.startsWith("SEC_") || s.startsWith("NIFTY") || (s.startsWith("BSE") && s.length > 3) || s === "BANKEX" || s === "SENSEX" || s === "FINNIFTY" || s === "MIDCPNIFTY";
+  const isIndex = (s) => (DATA.meta && DATA.meta[s] && DATA.meta[s].kind !== "stock" && DATA.meta[s].kind != null) || INDEX_KEYS.has(s) || s.startsWith("^") || s.startsWith("SEC_") || s.startsWith("NIFTY") || (s.startsWith("BSE") && s.length > 3) || s === "BANKEX" || s === "SENSEX" || s === "FINNIFTY" || s === "MIDCPNIFTY";
 
   // ----------------------------------------------------------------- series helpers
   function f64(n, v = NaNv) { const a = new Float64Array(n); if (v !== 0) a.fill(v); return a; }
@@ -88,10 +88,11 @@
     "adx", "plus_di", "minus_di", "stoch_k", "stoch_d", "cci", "mfi", "williams_r", "obv", "vwap", "supertrend", "keltner_upper", "keltner_lower",
     "log", "sqrt", "sign", "iff", "clip", "ref"];
   const VARS = ["open", "high", "low", "close", "volume", "hl2", "hlc3", "dow", "dom", "month", "year", "pe", "pb", "dy", "vix",
-    "iv", "iv_near", "iv_next", "pcr", "pcr_vol", "skew", "straddle", "max_pain", "oi_calls", "oi_puts", "fut_oi", "dte"];
+    "iv", "iv_near", "iv_next", "pcr", "pcr_vol", "skew", "straddle", "max_pain", "oi_calls", "oi_puts", "fut_oi", "dte", "fut_basis", "rollover", "fut_next"];
   // option-market variables (NSE F&O data): name -> [summary key, divisor]
   const OPTVARS = { iv: ["iv30", 10], iv_near: ["ivn", 10], iv_next: ["ivx", 10], pcr: ["pcr", 1000], pcr_vol: ["pcrv", 1000], skew: ["sk", 10],
-    straddle: ["st", 1000], max_pain: ["mp", 100], oi_calls: ["coi", 1], oi_puts: ["poi", 1], fut_oi: ["foi", 1], dte: ["dte", 1] };
+    straddle: ["st", 1000], max_pain: ["mp", 100], oi_calls: ["coi", 1], oi_puts: ["poi", 1], fut_oi: ["foi", 1], dte: ["dte", 1],
+    fut_basis: ["basis", 100], rollover: ["roll", 10], fut_next: ["F2", 100] };
 
   function tokenize(src) {
     const t = []; let i = 0;

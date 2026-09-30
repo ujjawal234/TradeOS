@@ -157,7 +157,7 @@
   // the same rules on the survivorship-free universe, side by side, with a one-tap switch
   function pitTarget(spec) {
     if (!S.man.pit || spec.type !== "rotation" || typeof spec.universe !== "string") return null;
-    return { nifty50: "top100pit", nifty200: "top200pit", fno: "top200pit", all: "top200pit" }[spec.universe] || null;
+    return { nifty50: "top100pit", nifty200: "top200pit", fno: "top200pit", nifty500: "top500pit", all: "top500pit" }[spec.universe] || null;
   }
   async function pitCompare(a, v, test, box) {
     const key = pitTarget(v.spec); if (!key || !box) return;
