@@ -480,6 +480,8 @@ def raw_sample(cache: Path, days: list[date]) -> dict:
         if not f.exists():
             continue
         df = pd.read_csv(f, dtype={"sym": str, "o": str}, keep_default_na=False)
+        for col in ("k", "c", "s", "v", "oi", "exp"):
+            df[col] = pd.to_numeric(df[col], errors="coerce")
         for sym in ("NIFTY", "RELIANCE"):
             g = df[(df["sym"] == sym)]
             if g.empty:
