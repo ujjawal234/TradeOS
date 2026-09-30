@@ -410,5 +410,88 @@
    "max_positions": 10
   },
   null
+ ],
+ [
+  "opt long straddle vix>sma20",
+  {
+   "type": "options",
+   "underlying": "NIFTY",
+   "structure": "long straddle",
+   "entry": "vix > sma(vix,20)",
+   "lots": 1
+  }
+ ],
+ [
+  "opt long strangle 25d tgt",
+  {
+   "type": "options",
+   "underlying": "NIFTY",
+   "structure": "long_strangle",
+   "delta": 25,
+   "profit_target_pct": 100,
+   "stop_loss_pct": 50
+  }
+ ],
+ [
+  "opt bull call spread",
+  {
+   "type": "options",
+   "underlying": "BANKNIFTY",
+   "structure": "bull call spread",
+   "wing_width": 500,
+   "entry": "close > sma(close,50)"
+  }
+ ],
+ [
+  "opt bear put spread exit",
+  {
+   "type": "options",
+   "underlying": "NIFTY",
+   "structure": "bear_put_spread",
+   "wing_pct": 2,
+   "entry": "close < sma(close,50)",
+   "exit": "close > sma(close,20)"
+  }
+ ],
+ [
+  "opt iron butterfly",
+  {
+   "type": "options",
+   "underlying": "NIFTY",
+   "structure": "iron butterfly",
+   "wing_width": 400
+  }
+ ],
+ [
+  "opt custom ratio",
+  {
+   "type": "options",
+   "underlying": "NIFTY",
+   "legs": [
+    {
+     "side": "buy",
+     "type": "CE",
+     "strike": "atm"
+    },
+    {
+     "side": "sell",
+     "type": "CE",
+     "strike": "ATM+2%",
+     "lots": 2
+    }
+   ],
+   "max_hold_days": 5
+  }
+ ],
+ [
+  "opt long put hold",
+  {
+   "type": "options",
+   "underlying": "NIFTY",
+   "structure": "long put",
+   "otm_pct": 2,
+   "entry": "ref(\"INDIAVIX\", close) > 20",
+   "expiry": "monthly"
+  }
  ]
 ]

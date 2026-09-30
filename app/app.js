@@ -138,11 +138,28 @@
   function universeLabel(spec) {
     if (spec.type === "rule") return spec.symbols.length > 3 ? `${spec.symbols.length} symbols` : spec.symbols.join(", ");
     if (spec.type === "rotation") return Array.isArray(spec.universe) ? `${spec.universe.length} symbols` : (PIT_LABEL[spec.universe] || spec.universe);
-    return `${spec.underlying} ${spec.structure.replace("_", " ")}`;
+    return `${spec.underlying} ${spec.structure.replace(/_/g, " ")}`;
   }
   // an actionable signal for the next session (rotation changes before their rebalance day are previews)
   const isAction = (s, withExited) => (withExited ? /BUY|SELL|SHORT|COVER|NEW|EXITED/ : /BUY|SELL|SHORT|COVER|NEW/).test(s.action) && s.due !== false;
-  const TYPE_LABEL = { rule: "Rule strategy", rotation: "Rotation", option_selling: "Option selling" };
+  const TYPE_LABEL = { rule: "Rule strategy", rotation: "Rotation", option_selling: "Options" };
+  // plain-words description of an options spec (bought or sold, strikes, exits, entry rule)
+  function optStrikes(s) { return s.structure === "custom" ? "" : s.strike_mode === "atm" ? "at the money" : s.strike_mode === "delta" ? `${Math.round(s.delta * 100)} delta` : `${s.otm_pct}% ${s.otm_pct < 0 ? "in" : "out of"} the money`; }
+  function optLegs(s) {
+    if (s.structure !== "custom") return `${s.structure.replace(/_/g, " ")}${/straddle|butterfly/.test(s.structure) ? "" : " · " + optStrikes(s)}${/condor|butterfly|spread/.test(s.structure) ? ` · wings ${s.wing_pct ? s.wing_pct + "%" : s.wing_width + " pts"}` : ""}`;
+    const sel = (x) => x.m === "atm" ? "ATM" : x.m === "delta" ? `${Math.round(x.v * 100)}Δ` : x.m === "otm" ? `${x.v}% OTM` : x.m === "pct" ? `ATM${x.v >= 0 ? "+" : ""}${x.v}%` : `ATM${x.v >= 0 ? "+" : ""}${x.v}`;
+    return s.legs.map((l) => `${l.sign > 0 ? "buy" : "sell"} ${l.lots > 1 ? l.lots + "× " : ""}${sel(l.sel)} ${l.kind}`).join(", ");
+  }
+  function optExits(s) {
+    const x = [];
+    if (s.stop_loss_mult) x.push(`stop at ${s.stop_loss_mult}× credit`);
+    if (s.stop_loss_pct) x.push(`stop at −${s.stop_loss_pct}% of premium`);
+    if (s.profit_target_pct) x.push(`target +${s.profit_target_pct}% of premium`);
+    if (s.exit_dte) x.push(`exit ${s.exit_dte} day(s) before expiry`);
+    if (s.max_hold_days) x.push(`exit after ${s.max_hold_days} day(s)`);
+    if (s.exit) x.push(`exit when ${s.exit}`);
+    return x.length ? x.join(" · ") : "held to expiry";
+  }
   // benchmark label ("Nifty" unless the spec names another series)
   const benchLabel = (x) => { const k = typeof x === "string" ? x : x && (x.benchName || x.bench); if (!k || k === "NIFTY") return "Nifty"; return (S.man?.symbols[k]?.name || k).replace(/^NIFTY/i, "Nifty"); };
   // how a rotation ranks, in words
@@ -373,9 +390,18 @@ Stocks (ticker=company): ${tick}`;
       "target_vol_pct":num,"max_leverage":1,"cash_symbol":"CASH" (park idle cash in the overnight-rate index),"cash_yield_pct":num,
     costs: "cost_pct":0.12,"slippage_pct":num; "capital":₹,"benchmark":symbol}
    Rotation trades at the close of the first day of each period using data up to the previous close. Its "trades" count is ORDERS (every buy/sell, several per rebalance) — not round trips; report rebalances, round_trips and turnover_pct_yr to describe activity.
-3) "option_selling": short index options, model-priced (Black-Scholes, India VIX). {"type":"option_selling","underlying":"NIFTY" (weekly, Tue)|"BANKNIFTY"|"FINNIFTY"|"MIDCPNIFTY"|"NIFTYNXT50" (monthly, last Tue),"structure":"strangle"|"straddle"|"iron_condor"|"short_put"|"short_call","strike_mode":"delta"|"otm_pct","delta":0.05–0.45 (15 delta = 0.15),"otm_pct":num,"wing_width":points,"stop_loss_mult":x credit|null,"profit_target_pct":% of credit|null,"exit_dte":int,"lots":int,"min_vix":num|null,"max_vix":num|null,"capital":₹,"benchmark":symbol}
+3) "options": buy OR sell options (both are fully supported — never say buying can't be backtested). Priced with NSE's real daily option prices where DATA says they are loaded for that underlying (index and stock options), otherwise Black-Scholes with India VIX (index options only).
+   {"type":"options","underlying":"NIFTY"|"BANKNIFTY"|"FINNIFTY"|"MIDCPNIFTY"|"NIFTYNXT50"|an F&O stock with option data,"expiry":"weekly"|"monthly"|"next",
+    "structure": bought: "long_straddle"|"long_strangle"|"long_call"|"long_put"|"bull_call_spread"|"bear_put_spread"|"long_iron_condor"|"long_iron_butterfly";
+                 sold: "straddle"|"strangle"|"short_call"|"short_put"|"bear_call_spread"|"bull_put_spread"|"iron_condor"|"iron_butterfly";
+      or "legs":[{"side":"buy"|"sell","type":"CE"|"PE","strike":"atm"|"ATM+100"|"ATM-2%" or "delta":0.25 or "otm_pct":2,"lots":1}] for anything else (ratios, custom spreads),
+    "strike_mode":"atm"|"delta"|"otm_pct","delta":0.05–0.95 (15 delta = 0.15),"otm_pct":num (negative = in the money),"wing_width":points or "wing_pct":% (spreads, condors, butterflies),
+    "entry":expr (rule language on the underlying; enter only when true at the previous close, e.g. "vix > sma(vix,20)"),"exit":expr (close early when true),
+    "stop_loss_pct":% of premium lost,"stop_loss_mult":x credit (sold only),"profit_target_pct":% of premium gained,"exit_dte":int,"max_hold_days":int,"min_dte":2,
+    "min_vix":num|null,"max_vix":num|null,"lots":int,"capital":₹,"benchmark":symbol}
+   Omitted exits = held to expiry (sold structures keep their long-standing 2× stop / 50% target defaults unless set to null). Bought options default to ATM strikes, sold to 15 delta.
 RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime and expression weights; evaluated each day on that symbol; rules signal at the close and fill at the next open):
- variables: open high low close volume hl2 hlc3 dow(0=Mon) dom(day of month) month(1-12) year; pe pb dy for NSE indices marked (P/E,P/B,DY) (NaN elsewhere).
+ variables: open high low close volume hl2 hlc3 dow(0=Mon) dom(day of month) month(1-12) year; vix (India VIX close); pe pb dy for NSE indices marked (P/E,P/B,DY) (NaN elsewhere).
  functions: sma ema wma(x,n) rsi(x,14) atr(14) atr_pct(14) macd(x,12,26) macd_signal(x,12,26,9) bb_upper/bb_lower(x,20,2) keltner_upper/keltner_lower(20,2) supertrend(10,3) highest/lowest(x,n) (include today: breakouts use shift(highest(high,55),1))
   shift(x,n) prev(x) change(x,n) roc(x,n)(%) ret(x,n)(fraction) sum(x,n) median(x,n) stdev(x,n) zscore(x,n) volatility(x,n)(ann.%) pct_rank(x,n)(0-100) slope(x,n) drawdown(x)(% from peak) days_since(cond) count_true(cond,n)
   adx(14) plus_di(14) minus_di(14) stoch_k(14) stoch_d(14,3) cci(20) mfi(14) williams_r(14) obv() vwap(20) corr(a,b,n) beta(a,b,n) cross_above(a,b) cross_below(a,b) abs max min log sqrt sign iff(cond,a,b) clip(x,lo,hi)
@@ -557,7 +583,7 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
 
   // A change to an agent is a patch over its current spec: fields not mentioned stay; null removes a setting.
   // A different strategy type (or an explicit full "spec") replaces the spec, and anything it omits is off.
-  const typeOf = (t) => { const k = String(t || "rule").toLowerCase(); return /rot|momentum/.test(k) ? "rotation" : /option/.test(k) ? "option_selling" : "rule"; };
+  const typeOf = (t) => { const k = String(t || "rule").toLowerCase(); return /rot|momentum/.test(k) ? "rotation" : /option|straddle|strangle|condor/.test(k) ? "option_selling" : "rule"; };
   function applyChanges(cur, changes, full) {
     if (full && typeof full === "object") return full;
     if (!changes || typeof changes !== "object") return cur;
@@ -748,7 +774,7 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
     const s = p.spec;
     const rules = s.type === "rule" ? `<dt>Symbols</dt><dd>${esc(universeLabel(s))}${s.symbols.length > 3 ? ` <span class="muted">(${esc(s.symbols.slice(0, 8).join(", "))}${s.symbols.length > 8 ? "…" : ""})</span>` : ""}</dd><dt>Entry</dt><dd><code>${esc(s.entry)}</code></dd><dt>Exit</dt><dd>${s.exit ? `<code>${esc(s.exit)}</code>` : "stop / target only"}</dd><dt>Stops</dt><dd>${s.side === "short" ? "Short · " : ""}stop ${s.stop_loss_pct ? s.stop_loss_pct + "%" : "none"} · target ${s.take_profit_pct ? s.take_profit_pct + "%" : "none"}</dd>`
       : s.type === "rotation" ? `<dt>Universe</dt><dd>${esc(universeLabel(s))}</dd><dt>Rule</dt><dd>${esc(rankWords(s))}</dd><dt>Filters</dt><dd>${filterWords(s)}</dd>`
-      : `<dt>Structure</dt><dd>${esc(s.underlying)} ${esc(s.structure.replace("_", " "))} · ${s.strike_mode === "delta" ? s.delta + " delta" : s.otm_pct + "% OTM"} · ${s.lots} lot(s) of ${s.lot_size}</dd><dt>Exits</dt><dd>stop ${s.stop_loss_mult ? s.stop_loss_mult + "× credit" : "none"} · target ${s.profit_target_pct ? s.profit_target_pct + "%" : "none"}${s.max_vix ? ` · skip when VIX &gt; ${s.max_vix}` : ""}</dd>`;
+      : `<dt>Structure</dt><dd>${esc(s.underlying)} ${esc(optLegs(s))} · ${s.lots} lot(s) of ${s.lot_size}</dd>${s.entry ? `<dt>Entry</dt><dd><code>${esc(s.entry)}</code></dd>` : ""}<dt>Exits</dt><dd>${esc(optExits(s))}${s.min_vix ? ` · only when VIX ≥ ${s.min_vix}` : ""}${s.max_vix ? ` · skip when VIX &gt; ${s.max_vix}` : ""}</dd>`;
     return `<article class="proposal" id="prop_${esc(pid)}">
       <div class="top"><div><span class="eyebrow">Proposal · ${esc(TYPE_LABEL[s.type])}</span><h3>${esc(p.name)}</h3></div>${p.created ? `<button class="btn ghost small" type="button" data-open="${esc(p.created)}">Open agent →</button>` : ""}</div>
       ${p.explanation ? `<p>${esc(p.explanation)}</p>` : ""}

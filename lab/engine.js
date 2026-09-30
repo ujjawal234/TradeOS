@@ -87,7 +87,7 @@
     "ret", "sum", "median", "pct_rank", "slope", "drawdown", "days_since", "corr", "beta",
     "adx", "plus_di", "minus_di", "stoch_k", "stoch_d", "cci", "mfi", "williams_r", "obv", "vwap", "supertrend", "keltner_upper", "keltner_lower",
     "log", "sqrt", "sign", "iff", "clip", "ref"];
-  const VARS = ["open", "high", "low", "close", "volume", "hl2", "hlc3", "dow", "dom", "month", "year", "pe", "pb", "dy"];
+  const VARS = ["open", "high", "low", "close", "volume", "hl2", "hlc3", "dow", "dom", "month", "year", "pe", "pb", "dy", "vix"];
 
   function tokenize(src) {
     const t = []; let i = 0;
@@ -308,6 +308,12 @@
           if (n.v === "dom") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCDate());
           if (n.v === "month") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCMonth() + 1);
           if (n.v === "year") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCFullYear());
+          if (n.v === "vix") { // India VIX close on the same dates
+            if (ctx.validating) return df.c;
+            const vf = (ctx.frames || DATA.frames || {}).INDIAVIX;
+            if (!vf) throw new RuleError("India VIX data isn't loaded (needed for 'vix')");
+            return alignTo(df.d, vf.d, vf.c);
+          }
           return vars[n.v];
         case "str": return n.v;
         case "neg": { const a = ev(n.a); return isNum(a) ? -a : S(a).map((v) => -v); }
@@ -353,7 +359,7 @@
     condition(expr, { d, o: c, h: c.map((v) => v * 1.01), l: c.map((v) => v * 0.99), c, v: c.map(() => 1000) }, { validating: true });
   }
   // symbols named inside ref("...") anywhere in an expression
-  function refSymbols(expr) { const out = []; const rx = /ref\s*\(\s*["']([^"']+)["']/g; let m; while ((m = rx.exec(String(expr || "")))) out.push(symKey(m[1])); return out; }
+  function refSymbols(expr) { const out = []; const rx = /ref\s*\(\s*["']([^"']+)["']/g; let m; while ((m = rx.exec(String(expr || "")))) out.push(symKey(m[1])); if (/\bvix\b/.test(String(expr || "").replace(/["'][^"']*["']/g, ""))) out.push("INDIAVIX"); return out; }
 
   // ----------------------------------------------------------------- data frames
   // raw JSON: {d0, dd:[day offsets], o,h,l,c,v}. Dates are integer days since 1970-01-01.
@@ -863,7 +869,9 @@
     return { days: Float64Array.from(eqD), eq: Float64Array.from(eqV), trades: b.trades, metrics: m, ranking: cur, rotState, roundTrips: trips };
   }
 
-  // ---- option selling (port of agents/option_selling.py)
+  // ---- options: buying and selling (calls, puts, spreads, straddles, strangles, condors, butterflies, custom legs)
+  // Model pricing: Black-Scholes with India VIX (x iv_mult) as volatility. When NSE's daily option prices are loaded for the
+  // underlying (setOptions) and cover the day, real market prices are used instead (see marketPricer).
   function erf(x) { // W. J. Cody-grade rational approximation via complementary error function (|err| < 1.2e-7)
     const z = Math.abs(x), t = 1 / (1 + 0.5 * z);
     const r = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
@@ -881,6 +889,25 @@
     const d1 = (Math.log(S / K) + (r + 0.5 * sg * sg) * T) / (sg * Math.sqrt(T));
     return k === "CE" ? ncdf(d1) : ncdf(d1) - 1;
   }
+  // Black-76 on a forward (market data): price, delta and implied volatility
+  function b76(F, K, T, r, sg, k) {
+    if (T <= 0 || sg <= 0) return Math.exp(-r * Math.max(T, 0)) * intrinsic(F, K, k);
+    const st = sg * Math.sqrt(T), d1 = (Math.log(F / K) + 0.5 * sg * sg * T) / st, d2 = d1 - st, df = Math.exp(-r * T);
+    return k === "CE" ? df * (F * ncdf(d1) - K * ncdf(d2)) : df * (K * ncdf(-d2) - F * ncdf(-d1));
+  }
+  function b76Delta(F, K, T, r, sg, k) {
+    if (T <= 0 || sg <= 0) return k === "CE" ? (F > K ? 1 : 0) : (F < K ? -1 : 0);
+    const d1 = (Math.log(F / K) + 0.5 * sg * sg * T) / (sg * Math.sqrt(T)), df = Math.exp(-r * T);
+    return k === "CE" ? df * ncdf(d1) : df * (ncdf(d1) - 1);
+  }
+  function impliedVol(px, F, K, T, r, k) {
+    if (!(px > 0) || !(T > 0)) return NaNv;
+    const lo0 = b76(F, K, T, r, 1e-4, k); if (px <= lo0 + 1e-9) return NaNv;
+    let lo = 1e-4, hi = 5;
+    if (b76(F, K, T, r, hi, k) < px) return NaNv;
+    for (let n = 0; n < 60; n++) { const m = 0.5 * (lo + hi); if (b76(F, K, T, r, m, k) > px) hi = m; else lo = m; }
+    return 0.5 * (lo + hi);
+  }
   const wd = (day) => (new Date(day * 864e5).getUTCDay() + 6) % 7;
   function lastWeekdayOfMonth(y, m, w) { const last = Date.UTC(y, m + 1, 0) / 864e5; return last - ((wd(last) - w + 7) % 7); }
   function nextExpiry(day, w, monthly) {
@@ -893,75 +920,180 @@
     FINNIFTY: { lot_size: 60, strike_step: 50, expiry: "monthly" }, MIDCPNIFTY: { lot_size: 120, strike_step: 25, expiry: "monthly" },
     NIFTYNXT50: { lot_size: 25, strike_step: 100, expiry: "monthly" } };
   function pyRound(x) { const f = Math.floor(x), d = x - f; if (d > 0.5) return f + 1; if (d < 0.5) return f; return f % 2 === 0 ? f : f + 1; }
+  // structures: which are bought (debit) and which sold (credit); legacy names kept for the sold ones
+  const OPT_SELL = ["strangle", "straddle", "iron_condor", "iron_butterfly", "short_call", "short_put", "bear_call_spread", "bull_put_spread"];
+  const OPT_BUY = ["long_strangle", "long_straddle", "long_iron_condor", "long_iron_butterfly", "long_call", "long_put", "bull_call_spread", "bear_put_spread"];
+  const optSide = (sp) => sp.structure === "custom" ? (sp.legs.some((l) => l.sign < 0) ? (sp.legs.every((l) => l.sign < 0) ? "sell" : "mixed") : "buy") : OPT_BUY.includes(sp.structure) ? "buy" : "sell";
+  // leg templates: [kind, sign(+1 buy / -1 sell), lots multiplier, selector]; selector {m:"main"} uses the spec's strike rule,
+  // {m:"atm"}, {m:"wing", of:i} = leg i's strike moved further out by the wing width, or a custom leg's own rule
+  function legTemplates(sp) {
+    const st = sp.structure, sg = OPT_BUY.includes(st) ? 1 : -1, base = st.replace(/^long_|^short_/, "");
+    const M = { m: "main" }, A = { m: "atm" }, W = (i) => ({ m: "wing", of: i });
+    if (st === "custom") return sp.legs.map((l) => [l.kind, l.sign, l.lots, l.sel]);
+    if (base === "straddle") return [["CE", sg, 1, A], ["PE", sg, 1, A]];
+    if (base === "strangle") return [["CE", sg, 1, M], ["PE", sg, 1, M]];
+    if (base === "iron_condor") return [["CE", sg, 1, M], ["PE", sg, 1, M], ["CE", -sg, 1, W(0)], ["PE", -sg, 1, W(1)]];
+    if (base === "iron_butterfly") return [["CE", sg, 1, A], ["PE", sg, 1, A], ["CE", -sg, 1, W(0)], ["PE", -sg, 1, W(1)]];
+    if (base === "call") return [["CE", sg, 1, M]];
+    if (base === "put") return [["PE", sg, 1, M]];
+    if (st === "bull_call_spread") return [["CE", 1, 1, M], ["CE", -1, 1, W(0)]];
+    if (st === "bear_call_spread") return [["CE", -1, 1, M], ["CE", 1, 1, W(0)]];
+    if (st === "bull_put_spread") return [["PE", -1, 1, M], ["PE", 1, 1, W(0)]];
+    if (st === "bear_put_spread") return [["PE", 1, 1, M], ["PE", -1, 1, W(0)]];
+    throw new RuleError(`Unknown option structure '${st}'`);
+  }
+
+  // Market option prices (NSE daily F&O files), loaded per underlying by the app / runner: setOptions(sym, data) where data is
+  // {d:[days], F:[forward], ex:{day:[[expiry, strikes[], calls[], puts[]], ...]}} — see decodeOptions for the stored form.
+  const OPTS = {};
+  function setOptions(sym, data) { if (data) OPTS[sym] = data; else delete OPTS[sym]; }
+  function optionData(sym) { return OPTS[sym] || null; }
+  function marketPricer(sym) {
+    const od = OPTS[sym]; if (!od) return null;
+    const idx = new Map(); for (let i = 0; i < od.d.length; i++) idx.set(od.d[i], i);
+    const chain = (day, exp) => { const i = idx.get(day); if (i == null) return null; const e = od.ch[i]; if (!e) return null; for (const c of e) if (c[0] === exp) return c; return null; };
+    return {
+      has: (day) => { const i = idx.get(day); return i != null && od.ch[i] && od.ch[i].length > 0; },
+      F: (day) => { const i = idx.get(day); return i == null ? NaNv : od.F[i]; },
+      expiries: (day) => { const i = idx.get(day); return i == null || !od.ch[i] ? [] : od.ch[i].map((c) => c[0]); },
+      chain,
+      px: (day, exp, K, kind) => { const c = chain(day, exp); if (!c) return NaNv; const j = c[1].indexOf(K); if (j < 0) return NaNv; const v = (kind === "CE" ? c[2] : c[3])[j]; return v == null ? NaNv : Math.abs(v); },
+      traded: (day, exp, K, kind) => { const c = chain(day, exp); if (!c) return false; const j = c[1].indexOf(K); if (j < 0) return false; const v = (kind === "CE" ? c[2] : c[3])[j]; return v != null && v > 0; },
+      expiryPx: (exp) => { const i = idx.get(exp); return i == null ? NaNv : (od.S && od.S[i] === od.S[i] ? od.S[i] : od.F[i]); },
+    };
+  }
 
   function runOptions(spec, frames, opt) {
-    const sp = spec, r = opt.rf, und = sp.underlying;
-    const cm = closeMatrix({ [und]: sliceFrame(frames[und], opt.startDay, opt.endDay), [sp.vix_symbol]: sliceFrame(frames[sp.vix_symbol], opt.startDay, opt.endDay) }, [und, sp.vix_symbol]);
-    const T = (d, e) => ((e - d) + 0.25) / 365, price = (S, K, t, sg, k) => bsPrice(S, K, t, r, sg, k);
-    const expiryFor = (d) => { let cand = d; for (let k = 0; k < 60; k++) { const e = nextExpiry(cand, sp.expiry_weekday, sp.expiry === "monthly"); if (e - d >= sp.min_dte) return e; cand = e + 1; } throw new Error("no expiry"); };
-    function strike(S, t, sg, kind) {
-      const step = sp.strike_step, atm = pyRound(S / step) * step;
-      if (sp.strike_mode === "otm_pct") return pyRound((kind === "CE" ? S * (1 + sp.otm_pct / 100) : S * (1 - sp.otm_pct / 100)) / step) * step;
-      let K = atm; for (let i = 0; i < 400; i++) { K = kind === "CE" ? atm + i * step : atm - i * step; if (Math.abs(bsDelta(S, K, t, r, sg, kind)) <= sp.delta) break; } return K;
+    const sp = spec, r = opt.rf, und = sp.underlying, vsym = sp.vix_symbol;
+    const cm = closeMatrix({ [und]: sliceFrame(frames[und], opt.startDay, opt.endDay), ...(frames[vsym] ? { [vsym]: sliceFrame(frames[vsym], opt.startDay, opt.endDay) } : {}) }, frames[vsym] ? [und, vsym] : [und]);
+    const { days, cols } = cm, Sx = cols[und], Vx = cols[vsym] || f64(days.length);
+    const mk = sp.pricing === "model" ? null : marketPricer(und);
+    const useMk = (i) => !!(mk && mk.has(days[i]));
+    const T = (d, e) => ((e - d) + 0.25) / 365;
+    const sigma = (i) => Vx[i] / 100 * sp.iv_mult;
+    const side = optSide(sp), tmpl = legTemplates(sp);
+    // entry / exit rules on the underlying (rule language; vix and ref() available); a rule true at a close acts at the next close
+    const fu = sliceFrame(frames[und], opt.startDay, opt.endDay);
+    const condOn = (expr) => expr ? alignTo(days, fu.d, condition(expr, fu, { frames })) : null;
+    const entryC = condOn(sp.entry), exitC = condOn(sp.exit);
+    const modelExpiry = (d) => { let cand = d; for (let k = 0; k < 60; k++) { const e = nextExpiry(cand, sp.expiry_weekday, sp.expiry === "monthly"); if (e - d >= sp.min_dte) return e; cand = e + 1; } throw new Error("no expiry"); };
+    function marketExpiry(d) { // nearest listed expiry at least min_dte away (monthly only if the spec asks for monthly)
+      const ex = mk.expiries(d).filter((e) => e - d >= sp.min_dte).sort((a, b) => a - b);
+      if (sp.expiry === "monthly") { const mon = ex.filter((e) => !ex.some((x) => x > e && new Date(x * 864e5).getUTCMonth() === new Date(e * 864e5).getUTCMonth() && new Date(x * 864e5).getUTCFullYear() === new Date(e * 864e5).getUTCFullYear())); return mon[0] ?? null; }
+      if (sp.expiry === "next") return ex[1] ?? null;
+      return ex[0] ?? null;
     }
-    function legs(S, t, sg) {
-      const st = sp.structure, step = sp.strike_step, atm = pyRound(S / step) * step;
-      if (st === "straddle") return [["CE", atm, -1], ["PE", atm, -1]];
-      const L = [];
-      if (["strangle", "iron_condor", "short_call"].includes(st)) L.push(["CE", strike(S, t, sg, "CE"), -1]);
-      if (["strangle", "iron_condor", "short_put"].includes(st)) L.push(["PE", strike(S, t, sg, "PE"), -1]);
-      if (st === "iron_condor") L.push(["CE", L[0][1] + sp.wing_width, 1], ["PE", L[1][1] - sp.wing_width, 1]);
-      return L;
+    const wingW = (S) => sp.wing_pct ? S * sp.wing_pct / 100 : sp.wing_width;
+    // choose strikes for all legs on day i; returns [[kind, K, sign, lots], ...] or null
+    function chooseStrikes(i, exp, market) {
+      const d = days[i], S = market ? mk.F(d) : Sx[i], t = T(d, exp), sg = sigma(i);
+      let list = null, step = sp.strike_step;
+      if (market) { const c = mk.chain(d, exp); if (!c) return null; list = c[1]; }
+      const snap = (x) => { if (!list) return pyRound(x / step) * step; let best = list[0], bd = Infinity; for (const k of list) { const dd = Math.abs(k - x); if (dd < bd) { bd = dd; best = k; } } return best; };
+      const outward = (K, kind, w) => { const x = kind === "CE" ? K + w : K - w; if (!list) return pyRound(x / step) * step; const c = list.filter((k) => kind === "CE" ? k > K : k < K); if (!c.length) return null; let best = c[0], bd = Infinity; for (const k of c) { const dd = Math.abs(k - x); if (dd < bd) { bd = dd; best = k; } } return best; };
+      const deltaOf = (K, kind) => { if (!market) return bsDelta(S, K, t, r, sg, kind); const px = mk.px(d, exp, K, kind), iv = impliedVol(px, S, K, t, r, kind); return iv === iv ? b76Delta(S, K, t, r, iv, kind) : (kind === "CE" ? (S > K ? 1 : 0) : (S < K ? -1 : 0)); };
+      const byDelta = (kind, target) => {
+        const atm = snap(S); if (!list) { let K = atm; for (let n = 0; n < 400; n++) { K = kind === "CE" ? atm + n * step : atm - n * step; if (Math.abs(bsDelta(S, K, t, r, sg, kind)) <= target) break; } return K; }
+        const c = list.filter((k) => kind === "CE" ? k >= atm : k <= atm).sort((a, b) => kind === "CE" ? a - b : b - a);
+        for (const K of c) if (Math.abs(deltaOf(K, kind)) <= target) return K;
+        return c.length ? c[c.length - 1] : null;
+      };
+      const pick = (kind, sel) => {
+        if (sel.m === "atm") return snap(S);
+        if (sel.m === "main") return sp.strike_mode === "atm" ? snap(S) : sp.strike_mode === "otm_pct" ? snap(kind === "CE" ? S * (1 + sp.otm_pct / 100) : S * (1 - sp.otm_pct / 100)) : byDelta(kind, sp.delta);
+        if (sel.m === "delta") return byDelta(kind, sel.v);
+        if (sel.m === "otm") return snap(kind === "CE" ? S * (1 + sel.v / 100) : S * (1 - sel.v / 100));
+        if (sel.m === "pct") return snap(S * (1 + sel.v / 100));
+        if (sel.m === "pts") return snap(snap(S) + sel.v);
+        return snap(S);
+      };
+      const out = [];
+      for (const [kind, sign, lots, sel] of tmpl) {
+        const K = sel.m === "wing" ? (out[sel.of] ? outward(out[sel.of][1], kind, wingW(S)) : null) : pick(kind, sel);
+        if (K == null || !(K > 0)) return null;
+        out.push([kind, K, sign, lots]);
+      }
+      return out;
     }
+    const priceAt = (i, exp, K, kind, market) => {
+      const d = days[i];
+      if (market) { if (d >= exp) { const s = mk.expiryPx(exp); return s === s ? intrinsic(s, K, kind) : mk.px(d, exp, K, kind); } return mk.px(d, exp, K, kind); }
+      return d >= exp ? intrinsic(Sx[i], K, kind) : bsPrice(Sx[i], K, T(d, exp), r, sigma(i), kind);
+    };
     const fees = (q, px) => sp.fee_per_order + Math.abs(q) * px * sp.cost_pct_premium / 100;
     const b = new Broker(sp.capital, 0), st = {}, cycles = [], eqD = [], eqV = [];
-    const { days, cols } = cm, Sx = cols[und], Vx = cols[sp.vix_symbol];
+    let lastMarks = {}, marketDays = 0, modelDays = 0;
     for (let i = 0; i < days.length; i++) {
-      const d = days[i], S = Sx[i], vix = Vx[i]; if (S !== S || vix !== vix) continue;
-      const sg = vix / 100 * sp.iv_mult; let marks = {}, done = false;
+      const d = days[i], S = Sx[i], vix = Vx[i];
+      const market = useMk(i);
+      if (S !== S || (!market && vix !== vix)) continue;
+      let marks = {}, done = false;
       if (b.pos.size) {
-        const meta = b.pos.values().next().value.meta, exp = meta.expiry, credit = meta.credit; let reason = null;
-        if (d >= exp) { for (const [s, p] of b.pos) marks[s] = intrinsic(S, p.meta.strike, p.meta.kind); reason = "expiry settlement"; }
+        const meta = b.pos.values().next().value.meta, exp = meta.expiry, prem = meta.prem, base = Math.abs(prem); let reason = null;
+        const pm = meta.market && (market || d >= exp);
+        for (const [s, p] of b.pos) { const v = priceAt(i, exp, p.meta.strike, p.meta.kind, pm); marks[s] = v === v ? v : (lastMarks[s] ?? p.avg); }
+        if (d >= exp) reason = "expiry settlement";
         else {
-          const t = T(d, exp); let ctc = 0;
-          for (const [s, p] of b.pos) { marks[s] = price(S, p.meta.strike, t, sg, p.meta.kind); ctc -= p.qty * marks[s]; }
-          if (sp.stop_loss_mult && ctc >= credit * sp.stop_loss_mult) reason = "stop loss";
-          else if (sp.profit_target_pct && ctc <= credit * (1 - sp.profit_target_pct / 100)) reason = "profit target";
+          let V = 0; for (const [s, p] of b.pos) V += p.qty * marks[s];
+          const pnl = prem + V;
+          if (sp.stop_loss_mult && prem > 0 && -V >= prem * sp.stop_loss_mult) reason = "stop loss";
+          else if (sp.stop_loss_pct && pnl <= -base * sp.stop_loss_pct / 100) reason = "stop loss";
+          else if (sp.profit_target_pct && pnl >= base * sp.profit_target_pct / 100) reason = "profit target";
           else if (sp.exit_dte && (exp - d) <= sp.exit_dte) reason = "time exit";
+          else if (sp.max_hold_days && d - meta.entryDay >= sp.max_hold_days) reason = "time exit";
+          else if (exitC && i > 0 && exitC[i - 1]) reason = "exit rule";
         }
         if (!reason) done = true;
         else {
           for (const [s, p] of [...b.pos]) b.execute(d, s, -p.qty, marks[s], reason, fees(p.qty, marks[s]));
-          cycles.push({ entry_date: st.cycleEntry, exit_date: isoOf(d), expiry: isoOf(exp), credit, pnl: b.cash - st.cycleCash, reason });
+          cycles.push({ entry_date: st.cycleEntry, exit_date: isoOf(d), expiry: isoOf(exp), credit: prem, pnl: b.cash - st.cycleCash, reason, side, pricing: meta.market ? "market" : "model", legs: meta.legs });
           st.cooldown = reason === "expiry settlement" ? null : exp; marks = {};
         }
       }
       if (!done) {
-        const blocked = (st.cooldown != null && d <= st.cooldown) || (sp.min_vix && vix < sp.min_vix) || (sp.max_vix && vix > sp.max_vix);
+        const blocked = (st.cooldown != null && d <= st.cooldown) || (sp.min_vix && !(vix >= sp.min_vix)) || (sp.max_vix && vix > sp.max_vix)
+          || (entryC && !(i > 0 && entryC[i - 1]));
         if (!blocked) {
-          const exp = expiryFor(d), t = T(d, exp), units = sp.lots * sp.lot_size;
-          const priced = legs(S, t, sg).map(([k, K, sgn]) => [k, K, sgn, price(S, K, t, sg, k)]);
-          const credit = priced.reduce((a, [, , sgn, px]) => a - sgn * units * px, 0);
-          if (credit > 0) {
-            st.cycleCash = b.cash; st.cycleEntry = isoOf(d);
-            for (const [k, K, sgn, px] of priced) {
-              const sym = `${und} ${isoOf(exp)} ${K} ${k}`, q = sgn * units;
-              b.execute(d, sym, q, px, "open", fees(q, px), { kind: k, strike: K, expiry: exp, credit });
-              marks[sym] = px;
+          const exp = market ? marketExpiry(d) : modelExpiry(d);
+          const legs = exp != null ? chooseStrikes(i, exp, market) : null;
+          if (legs) {
+            const units = sp.lots * sp.lot_size;
+            const priced = legs.map(([k, K, sgn, lots]) => [k, K, sgn * lots, priceAt(i, exp, K, k, market)]);
+            const ok = priced.every(([, , , px]) => px === px) && (!market || priced.every(([, , sgn, px]) => sgn < 0 || px > 0));
+            const prem = priced.reduce((a, [, , sgn, px]) => a - sgn * units * px, 0);
+            const good = ok && (side === "sell" ? prem > 0 : side === "buy" ? prem < 0 : prem !== 0);
+            const affordable = prem >= 0 || b.cash + prem - priced.length * sp.fee_per_order >= 0; // can't pay for options with money you don't have
+            if (good && !affordable) st.broke = true;
+            if (good && affordable) {
+              st.cycleCash = b.cash; st.cycleEntry = isoOf(d);
+              const legTxt = priced.map(([k, K, sgn, px]) => `${sgn > 0 ? "Buy" : "Sell"} ${Math.abs(sgn) > 1 ? Math.abs(sgn) + "× " : ""}${K} ${k} @ ${Math.round(px * 100) / 100}`).join(", ");
+              for (const [k, K, sgn, px] of priced) {
+                const sym = `${und} ${isoOf(exp)} ${K} ${k}`, q = sgn * units;
+                if (b.pos.has(sym)) continue; // same strike twice (e.g. a butterfly body) is merged below
+                const qq = priced.filter(([k2, K2]) => k2 === k && K2 === K).reduce((a, [, , s2]) => a + s2 * units, 0);
+                if (qq === 0) continue;
+                b.execute(d, sym, qq, px, "open", fees(qq, px), { kind: k, strike: K, expiry: exp, prem, entryDay: d, market, legs: legTxt });
+                marks[sym] = px;
+              }
+              if (market) marketDays++; else modelDays++;
             }
           }
         }
       }
+      lastMarks = marks;
       eqD.push(d); eqV.push(b.equity(marks));
     }
     const m = computeMetrics(eqD, eqV, cycles, r), reasons = {};
     for (const c of cycles) reasons[c.reason] = (reasons[c.reason] || 0) + 1;
-    Object.assign(m, { cycles: cycles.length, exit_reasons: reasons });
+    const mkt = cycles.filter((c) => c.pricing === "market").length;
+    Object.assign(m, { cycles: cycles.length, exit_reasons: reasons, market_priced_cycles: mkt, model_priced_cycles: cycles.length - mkt });
+    if (st.broke) m.notes = (m.notes || []).concat(["Capital ran out: later entries were skipped because the premium couldn't be paid."]);
     const li = days.length - 1, lS = Sx[li], lV = Vx[li];
     const openLegs = [...b.pos.entries()].map(([s, p]) => ({ symbol: s, qty: p.qty, entry: p.avg, kind: p.meta.kind, strike: p.meta.strike, expiry: isoOf(p.meta.expiry),
-      mark: bsPrice(lS, p.meta.strike, Math.max(0, (p.meta.expiry - days[li]) + 0.25) / 365, r, lV / 100 * sp.iv_mult, p.meta.kind) }));
-    const optState = { lastDate: isoOf(days[li]), spot: lS, vix: lV, legs: openLegs, cooldownUntil: st.cooldown != null ? isoOf(st.cooldown) : null,
-      credit: openLegs.length ? b.pos.values().next().value.meta.credit : null };
+      mark: lastMarks[s] ?? bsPrice(lS, p.meta.strike, Math.max(0, (p.meta.expiry - days[li]) + 0.25) / 365, r, lV / 100 * sp.iv_mult, p.meta.kind), pricing: p.meta.market ? "market" : "model" }));
+    const first = openLegs.length ? b.pos.values().next().value.meta : null;
+    const optState = { lastDate: isoOf(days[li]), spot: lS, vix: lV, legs: openLegs, cooldownUntil: st.cooldown != null ? isoOf(st.cooldown) : null, side,
+      credit: first ? first.prem : null, entryReady: entryC ? !!entryC[li] : true, entryRule: sp.entry || null, pricing: useMk(li) ? "market" : "model" };
     return { days: Float64Array.from(eqD), eq: Float64Array.from(eqV), trades: cycles, metrics: m, optState };
   }
 
@@ -975,7 +1107,7 @@
     min_vix: null, max_vix: null, iv_mult: 1.0, capital: 500000, fee_per_order: 20, cost_pct_premium: 0.15, vix_symbol: "INDIAVIX" };
   // Claude (or a person) may write values loosely: "15" for 0.15 delta, "Nifty 50" for nifty50, "RELIANCE.NS",
   // null for "use the default". Normalise all of that here so a sensible strategy never fails on format.
-  const NULLABLE = new Set(["stop_loss_pct", "take_profit_pct", "min_score", "trend_filter", "min_vix", "max_vix", "stop_loss_mult", "profit_target_pct", "exit"]);
+  const NULLABLE = new Set(["stop_loss_pct", "take_profit_pct", "min_score", "trend_filter", "min_vix", "max_vix", "stop_loss_mult", "profit_target_pct", "exit", "entry"]);
   const ALIASES = { NIFTY50: "NIFTY", "NIFTY 50": "NIFTY", NIFTY_50: "NIFTY", NSEI: "NIFTY", "BANK NIFTY": "BANKNIFTY", NIFTYBANK: "BANKNIFTY", NIFTY_BANK: "BANKNIFTY", NSEBANK: "BANKNIFTY",
     "INDIA VIX": "INDIAVIX", INDIA_VIX: "INDIAVIX", VIX: "INDIAVIX", NIFTYFIN: "FINNIFTY", NIFTYFINSERVICE: "FINNIFTY", NIFTYFINANCIALSERVICES: "FINNIFTY", NIFTY_FINANCIAL_SERVICES: "FINNIFTY",
     MIDCAPSELECT: "MIDCPNIFTY", NIFTYMIDSELECT: "MIDCPNIFTY", NIFTYMIDCAPSELECT: "MIDCPNIFTY", NIFTY_MIDCAP_SELECT: "MIDCPNIFTY", NIFTYNEXT50: "NIFTYNXT50", NEXT50: "NIFTYNXT50", NIFTY_NEXT_50: "NIFTYNXT50",
@@ -1111,28 +1243,77 @@
     if (type === "option_selling") {
       const s = Object.assign({}, OPT_DEF, clean(spec, OPT_DEF), { type });
       s.underlying = symKey(s.underlying);
-      if (!UNDERLYINGS[s.underlying]) throw new RuleError(`Option selling works on NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY or NIFTYNXT50 here, not '${s.underlying}'.`);
-      const base = UNDERLYINGS[s.underlying];
+      const hasMkt = !!OPTS[s.underlying];
+      if (!UNDERLYINGS[s.underlying] && !hasMkt) throw new RuleError(`Options on '${s.underlying}' need NSE option-price data${Object.keys(OPTS).length ? "" : " (not loaded here)"}; model pricing works on NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY and NIFTYNXT50.`);
+      const base = UNDERLYINGS[s.underlying] || { lot_size: 1, strike_step: 1, expiry: "monthly" };
       for (const k of ["lot_size", "strike_step"]) s[k] = Math.trunc(numOr(s[k], base[k]));
-      s.expiry = /week/i.test(String(s.expiry)) ? "weekly" : /month/i.test(String(s.expiry)) ? "monthly" : base.expiry;
-      const st = groupKey(s.structure);
-      s.structure = st.includes("condor") ? "iron_condor" : st.includes("straddle") ? "straddle" : st.includes("put") ? "short_put" : st.includes("call") ? "short_call" : "strangle";
-      // strikes: delta written as 0.15 or 15 both mean 15 delta
-      if (!/otm|pct|percent/i.test(String(s.strike_mode)) && !(spec.strike_mode == null && spec.delta == null && spec.otm_pct != null)) {
+      const exRaw = String(spec.expiry ?? "");
+      s.expiry = /next/i.test(exRaw) ? "next" : /week/i.test(exRaw) ? "weekly" : /month/i.test(exRaw) ? "monthly" : base.expiry;
+      // structure: bought or sold, from its name ("long straddle", "bull call spread", "short put") or an explicit side
+      const raw = groupKey(spec.structure || (spec.legs ? "custom" : "strangle"));
+      const sideRaw = String(spec.side ?? spec.direction ?? spec.action ?? "").toLowerCase();
+      const wantBuy = /^(long|buy|bought|debit)/.test(raw) || /long|buy|debit/.test(sideRaw);
+      const wantSell = /^(short|sell|sold|write|credit)/.test(raw) || /short|sell|write|credit/.test(sideRaw);
+      if (spec.legs || raw.includes("custom")) {
+        s.structure = "custom";
+        const legs = Array.isArray(spec.legs) ? spec.legs : [];
+        s.legs = legs.map((l, j) => {
+          if (typeof l === "string") { const t = l.toLowerCase(); l = { side: /sell|short|write/.test(t) ? "sell" : "buy", type: /put|pe\b/.test(t) ? "PE" : "CE", strike: (t.match(/atm\s*[+-]?\s*[\d.]*\s*%?/) || ["atm"])[0] }; }
+          const kind = /p/i.test(String(l.type ?? l.option ?? l.kind ?? l.right ?? "CE")) ? "PE" : "CE";
+          const q = numOr(l.lots ?? l.qty ?? l.quantity ?? 1, 1);
+          const sign = /sell|short|write/i.test(String(l.side ?? l.action ?? "")) || q < 0 ? -1 : 1;
+          let sel = { m: "atm" };
+          if (l.delta != null) { let dv = numOr(l.delta, 0.25); if (Math.abs(dv) >= 1) dv /= 100; sel = { m: "delta", v: Math.abs(dv) }; }
+          else if (l.otm_pct != null) sel = { m: "otm", v: numOr(l.otm_pct, 0) };
+          else if (l.pct != null) sel = { m: "pct", v: numOr(l.pct, 0) };
+          else if (l.offset != null || l.points != null) sel = { m: "pts", v: numOr(l.offset ?? l.points, 0) };
+          else if (l.strike != null) {
+            const t = String(l.strike).toLowerCase().replace(/\s+/g, ""), mm = t.match(/^atm([+-][\d.]+)(%?)$/);
+            if (t === "atm") sel = { m: "atm" };
+            else if (mm) sel = mm[2] ? { m: "pct", v: Number(mm[1]) } : { m: "pts", v: Number(mm[1]) };
+            else if (/^[+-]?[\d.]+%$/.test(t)) sel = { m: "pct", v: parseFloat(t) };
+            else throw new RuleError(`Leg ${j + 1}: strike should be "atm", "ATM+100", "ATM-2%", a delta or otm_pct (strikes move with the market, so fixed numbers aren't used).`);
+          }
+          return { kind, sign, lots: Math.max(1, Math.abs(Math.trunc(q)) || 1), sel };
+        });
+        if (!s.legs.length) throw new RuleError("A custom option strategy needs legs, e.g. [{\"side\":\"buy\",\"type\":\"CE\",\"strike\":\"atm\"}].");
+      } else {
+        delete s.legs;
+        const shape = raw.includes("condor") ? "iron_condor" : /butterfly|fly/.test(raw) ? "iron_butterfly" : raw.includes("straddle") ? "straddle" : raw.includes("strangle") ? "strangle"
+          : raw.includes("spread") && raw.includes("call") ? "call_spread" : raw.includes("spread") && raw.includes("put") ? "put_spread" : raw.includes("call") ? "call" : raw.includes("put") ? "put" : "strangle";
+        if (shape === "call_spread") s.structure = raw.includes("bear") || (!raw.includes("bull") && wantSell) ? "bear_call_spread" : "bull_call_spread";
+        else if (shape === "put_spread") s.structure = raw.includes("bull") || (!raw.includes("bear") && wantSell) ? "bull_put_spread" : "bear_put_spread";
+        else if (shape === "call" || shape === "put") s.structure = (wantSell ? "short_" : "long_") + shape;
+        else s.structure = (wantBuy ? "long_" : "") + shape;
+      }
+      const buying = optSide(s) === "buy";
+      // strikes: ATM, delta (0.15 or 15 both mean 15 delta) or % out of the money. Bought options default to ATM, sold ones to 15 delta.
+      const smRaw = String(spec.strike_mode ?? "");
+      if (/atm|at.the.money/i.test(smRaw) || (buying && spec.strike_mode == null && spec.delta == null && spec.otm_pct == null)) { s.strike_mode = "atm"; delete s.delta; delete s.otm_pct; }
+      else if (!/otm|pct|percent/i.test(smRaw) && !(spec.strike_mode == null && spec.delta == null && spec.otm_pct != null)) {
         s.strike_mode = "delta"; let d = numOr(s.delta, 0.15); if (d >= 1 && d < 50) d /= 100;
-        if (!(d > 0 && d < 0.5)) throw new RuleError("Delta should be between 1 and 49 (e.g. 15 delta = 0.15).");
+        if (!(d > 0 && d < 0.5 + (buying ? 0.45 : 0))) throw new RuleError("Delta should be between 1 and 49 (e.g. 15 delta = 0.15).");
         s.delta = d;
-      } else { s.strike_mode = "otm_pct"; s.otm_pct = numOr(s.otm_pct, 2); if (!(s.otm_pct > 0 && s.otm_pct < 30)) throw new RuleError("% out of the money should be between 0 and 30."); }
+      } else { s.strike_mode = "otm_pct"; s.otm_pct = numOr(s.otm_pct, 2); if (!(s.otm_pct > -30 && s.otm_pct < 30)) throw new RuleError("% out of the money should be between -30 and 30 (negative = in the money)."); }
       s.lots = Math.max(1, Math.trunc(numOr(s.lots, 1))); s.wing_width = numOr(s.wing_width, 500); s.min_dte = Math.trunc(numOr(s.min_dte, 2)); s.exit_dte = Math.trunc(numOr(s.exit_dte, 0));
+      optNum(s, "wing_pct", (v) => v > 0, "wing_pct must be positive");
       s.expiry_weekday = Math.trunc(numOr(s.expiry_weekday, 1));
-      s.stop_loss_mult = numOrNull(s.stop_loss_mult); s.profit_target_pct = numOrNull(s.profit_target_pct);
-      if (s.profit_target_pct != null && s.profit_target_pct > 0 && s.profit_target_pct <= 1) s.profit_target_pct *= 100;
+      // exits: nothing is added that the spec didn't ask for, except the long-standing defaults for sold premium (2x stop, 50% target)
+      if (buying || s.structure === "custom") {
+        s.stop_loss_mult = spec.stop_loss_mult != null && !buying ? numOrNull(spec.stop_loss_mult) : null;
+        s.profit_target_pct = spec.profit_target_pct != null ? numOrNull(spec.profit_target_pct) : null;
+      } else { s.stop_loss_mult = numOrNull(s.stop_loss_mult); s.profit_target_pct = numOrNull(s.profit_target_pct); }
+      if (s.profit_target_pct != null && s.profit_target_pct > 0 && s.profit_target_pct <= 1 && !buying) s.profit_target_pct *= 100;
+      optNum(s, "stop_loss_pct", (v) => v > 0, "stop_loss_pct must be positive");
+      optNum(s, "max_hold_days", (v) => v >= 1, "max_hold_days must be at least 1", true);
+      for (const k of ["entry", "exit"]) { if (s[k] == null || s[k] === "" || s[k] === false) delete s[k]; else { s[k] = String(s[k]); validate(s[k]); } }
       s.min_vix = numOrNull(s.min_vix); s.max_vix = numOrNull(s.max_vix); s.iv_mult = numOr(s.iv_mult, 1);
+      if (spec.pricing != null && /model|bs|black/i.test(String(spec.pricing))) s.pricing = "model"; else delete s.pricing;
       s.capital = numOr(s.capital, OPT_DEF.capital); s.fee_per_order = numOr(s.fee_per_order, 20); s.cost_pct_premium = numOr(s.cost_pct_premium, 0.15);
       normBenchmark(s);
       return s;
     }
-    throw new RuleError(`Unknown strategy type '${spec.type}'. Use rule, rotation or option_selling.`);
+    throw new RuleError(`Unknown strategy type '${spec.type}'. Use rule, rotation or options.`);
   }
   function optNum(s, k, ok, msg, int) {
     if (s[k] == null || s[k] === false) { delete s[k]; return; }
@@ -1151,7 +1332,7 @@
       const refs = exprsOf(s).flatMap(refSymbols);
       return [...new Set(u.concat(s.trend_filter ? [s.trend_filter.symbol] : [], s.regime ? [s.regime.symbol] : [], [s.defensive, s.cash_symbol].filter(Boolean), refs, extra))];
     }
-    return [s.underlying, s.vix_symbol, ...extra];
+    return [...new Set([s.underlying, s.vix_symbol, ...refSymbols(s.entry), ...refSymbols(s.exit), ...extra])];
   }
   // does this spec need full OHLCV (open/high/low/volume/valuation) rather than closes only?
   const OHLCV_RX = /\b(open|high|low|volume|hl2|hlc3|pe|pb|dy|atr|atr_pct|adx|plus_di|minus_di|stoch_k|stoch_d|cci|mfi|williams_r|obv|vwap|supertrend|keltner_upper|keltner_lower)\b/;
@@ -1231,13 +1412,16 @@
       for (const o of out) if (/BUY|SELL|SHORT|COVER/.test(o.action) && !/HOLD/.test(o.action)) o.due = due;
       if (!out.length) out.push({ symbol: "-", action: "CASH", date: rs.lastDate, note: rs.regimeOn === false ? (spec.trend_filter ? `Trend filter off (${spec.trend_filter.symbol} below its ${spec.trend_filter.sma}-day average)` : `Regime filter off (${spec.regime ? spec.regime.expr : ""})`) : spec.trend_filter ? `Trend filter off (${spec.trend_filter.symbol} below its ${spec.trend_filter.sma}-day average) or nothing qualifies` : "Nothing qualifies" });
     } else if (spec.type === "option_selling") {
-      const os = res.optState;
+      const os = res.optState, verb = os.side === "buy" ? "BUY NEW" : os.side === "sell" ? "SELL NEW" : "OPEN NEW";
+      const src = (l) => l.pricing === "market" ? "market price" : "model price";
       if (os.legs.length) for (const l of os.legs) out.push({ symbol: l.symbol, action: l.qty < 0 ? "HOLD SHORT" : "HOLD LONG", price: r2(l.mark), date: os.lastDate,
-        entry: r2(l.entry), note: `${l.kind} ${l.strike} expiring ${l.expiry}; model price ${r2(l.mark)} vs sold at ${r2(l.entry)}` });
-      else out.push({ symbol: spec.underlying, action: os.cooldownUntil ? "WAIT" : "SELL NEW", price: r2(os.spot), date: os.lastDate,
-        note: os.cooldownUntil ? `Stopped out; next entry after ${os.cooldownUntil}` : `Open a new ${spec.structure.replace("_", " ")} at next session (VIX ${r2(os.vix)})` });
+        entry: r2(l.entry), note: `${l.kind} ${l.strike} expiring ${l.expiry}; ${src(l)} ${r2(l.mark)} vs ${l.qty < 0 ? "sold" : "bought"} at ${r2(l.entry)}` });
+      else if (os.cooldownUntil) out.push({ symbol: spec.underlying, action: "WAIT", price: r2(os.spot), date: os.lastDate, note: `Exited early; next entry after ${os.cooldownUntil}` });
+      else if (!os.entryReady) out.push({ symbol: spec.underlying, action: "WAIT", price: r2(os.spot), date: os.lastDate, note: `Entry rule not met (${os.entryRule})` });
+      else out.push({ symbol: spec.underlying, action: verb, price: r2(os.spot), date: os.lastDate,
+        note: `Open a new ${spec.structure.replace(/_/g, " ")} at next session (VIX ${r2(os.vix)})` });
     }
-    const order = { BUY: 0, SHORT: 0, SELL: 1, COVER: 1, "SELL NEW": 1, EXITED: 2, HOLD: 3, "HOLD SHORT": 3, "HOLD LONG": 3, CASH: 4, WAIT: 5 };
+    const order = { BUY: 0, SHORT: 0, SELL: 1, COVER: 1, "SELL NEW": 1, "BUY NEW": 1, "OPEN NEW": 1, EXITED: 2, HOLD: 3, "HOLD SHORT": 3, "HOLD LONG": 3, CASH: 4, WAIT: 5 };
     return out.sort((a, b) => (order[a.action] ?? 9) - (order[b.action] ?? 9) || String(a.symbol).localeCompare(b.symbol));
   }
 
@@ -1369,7 +1553,13 @@
       if (s.filters) s.filters = s.filters.map((x) => scaleWindows(x, f));
       if (s.regime) s.regime = { ...s.regime, expr: scaleWindows(s.regime.expr, f) };
     }
-    else { if (s.strike_mode === "delta") s.delta = Math.min(0.45, r2(s.delta * f)); else s.otm_pct = r2(s.otm_pct / f); if (s.stop_loss_mult) s.stop_loss_mult = r2(1 + (s.stop_loss_mult - 1) * f); }
+    else {
+      if (s.strike_mode === "delta") s.delta = Math.min(OPT_BUY.includes(s.structure) ? 0.9 : 0.45, r2(s.delta * f)); else if (s.strike_mode === "otm_pct" && s.otm_pct) s.otm_pct = r2(s.otm_pct / f);
+      if (s.stop_loss_mult) s.stop_loss_mult = r2(1 + (s.stop_loss_mult - 1) * f);
+      for (const k of ["stop_loss_pct", "profit_target_pct"]) if (s[k]) s[k] = r2(s[k] * f);
+      if (s.max_hold_days) s.max_hold_days = Math.max(1, Math.round(s.max_hold_days * f));
+      if (s.entry) s.entry = scaleWindows(s.entry, f); if (s.exit) s.exit = scaleWindows(s.exit, f);
+    }
     return s;
   }
   function sensitivity(spec, frames, universes, opt) {
@@ -1377,7 +1567,7 @@
       const s = f === 1 ? spec : variant(spec, f), r = run(s, frames, universes, opt), m = r.metrics;
       return { factor: f, label: f === 1 ? "As designed" : `Parameters ${f > 1 ? "+" : "−"}${Math.round(Math.abs(f - 1) * 100)}%`,
         cagr_pct: m.cagr_pct, max_drawdown_pct: m.max_drawdown_pct, sharpe: m.sharpe, trades: m.trades ?? m.cycles ?? m.executions,
-        detail: s.type === "rule" ? `${s.entry}${s.exit ? "  |  exit: " + s.exit : ""}` : s.type === "rotation" ? `lookback ${s.lookback}, skip ${s.skip}` : `delta ${s.delta}, stop ${s.stop_loss_mult}x` };
+        detail: s.type === "rule" ? `${s.entry}${s.exit ? "  |  exit: " + s.exit : ""}` : s.type === "rotation" ? `lookback ${s.lookback}, skip ${s.skip}` : [s.strike_mode === "delta" ? `delta ${s.delta}` : s.strike_mode === "otm_pct" ? `${s.otm_pct}% OTM` : "ATM", s.stop_loss_mult ? `stop ${s.stop_loss_mult}x` : "", s.stop_loss_pct ? `stop ${s.stop_loss_pct}%` : "", s.profit_target_pct ? `target ${s.profit_target_pct}%` : "", s.max_hold_days ? `${s.max_hold_days}d` : "", s.entry || ""].filter(Boolean).join(", ") };
     });
   }
   function costShock(spec, frames, universes, opt) {
@@ -1392,7 +1582,7 @@
     return { risk: riskStats(res), crises: crises(res), monteCarlo: monteCarlo(res), sensitivity: sensitivity(spec, frames, universes, opt), costs: costShock(spec, frames, universes, opt) };
   }
 
-  const api = { parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice,
+  const api = { parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, OPT_BUY, OPT_SELL,
     signals, splitMetrics, riskStats, crises, monteCarlo, sensitivity, costShock, stressAll, scaleWindows, unparse, CRISES,
     setData, setPit, usesPit, pitAt, needsFull, refSymbols, periodKey, nextRebalanceDay, factorList, exprsOf, PRESETS, WEIGHTINGS, symKey };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.TradeEngine = api;
