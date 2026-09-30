@@ -1,39 +1,5 @@
-F&O bhavcopy: 17 trading days to fetch of 17
-  0/17 scanned, 1 files, 4s
-Downloaded 17 new F&O files; not available: {}
+F&O bhavcopy: 0 trading days to fetch of 17
+Downloaded 0 new F&O files; not available: {}
 Symbol changes: 1056
   built 0/17 days (2024-06-20), 187 underlyings, 0s
-Traceback (most recent call last):
-  File "/home/runner/work/TradeOS/TradeOS/scripts/fetch_fo.py", line 590, in <module>
-    main()
-  File "/home/runner/work/TradeOS/TradeOS/scripts/fetch_fo.py", line 585, in main
-    "largest": big, "debug": res["debug"], "raw_sample": raw_sample(cache, [x for x in days if x.day in (4, 5)][:: max(1, len(days) // 12)][:12]) if args.debug else None}, indent=1))
-                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/TradeOS/TradeOS/scripts/fetch_fo.py", line 490, in raw_sample
-    x = g[(g["exp"] == e0) & (g["o"] != "") & ((g["k"] - F).abs() <= F * 0.03)]
-                                                ~~~~~~~^~~
-  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/site-packages/pandas/core/ops/common.py", line 85, in new_method
-    return method(self, other)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/site-packages/pandas/core/arraylike.py", line 198, in __sub__
-    return self._arith_method(other, operator.sub)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/site-packages/pandas/core/series.py", line 6751, in _arith_method
-    return base.IndexOpsMixin._arith_method(self, other, op)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/site-packages/pandas/core/base.py", line 1644, in _arith_method
-    result = ops.arithmetic_op(lvalues, rvalues, op)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/site-packages/pandas/core/ops/array_ops.py", line 279, in arithmetic_op
-    res_values = op(left, right)
-                 ^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/site-packages/pandas/core/ops/common.py", line 85, in new_method
-    return method(self, other)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/site-packages/pandas/core/arraylike.py", line 198, in __sub__
-    return self._arith_method(other, operator.sub)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/site-packages/pandas/core/arrays/string_.py", line 1233, in _cmp_method
-    result[valid] = op(self._ndarray[valid], other)
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: unsupported operand type(s) for -: 'str' and 'float'
+Options: 187 underlyings, 0.7 MB gzip in 1 bundles
