@@ -48,33 +48,19 @@
   "records": 51438,
   "dividends": 7917,
   "ratio_applied": 323,
+  "inferred_splits": 5,
   "demergers": 67,
   "outside_data": 97,
   "rights": 62,
-  "ratio_rejected": 48,
-  "inferred_splits": 4
+  "ratio_rejected": 48
  },
  "big_moves_left": [
-  [
-   "360ONE",
-   "2023-03-02",
-   0.249,
-   []
-  ],
   [
    "63MOONS",
    "2013-08-01",
    0.355,
    [
     "2013-08-07 1ST INT DIV-RS.2/- PR SH"
-   ]
-  ],
-  [
-   "ADANIENT",
-   "2015-06-03",
-   0.191,
-   [
-    "2015-06-03 SCHEME OF ARRANGEMENT"
    ]
   ],
   [
@@ -481,7 +467,7 @@
  ],
  "adjustments": {
   "tickers_adjusted": 391,
-  "events": 1600,
+  "events": 1601,
   "small_events": 1034
  },
  "adjustment_examples": {
@@ -511,6 +497,10 @@
    [
     "2021-08-10",
     0.9783
+   ],
+   [
+    "2023-03-02",
+    0.25
    ]
   ],
   "63MOONS": [
@@ -630,7 +620,7 @@
   "ADANIENT": [
    [
     "2015-06-03",
-    0.9
+    0.17229
    ],
    [
     "2018-04-05",
