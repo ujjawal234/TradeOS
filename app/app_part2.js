@@ -235,7 +235,7 @@
       let prop = "";
       if (m.proposal) { const pr = m.proposal; prop = `<div class="proposal" style="margin-top:6px;padding:10px"><b>Proposed change</b><p class="small">${esc(pr.note || "")}</p><div data-chatres="${esc(m.id)}" class="small muted">${pr.status === "saved" ? `Saved as v${pr.saved_version}.` : pr.status === "discarded" ? "Discarded." : "Testing…"}</div>
         ${pr.status ? "" : `<div class="row"><button class="btn small" type="button" data-save-prop="${esc(m.id)}" ${S.readOnly ? "disabled" : ""}>Save as new version</button><button class="btn ghost small" type="button" data-drop-prop="${esc(m.id)}">Discard</button></div>`}</div>`; }
-      return `<div class="msg ${m.role === "user" ? "user" : ""}"><div class="meta">${esc(who)} · ${esc(fmtWhen(m.at))}</div><div class="body">${md(m.text)}${m.attachments?.length ? `<div class="attach-row" style="margin-top:6px">${m.attachments.map((x) => `<span class="att"><span>📎 ${esc(x)}</span></span>`).join("")}</div>` : ""}${prop}</div></div>`;
+      return `<div class="msg ${m.role === "user" ? "user" : ""}"><div class="meta">${esc(who)} · ${esc(fmtWhen(m.at))}</div><div class="body">${md(m.text)}${attHtml(m.attachments)}${prop}</div></div>`;
     }).join("") : `<p class="small muted">Ask this agent anything — how it behaved in 2020, why a stock is in the list, what to change. It can propose edits and you decide whether to keep them.</p>`;
     log.scrollTop = log.scrollHeight;
     for (const m of msgs) if (m.proposal && !m.proposal.status) fillChatProposal(m);
@@ -256,7 +256,7 @@
     catch (e) { box.innerHTML = `<span class="neg">${esc(e.message || e)}</span>`; }
   }
   function agentPrompt(a, v, res, stats, text, atts) {
-    const hist = S.room.messages.filter((m) => m.role !== "system").slice(-12).map((m) => `${m.role === "user" ? "USER" : "YOU"}: ${m.text}${m.proposal ? ` [proposed: ${m.proposal.note}; ${m.proposal.status || "pending"}]` : ""}`).join("\n\n");
+    const hist = S.room.messages.filter((m) => m.role !== "system").slice(-12).map((m) => `${m.role === "user" ? "USER" : "YOU"}: ${m.text}${m.attachments?.length ? ` [attached: ${attNames(m.attachments)}]` : ""}${m.att_notes ? ` [the attachments showed: ${m.att_notes}]` : ""}${m.proposal ? ` [proposed: ${m.proposal.note}; ${m.proposal.status || "pending"}]` : ""}`).join("\n\n");
     const trades = (res.trades || []).slice(-12).map((t) => t.symbol ? `${t.symbol} ${t.entry_date || t.date}→${t.exit_date || ""} ${t.return_pct != null ? t.return_pct.toFixed(1) + "%" : ""} ${t.reason || t.note || ""}` : `${t.entry_date}→${t.exit_date} pnl ${Math.round(t.pnl)} ${t.reason}`);
     return `You are "${a.name}", one agent inside TradeOS (an AI investment desk for Indian markets). You are the portfolio manager and quant responsible for this single strategy. Speak in the first person about your rules and results. Be candid about weaknesses, explain with numbers, and think like an experienced trader and risk manager. Research only, not investment advice.
 
@@ -277,7 +277,8 @@ VERSION HISTORY: ${JSON.stringify(S.room.versions.map((x) => ({ n: x.n, note: x.
 
 ${dataBrief()}
 
-REPLY with ONE JSON object only (no text before or after it, no code fences; keep "reply" under 200 words; escape quotes and newlines inside strings): {"reply":"markdown","proposal":null or {"note":"...","spec":{...},"explanation":"...","test":{"start":"...","end":null,"split":"..."}}}
+When the user selects part of the page or attaches a photo/screenshot, answer about exactly that and set "attachment_notes" to 1-3 lines of the key facts it shows.
+REPLY with ONE JSON object only (no text before or after it, no code fences; keep "reply" under 200 words; escape quotes and newlines inside strings): {"reply":"markdown","attachment_notes":"" ,"proposal":null or {"note":"...","spec":{...},"explanation":"...","test":{"start":"...","end":null,"split":"..."}}}
 
 CONVERSATION:
 ${hist || "(new)"}
@@ -290,11 +291,12 @@ USER NOW: ${text}${attachmentText(atts)}`;
     const atts = S.roomAttach.splice(0); renderAttach(S.roomAttach, $("roomAttach")); $("roomInput").value = "";
     S.busyRoom = true; $("roomSend").disabled = true; const st = $("roomStatusLine"); st.classList.remove("err"); st.innerHTML = '<span class="thinking">Thinking<span class="dots"></span></span>';
     try {
-      await addAgentMsg(a.id, { role: "user", text: text || "(see attachment)", attachments: atts.map((x) => x.name) });
+      await addAgentMsg(a.id, { role: "user", text: text || "", attachments: attMeta(atts) });
       const test = v.test || { start: "2012-01-01" }, res = await runSpec(v.spec, test);
       const risk = E.riskStats(res), cr = E.crises(res).map((c) => ({ name: c.name, s: c.strategy_pct, n: c.nifty_pct }));
-      const out = await callClaude(agentPrompt(a, v, res, { risk, crises: cr }, text || "Please look at the attachment.", atts), imagesOf(atts), (msg) => { st.innerHTML = `<span class="thinking">${esc(msg)}<span class="dots"></span></span>`; }, new AbortController().signal);
+      const out = await callClaude(agentPrompt(a, v, res, { risk, crises: cr }, text || "(no text — see what I attached or selected)", atts), imagesOf(atts), (msg) => { st.innerHTML = `<span class="thinking">${esc(msg)}<span class="dots"></span></span>`; }, new AbortController().signal);
       const msg = { role: "agent", text: (typeof out?.reply === "string" && out.reply.trim() ? out.reply : "…") + (out?._unstructured ? "\n\n_(Answer came back without structure, so any proposed change couldn't be attached. Ask me to “propose that as a change”.)_" : "") };
+      if (atts.some((x) => x.kind === "image" || x.kind === "snippet") && typeof out?.attachment_notes === "string" && out.attachment_notes.trim()) msg.att_notes = out.attachment_notes.slice(0, 1200);
       if (out?.proposal && out.proposal.spec) { try { E.normalize(out.proposal.spec, S.man.universes); msg.proposal = { note: String(out.proposal.note || "Change"), spec: out.proposal.spec, explanation: String(out.proposal.explanation || ""), test: out.proposal.test || v.test || null, status: null }; }
         catch (e) { msg.text += `\n\n_(My proposed rules didn't validate: ${e.message})_`; } }
       await addAgentMsg(a.id, msg); st.textContent = "";
@@ -308,6 +310,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
   function logTicks(lo, hi) { const out = []; for (let e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++) for (const c of [1, 2, 5]) { const v = c * 10 ** e; if (v >= lo && v <= hi) out.push(v); } return out.length > 7 ? out.filter((v) => /^1/.test(String(v))) : out; }
   function chart(el, days, series, opt) {
     const W = Math.max(300, el.clientWidth || 600), H = opt.height, padL = 64, padR = opt.endLabels ? (W < 520 ? 76 : 110) : 16, padT = 10, padB = 24, x0 = days[0], x1 = days[days.length - 1], iw = W - padL - padR, ih = H - padT - padB;
+    el.__chart = { days, series: series.map((s) => ({ name: s.short, values: s.values })), W, padL, padR, title: opt.aria, fmt: opt.fmtTip };
     let lo = Infinity, hi = -Infinity; for (const s of series) for (const v of s.values) if (isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
     if (!isFinite(lo)) { el.innerHTML = ""; return; }
     if (opt.zeroTop) hi = 0;
@@ -361,6 +364,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
     window.scrollTo({ top: view === "main" ? document.body.scrollHeight : 0 });
   }
 
+  /*__PART3__*/
   // ================================================================ boot
   document.querySelectorAll(".nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view === "main" ? "" : b.dataset.view)));
   wireGo(document);
@@ -371,6 +375,14 @@ USER NOW: ${text}${attachmentText(atts)}`;
   $("mainInput").addEventListener("paste", (e) => { const files = [...(e.clipboardData?.files || [])]; if (files.length) { e.preventDefault(); readFiles(files, S.mainAttach, $("attachList")); } });
   $("fileIn").addEventListener("change", (e) => { readFiles([...e.target.files], S.mainAttach, $("attachList")); e.target.value = ""; });
   $("roomFile").addEventListener("change", (e) => { readFiles([...e.target.files], S.roomAttach, $("roomAttach")); e.target.value = ""; });
+  $("photoIn").addEventListener("change", (e) => { readFiles([...e.target.files], S.mainAttach, $("attachList")); e.target.value = ""; });
+  $("roomPhoto").addEventListener("change", (e) => { readFiles([...e.target.files], S.roomAttach, $("roomAttach")); e.target.value = ""; });
+  $("roomInput").addEventListener("paste", (e) => { const files = [...(e.clipboardData?.files || [])]; if (files.length) { e.preventDefault(); readFiles(files, S.roomAttach, $("roomAttach")); } });
+  for (const [zone, list, box] of [[document.querySelector("#view-main .composer .box"), () => S.mainAttach, "attachList"], [document.querySelector(".chatrail"), () => S.roomAttach, "roomAttach"]]) {
+    zone.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { e.preventDefault(); zone.classList.add("drop"); } });
+    zone.addEventListener("dragleave", (e) => { if (!zone.contains(e.relatedTarget)) zone.classList.remove("drop"); });
+    zone.addEventListener("drop", (e) => { zone.classList.remove("drop"); const files = [...(e.dataTransfer?.files || [])]; if (files.length) { e.preventDefault(); readFiles(files, list(), $(box)); } });
+  }
   $("roomSend").addEventListener("click", sendRoom);
   $("roomInput").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendRoom(); } });
   $("roomVersion").addEventListener("change", (e) => { S.room.ver = +e.target.value; renderRoomBody(); });
@@ -388,6 +400,8 @@ USER NOW: ${text}${attachmentText(atts)}`;
     if (user) { S.me = await user.me(); S.uid = S.me.id; const w = await user.can("data.write"); S.readOnly = w === false;
       $("whoami").innerHTML = `<img alt="" src="${esc(S.me.avatarUrl)}"><span>${esc(S.me.name || "you")}</span>`; }
     if (!db) toast("Shared storage isn't available in this view — changes won't be saved.");
+    document.querySelectorAll("[data-photo]").forEach((el) => { el.hidden = !S.images; });
+    if (S.images?.mediaTypes?.length) for (const id of ["photoIn", "roomPhoto"]) $(id).accept = "image/*," + S.images.mediaTypes.join(",");
     if (!sample) $("mainHint").textContent = "Talking to agents needs Claude, which isn't available in this view.";
     if (S.readOnly) $("mainHint").textContent = "You have view-only access: you can explore agents but not change them.";
     S.db.collection("agents").onSnapshot((snap) => {

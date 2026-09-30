@@ -184,6 +184,24 @@ tr.link { cursor: pointer; } tr.link:hover td { background: var(--sunken); }
 .busy { opacity: 0.55; pointer-events: none; transition: opacity .2s; }
 @media (max-width: 560px) { .page, .appbar-in { padding-inline: 16px; } .room-head h1 { font-size: var(--step-1); }
   .appbar-in { flex-wrap: nowrap; overflow-x: auto; gap: 10px; } .nav { flex-wrap: nowrap; } .nav button { padding: 6px 8px; white-space: nowrap; } #dataChip, .who span { display: none; } .bar-spacer { display: none; } }
+/* photos, page selections, capture mode */
+.att img { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; flex: none; }
+.att.snip { background: var(--accent-soft); }
+.thumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.thumbs img { height: 84px; max-width: 160px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--sunken); }
+blockquote.snip { margin: 6px 0 0; padding: 6px 10px; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-soft) 60%, transparent); border-radius: 0 8px 8px 0; font-size: var(--step--1); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 9.5em; overflow: hidden; }
+blockquote.snip .src { display: block; color: var(--muted); font-size: 0.72rem; margin-bottom: 2px; white-space: normal; }
+.tools-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.box.drop, .chatrail.drop { outline: 2px dashed var(--accent); outline-offset: -4px; }
+#selPop { position: absolute; z-index: 60; display: flex; gap: 4px; align-items: center; background: var(--ink); color: var(--bg); padding: 4px; border-radius: 10px; box-shadow: var(--shadow); }
+#selPop button { border: 0; background: transparent; color: inherit; padding: 6px 10px; border-radius: 7px; cursor: pointer; font-size: var(--step--1); font-weight: 600; white-space: nowrap; }
+#selPop button:hover, #selPop button:focus-visible { background: color-mix(in srgb, var(--bg) 18%, transparent); }
+#selPop .lbl { font-size: 0.72rem; opacity: 0.75; padding: 0 6px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#capOverlay { position: fixed; inset: 0; z-index: 55; cursor: crosshair; touch-action: none; background: rgba(15, 25, 45, 0.08); }
+#capOverlay .hint { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); width: max-content; background: var(--ink); color: var(--bg); padding: 8px 12px; border-radius: 10px; font-size: var(--step--1); box-shadow: var(--shadow); display: flex; gap: 10px; align-items: center; max-width: calc(100vw - 32px); }
+#capOverlay .hint button { border: 0; background: color-mix(in srgb, var(--bg) 18%, transparent); color: inherit; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-weight: 600; }
+#capRect { position: fixed; border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 4px; pointer-events: none; }
+#capHover { position: fixed; outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -196,6 +214,7 @@ tr.link { cursor: pointer; } tr.link:hover td { background: var(--sunken); }
       <button type="button" data-view="signals">Today's signals <span class="count" id="sigCount">0</span></button>
     </nav>
     <span class="bar-spacer"></span>
+    <button class="btn ghost small" type="button" id="capBtn" title="Select any part of the page and ask about it">✂ Select &amp; ask</button>
     <span class="chip-static" id="dataChip">Loading market data…</span>
     <span class="who" id="whoami"></span>
   </div>
@@ -212,8 +231,13 @@ tr.link { cursor: pointer; } tr.link:hover td { background: var(--sunken); }
             <div class="attach-row" id="attachList"></div>
             <textarea id="mainInput" rows="2" aria-label="Message the Main Agent" placeholder="Ask anything: an idea, a stock, a report, a screenshot. e.g. “Build me a low-drawdown way to beat Nifty using the F&O stocks.”"></textarea>
             <div class="row">
-              <label class="btn quiet small" for="fileIn" style="cursor:pointer">Attach photo / PDF / file</label>
-              <input id="fileIn" type="file" multiple hidden accept="image/*,.pdf,.txt,.md,.csv,.json">
+              <span class="tools-row">
+                <label class="btn quiet small" for="photoIn" style="cursor:pointer" data-photo>📷 Photo</label>
+                <input id="photoIn" type="file" multiple hidden accept="image/*">
+                <label class="btn quiet small" for="fileIn" style="cursor:pointer">📄 PDF / file</label>
+                <input id="fileIn" type="file" multiple hidden accept=".pdf,.txt,.md,.csv,.json,image/*">
+                <button class="btn quiet small" type="button" data-cap="main" title="Drag a box over any part of the page to ask about it">✂ Select on page</button>
+              </span>
               <span class="small muted" id="mainHint">Enter to send · Shift+Enter for a new line</span>
               <span class="grow"></span>
               <button class="btn ghost small" id="stopBtn" type="button" hidden>Stop</button>
@@ -294,7 +318,7 @@ tr.link { cursor: pointer; } tr.link:hover td { background: var(--sunken); }
         <div class="foot">
           <div class="attach-row" id="roomAttach"></div>
           <textarea class="input" id="roomInput" rows="2" placeholder="e.g. “Swap INFY for HCLTECH and tighten the stop to 5%”"></textarea>
-          <div class="row"><label class="btn quiet small" for="roomFile" style="cursor:pointer">Attach</label><input id="roomFile" type="file" multiple hidden accept="image/*,.pdf,.txt,.md,.csv,.json"><span class="grow"></span><button class="btn small" id="roomSend" type="button">Send</button></div>
+          <div class="row"><label class="btn quiet small" for="roomPhoto" style="cursor:pointer" data-photo title="Photo or screenshot">📷</label><input id="roomPhoto" type="file" multiple hidden accept="image/*"><label class="btn quiet small" for="roomFile" style="cursor:pointer" title="PDF or text file">📄</label><input id="roomFile" type="file" multiple hidden accept=".pdf,.txt,.md,.csv,.json,image/*"><button class="btn quiet small" type="button" data-cap="room" title="Select part of the page to ask this agent about">✂ Select</button><span class="grow"></span><button class="btn small" id="roomSend" type="button">Send</button></div>
           <p class="status" id="roomStatusLine" role="status" aria-live="polite"></p>
         </div>
       </aside>
@@ -302,6 +326,8 @@ tr.link { cursor: pointer; } tr.link:hover td { background: var(--sunken); }
   </section>
 </main>
 <div class="toast" id="toast" hidden role="status"></div>
+<div id="selPop" hidden role="toolbar" aria-label="Ask about the selection"></div>
+<div id="capOverlay" hidden><div class="hint" role="status"><span id="capHint">Drag a box around anything — or tap a card, table row or chart.</span><button type="button" id="capCancel">Cancel</button></div><div id="capRect" hidden></div><div id="capHover" hidden></div></div>
 
 <script>
 /*__ENGINE__*/
