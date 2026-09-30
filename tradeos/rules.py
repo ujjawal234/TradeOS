@@ -26,7 +26,7 @@ class RuleError(ValueError):
 
 VARIABLES = {
     "open": "open price", "high": "high", "low": "low", "close": "close", "volume": "volume",
-    "hl2": "(high+low)/2", "dow": "day of week (0=Mon .. 4=Fri)",
+    "hl2": "(high+low)/2", "dow": "day of week (0=Mon .. 4=Fri)", "pe": "index P/E", "pb": "index P/B", "dy": "index dividend yield",
 }
 
 FUNC_DOCS = {
@@ -63,6 +63,8 @@ class RuleEngine:
         self.vars = {k: df[k].astype(float) for k in ("open", "high", "low", "close", "volume") if k in df}
         self.vars["hl2"] = (df["high"] + df["low"]) / 2
         self.vars["dow"] = pd.Series(df.index.dayofweek, index=df.index, dtype=float)
+        for k in ("pe", "pb", "dy"):  # index valuation when the data has it (NSE indices)
+            self.vars[k] = df[k].astype(float) if k in df else pd.Series(np.nan, index=df.index)
         self.funcs = self._funcs()
 
     # -- helpers

@@ -20,7 +20,33 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-MIN_ROWS = 200
+MIN_ROWS = 60          # stocks: include recent listings (e.g. new F&O entrants)
+MIN_ROWS_INDEX = 200
+IDX_DIR = ROOT / "data" / "indices"
+# F&O index keys taken from NSE's official series (Yahoo is the fallback)
+PRIMARY = {"NIFTY_50": "NIFTY", "NIFTY_BANK": "BANKNIFTY", "NIFTY_FINANCIAL_SERVICES": "FINNIFTY",
+           "NIFTY_MIDCAP_SELECT": "MIDCPNIFTY", "NIFTY_NEXT_50": "NIFTYNXT50", "INDIA_VIX": "INDIAVIX"}
+# Yahoo copies (verified identical to NSE) extend history before NSE's archive starts (Feb 2012; VIX May 2014)
+YAHOO_BACKFILL = {"NIFTY": "NIFTY", "BANKNIFTY": "BANKNIFTY", "NIFTY_IT": "NIFTYIT", "NIFTY_PHARMA": "NIFTYPHARMA", "NIFTYNXT50": "NIFTYNEXT50",
+                  "INDIAVIX": "INDIAVIX", "NIFTY_100": "NIFTY100", "NIFTY_200": "NIFTY200", "NIFTY_500": "NIFTY500", "NIFTY_MIDCAP_50": "NIFTYMIDCAP50"}
+DEBT = re.compile(r"G-?SEC|GILT|BOND|SDL|T-?BILL|1D RATE|CORPORATE|AAA|DEBT|CRISIL|MONEY MARKET|GSEC|INVERSE|LEVERAGE|FUTURES|ARBITRAGE|USD|DIVIDEND POINTS| - OLD|^NIFTY50 TR|^NIFTY TR", re.I)
+# NSE renamed its indices (S&P CNX -> CNX -> NIFTY, ~2015); these chains are stitched into one history.
+RENAMES = {
+    "Nifty 50": ["S&P CNX Nifty", "CNX Nifty"], "Nifty Next 50": ["CNX Nifty Junior"], "Nifty 100": ["CNX 100"], "Nifty 200": ["CNX 200"],
+    "Nifty 500": ["S&P CNX 500", "CNX 500"], "Nifty Midcap 100": ["CNX Midcap", "Nifty Free Float Midcap 100", "Nifty Full Midcap 100"],
+    "Nifty Smallcap 100": ["CNX Smallcap", "Nifty Free Float Smallcap 100", "Nifty Full Smallcap 100"], "Nifty Auto": ["CNX Auto"], "Nifty Bank": ["CNX Bank"],
+    "Nifty Financial Services": ["CNX Finance"], "Nifty FMCG": ["CNX FMCG"], "Nifty IT": ["CNX IT"], "Nifty Media": ["CNX Media"], "Nifty Metal": ["CNX Metal"],
+    "Nifty Pharma": ["CNX Pharma"], "Nifty PSU Bank": ["CNX PSU Bank"], "Nifty Realty": ["CNX Realty"], "Nifty Energy": ["CNX Energy"],
+    "Nifty Infrastructure": ["CNX Infrastructure"], "Nifty Commodities": ["CNX Commodities"], "Nifty India Consumption": ["CNX Consumption"],
+    "Nifty MNC": ["CNX MNC"], "Nifty PSE": ["CNX PSE"], "Nifty Services Sector": ["CNX Service Sector"], "Nifty CPSE": ["CPSE"],
+    "Nifty Dividend Opportunities 50": ["CNX Dividend Opportunities"], "Nifty High Beta 50": ["CNX High Beta"], "Nifty Low Volatility 50": ["CNX Low Volatility"],
+    "Nifty Alpha 50": ["CNX Alpha Index"], "Nifty100 Equal Weight": ["CNX 100 Equal Weight"], "Nifty100 Liquid 15": ["LIX 15", "NI15"],
+    "Nifty Midcap Liquid 15": ["LIX15 Midcap"], "Nifty50 Value 20": ["NV 20"], "Nifty Quality 30": ["NSE Quality 30"], "Nifty Shariah 25": ["CNX Shariah25"],
+    "Nifty50 Shariah": ["S&P CNX Nifty Shariah", "CNX Nifty Shariah"], "Nifty500 Shariah": ["S&P CNX 500 Shariah", "CNX 500 Shariah"],
+}
+SECTOR_RX = re.compile(r"^NIFTY (AUTO|BANK|FINANCIAL SERVICES|FMCG|IT|MEDIA|METAL|PHARMA|PSU BANK|PRIVATE BANK|REALTY|HEALTHCARE( INDEX)?|CONSUMER DURABLES|OIL (&|AND) GAS|CHEMICALS|ENERGY|INFRASTRUCTURE|CAPITAL GOODS|CEMENT|POWER|TELECOMMUNICATIONS)$", re.I)
+FACTOR_RX = re.compile(r"ALPHA|LOW VOLATILITY|LOW VOL|QUALITY|VALUE|MOMENTUM|EQUAL WEIGHT|DIVIDEND|GROWTH|HIGH BETA|LIQUID 15|QUANT", re.I)
+BROAD_RX = re.compile(r"^NIFTY ?(50|NEXT 50|NEXT 100|100|200|500|MIDCAP|SMALLCAP|SMLCAP|MICROCAP|LARGEMIDCAP|LARGE MIDCAP|MIDSMALLCAP|MIDSMALL ?CAP|TOTAL MARKET|MIDCAP SELECT|MID ?CAP|SMALL ?CAP)( ?\d+)?( INDEX)?$", re.I)
 SECTOR_SHORT = {
     "Financial Services": ("SEC_FIN", "Financial services"), "Capital Goods": ("SEC_CAPGOODS", "Capital goods"),
     "Healthcare": ("SEC_HEALTH", "Healthcare & pharma"), "Automobile and Auto Components": ("SEC_AUTO", "Auto"),
@@ -44,6 +70,46 @@ INDEX_NAMES = {"NIFTY": "Nifty 50", "BANKNIFTY": "Nifty Bank", "SENSEX": "BSE Se
                "BSE500": "BSE 500", "BSEMIDCAP": "BSE Midcap", "BSESMALLCAP": "BSE Smallcap"}
 
 
+def code_of(name: str) -> str:
+    return re.sub(r"_+", "_", re.sub(r"[^A-Z0-9]+", "_", name.upper())).strip("_")
+
+
+def stitch(target: pd.DataFrame, olds: list[pd.DataFrame], label: str) -> pd.DataFrame:
+    """Fill dates missing from `target` (before its start or holes inside it) with renamed predecessors,
+    but only where the predecessor's level joins the target at every edge (1% on overlap, 5% across <=5 days)."""
+    out = target
+    for old in sorted(olds, key=lambda d: d.index[-1], reverse=True):
+        block = old[~old.index.isin(out.index)]
+        if block.empty:
+            continue
+        common = old.index.intersection(out.index)
+        ok, why = True, ""
+        if len(common):
+            r = out.loc[common, "close"] / old.loc[common, "close"]
+            ok, why = bool((r - 1).abs().max() <= 0.01), f"overlap ratio {r.iloc[0]:.3f}"
+        for edge_date, side in ((block.index[0], "prev"), (block.index[-1], "next")):
+            nb = out[out.index < edge_date] if side == "prev" else out[out.index > edge_date]
+            if nb.empty:
+                continue
+            nd = nb.index[-1] if side == "prev" else nb.index[0]
+            if abs((nd - edge_date).days) > 5:
+                continue  # not adjacent; nothing to compare at this edge
+            ratio = nb.loc[nd, "close"] / block.loc[edge_date, "close"]
+            if abs(ratio - 1) > 0.05:
+                ok, why = False, f"{side} edge ratio {ratio:.3f}"
+        if not ok:
+            print(f"  not stitched: {label} <- predecessor ending {old.index[-1].date()} ({why})")
+            continue
+        out = pd.concat([out, block]).sort_index()
+    return out
+
+
+def val_arr(df: pd.DataFrame, col: str):
+    if col not in df or df[col].notna().sum() < 50:
+        return None
+    return [None if pd.isna(x) else round(float(x), 2) for x in df[col].values]
+
+
 def enc_full(df: pd.DataFrame) -> dict:
     days = df.index.values.astype("datetime64[D]").astype("int64")
     c = np.round(df["close"].values * 100).astype("int64")
@@ -51,7 +117,8 @@ def enc_full(df: pd.DataFrame) -> dict:
     return {"f": 2, "d0": int(days[0]), "dd": np.diff(days, prepend=days[0]).tolist(),
             "c0": int(c[0]), "c": np.diff(c, prepend=c[0]).tolist(),
             "o": rel("open"), "h": rel("high"), "l": rel("low"),
-            "v": df["volume"].fillna(0).astype("int64").tolist()}
+            "v": df["volume"].fillna(0).astype("int64").tolist(),
+            **{k: a for k in ("pe", "pb", "dy") if (a := val_arr(df, k)) is not None}}
 
 
 def main(out: Path) -> None:
@@ -60,19 +127,76 @@ def main(out: Path) -> None:
     uni = json.loads((ROOT / "data" / "universe.json").read_text())["stocks"]
     fetched = json.loads((ROOT / "data" / "manifest.json").read_text())
     frames, symbols = {}, {}
+    # ---- official NSE index history (every index NSE publishes), if fetched
+    nse, nse_names = {}, {}
+    if IDX_DIR.exists():
+        names_file = IDX_DIR / "_index_names.json"
+        nse_names = json.loads(names_file.read_text()) if names_file.exists() else {}
+        raw = {}
+        for f in sorted(IDX_DIR.glob("*.csv")):
+            if f.stem.startswith("_"):
+                continue
+            df = pd.read_csv(f, index_col=0, parse_dates=True).dropna(subset=["close"])
+            raw[f.stem] = df[~df.index.duplicated(keep="last")].sort_index()
+        old_codes = {code_of(o) for olds in RENAMES.values() for o in olds}
+        for new, olds in RENAMES.items():
+            c = code_of(new)
+            if c in raw:
+                raw[c] = stitch(raw[c], [raw[code_of(o)] for o in olds if code_of(o) in raw], new)
+        for code, df in raw.items():
+            name = nse_names.get(code, code)
+            if code in old_codes or DEBT.search(name):
+                continue
+            if len(df) >= MIN_ROWS_INDEX and df.index[-1] >= pd.Timestamp.today() - pd.Timedelta(days=30):
+                nse[code] = df
+    use_nse = len(nse) >= 20
+    for code, df in nse.items():
+        key = PRIMARY.get(code, code)
+        yf = src / f"{YAHOO_BACKFILL.get(key, '')}.csv"
+        if key in YAHOO_BACKFILL and yf.exists():
+            y = pd.read_csv(yf, index_col=0, parse_dates=True).dropna(subset=["close"])
+            y = y[~y.index.duplicated(keep="last")][["open", "high", "low", "close", "volume"]]
+            fill = y[~y.index.isin(df.index) & (y.index <= df.index[-1])]  # earlier history + days NSE's archive missed
+            if len(fill):
+                df = pd.concat([df, fill]).sort_index()
+        for col in ("open", "high", "low"):
+            df[col] = df[col].fillna(df["close"])
+        df["volume"] = df["volume"].fillna(0)
+        frames[key] = df
+        (dst / "p" / f"{key}.json").write_text(json.dumps(enc_full(df), separators=(",", ":")))
+        name = nse_names.get(code, code)
+        symbols[key] = {"first": str(df.index[0].date()), "last": str(df.index[-1].date()), "rows": len(df),
+                        "name": name,
+                        "industry": "Index", "n50": False, "n200": False, "fno": key in PRIMARY.values(), "lot": None, "kind": "index",
+                        "val": bool(df.get("pe") is not None and df["pe"].notna().sum() >= 50), "source": "NSE",
+                        "group": ("broad" if BROAD_RX.search(name) else "sector" if SECTOR_RX.search(name) else "factor" if FACTOR_RX.search(name) else "theme")}
     for f in sorted(src.glob("*.csv")):
+        s = f.stem
+        is_idx = s in INDEX_NAMES
+        if s in symbols or (use_nse and is_idx and s not in ("SENSEX", "BSE100", "BSE500", "BANKEX")):
+            continue  # NSE's official series replaces the Yahoo copy
         df = pd.read_csv(f, index_col=0, parse_dates=True).dropna(subset=["close"])
         df = df[~df.index.duplicated(keep="last")].sort_index()
-        if len(df) < MIN_ROWS:
+        if len(df) < (MIN_ROWS_INDEX if is_idx else MIN_ROWS):
             continue
-        s = f.stem
         frames[s] = df
         (dst / "p" / f"{s}.json").write_text(json.dumps(enc_full(df), separators=(",", ":")))
         meta = uni.get(s, {})
         symbols[s] = {"first": str(df.index[0].date()), "last": str(df.index[-1].date()), "rows": len(df),
                       "name": meta.get("name") or INDEX_NAMES.get(s, s), "industry": meta.get("industry") or ("Index" if s in INDEX_NAMES else ""),
                       "n50": bool(meta.get("nifty50")), "n200": bool(meta.get("nifty200")), "fno": bool(meta.get("fno")),
-                      "lot": meta.get("lot_size"), "kind": "index" if s in INDEX_NAMES else "stock"}
+                      "lot": meta.get("lot_size"), "kind": "index" if is_idx else "stock",
+                      **({"group": "broad", "source": "Yahoo"} if is_idx else {})}
+    # legacy keys (earlier builds used these names; saved agents may still refer to them) -> same series
+    LEGACY = {"NIFTYBANK": "BANKNIFTY", "NIFTYIT": "NIFTY_IT", "NIFTYPHARMA": "NIFTY_PHARMA", "NIFTYNEXT50": "NIFTYNXT50",
+              "NIFTY100": "NIFTY_100", "NIFTY200": "NIFTY_200", "NIFTY500": "NIFTY_500", "NIFTYMIDCAP50": "NIFTY_MIDCAP_50",
+              "NIFTYFIN": "FINNIFTY", "NIFTYAUTO": "NIFTY_AUTO", "NIFTYFMCG": "NIFTY_FMCG", "NIFTYMETAL": "NIFTY_METAL",
+              "NIFTYREALTY": "NIFTY_REALTY", "NIFTYENERGY": "NIFTY_ENERGY", "NIFTYPSUBANK": "NIFTY_PSU_BANK", "NIFTYMEDIA": "NIFTY_MEDIA"}
+    for old, new in LEGACY.items():
+        if old not in frames and new in frames:
+            frames[old] = frames[new]
+            (dst / "p" / f"{old}.json").write_text((dst / "p" / f"{new}.json").read_text())
+            symbols[old] = {**symbols[new], "alias_of": new}
     # calendar = union of all trading days
     cal = sorted(set().union(*[set(df.index) for df in frames.values()]))
     cal_idx = pd.DatetimeIndex(cal)
@@ -116,15 +240,22 @@ def main(out: Path) -> None:
     universes = {
         "nifty50": members(lambda m: m["n50"]), "nifty200": members(lambda m: m["n200"]),
         "fno": members(lambda m: m["fno"]), "all": members(lambda m: True),
-        "sectors": sorted(sectors), "indices": sorted(s for s, m in symbols.items() if m["kind"] == "index" and s not in ("INDIAVIX", "NIFTYBANK")),
+        "sectors": sorted(s for s, m in symbols.items() if m.get("group") == "sector" and not m.get("alias_of")) or sorted(sectors),
+        "baskets": sorted(sectors),
+        "indices": sorted(s for s, m in symbols.items() if m["kind"] == "index" and s != "INDIAVIX" and not m.get("alias_of")),
+        "broad": sorted(s for s, m in symbols.items() if m.get("group") == "broad" and not m.get("alias_of")),
+        "themes": sorted(s for s, m in symbols.items() if m.get("group") == "theme" and s != "INDIAVIX" and not m.get("alias_of")),
+        "factors": sorted(s for s, m in symbols.items() if m.get("group") == "factor" and not m.get("alias_of")),
+        "fno_indices": [s for s in ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50", "SENSEX"] if s in symbols],
         "banks": [s for s in ["HDFCBANK", "ICICIBANK", "SBIN", "AXISBANK", "KOTAKBANK", "INDUSINDBK", "BANKBARODA", "PNB", "CANBK", "FEDERALBNK", "IDFCFIRSTB", "AUBANK", "UNIONBANK", "BANKINDIA", "INDIANB"] if s in symbols],
         **industries,
     }
-    manifest = {"generated": fetched.get("generated"), "source": "Yahoo Finance (split & dividend adjusted); lists from NSE",
+    manifest = {"generated": fetched.get("generated"), "source": "Stocks: Yahoo Finance (split & dividend adjusted). Indices: NSE daily index files (with P/E, P/B, dividend yield). Lists: NSE.",
                 "symbols": symbols, "universes": universes, "sectors": sectors}
     (dst / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":")))
     size = sum(p.stat().st_size for p in dst.rglob("*.json"))
-    print(f"{len(frames)} symbols, {len(sectors)} sector baskets, {len(universes)} universes, {size / 1e6:.1f} MB -> {dst}")
+    kinds = {k: sum(1 for m in symbols.values() if m["kind"] == k) for k in ("stock", "index", "basket")}
+    print(f"{kinds} | NSE indices: {len(nse)} | universes: {', '.join(f'{k}={len(v)}' for k, v in universes.items())} | {size / 1e6:.1f} MB -> {dst}")
 
 
 if __name__ == "__main__":

@@ -90,6 +90,16 @@ def main() -> None:
         start = datetime.strptime(state["last"], "%Y-%m-%d").date() - timedelta(days=5)
     days = [start + timedelta(days=i) for i in range((date.today() - start).days + 1)]
     days = [d for d in days if d.weekday() < 5]
+    # repair: trading days (per the Yahoo Nifty series) that are missing from NSE's Nifty 50 file
+    ref, have = ROOT / "data" / "prices" / "NIFTY.csv", OUT / "NIFTY_50.csv"
+    if ref.exists() and have.exists() and not args.full:
+        trade = set(pd.read_csv(ref, index_col=0).index.astype(str).str[:10])
+        got_days = set(pd.read_csv(have, index_col=0).index.astype(str).str[:10])
+        first = min(got_days)
+        gaps = sorted(d for d in trade - got_days if d >= first)
+        if gaps:
+            print(f"Re-requesting {len(gaps)} trading days missing from NSE history")
+            days = sorted(set(days) | {datetime.strptime(d, "%Y-%m-%d").date() for d in gaps})
     print(f"Fetching {len(days)} weekdays from {days[0]} to {days[-1]}")
     session = requests.Session()
     records: list[dict] = []
@@ -116,7 +126,7 @@ def main() -> None:
             g = pd.concat([old[~old.index.isin(g.index)], g]).sort_index()
         g.to_csv(path)
     (OUT / "_index_names.json").write_text(json.dumps(dict(sorted(names.items())), indent=1))
-    last = max(r["date"] for r in records)
+    last = max([r["date"] for r in records] + ([state["last"]] if state.get("last") else []))
     STATE.write_text(json.dumps({"last": last, "updated": date.today().isoformat()}))
     print(f"Done: {got} daily files, {len(names)} indices, latest {last}")
 

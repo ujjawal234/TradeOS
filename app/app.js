@@ -228,18 +228,20 @@
   function dataBrief() {
     const m = S.man, st = Object.entries(m.symbols).filter(([, v]) => v.kind === "stock");
     const tick = st.map(([s, v]) => `${s}=${v.name.replace(/ (Ltd|Limited)\.?$/i, "")}`).join("; ");
+    const idx = Object.entries(m.symbols).filter(([, v]) => v.kind === "index" && !v.alias_of).map(([s, v]) => `${s}=${v.name}${v.val ? " (P/E,P/B,DY)" : ""}`).join("; ");
     const groups = Object.entries(m.universes).map(([k, v]) => `${k} (${v.length})`).join(", ");
-    const secs = Object.entries(m.sectors).map(([k, v]) => `${k}=${v.label}`).join(", ");
-    return `DATA: daily OHLCV ${Object.values(m.symbols).map((s) => s.first).sort()[0]} to ${S.lastDay}, split/dividend adjusted.
-Indices (use as symbols; rule strategies, rotation universes, benchmarks): ${Object.entries(m.symbols).filter(([, v]) => v.kind === "index").map(([k, v]) => `${k}=${v.name}`).join(", ")}. Sector baskets (equal-weight of Nifty 200 members; closes only): ${secs}.
+    const secs = Object.entries(m.sectors || {}).map(([k, v]) => `${k}=${v.label}`).join(", ");
+    return `DATA: daily OHLCV ${Object.values(m.symbols).map((s) => s.first).sort()[0]} to ${S.lastDay}; stocks split/dividend adjusted.
+Indices (NSE official where available; option underlyings NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY, NIFTYNXT50): ${idx}
+Equal-weight baskets of Nifty 200 members by industry (closes only): ${secs}.
 Named groups usable as "symbols" entries or "universe": ${groups}.
 Stocks (ticker=company): ${tick}`;
   }
   const SCHEMAS = `STRATEGY SPEC — choose ONE "type":
 1) "rule": each symbol traded independently. {"type":"rule","symbols":[tickers or group names],"entry":expr,"exit":expr or "","side":"long"|"short","stop_loss_pct":num|null,"take_profit_pct":num|null,"position_size_pct":num (default 100),"capital":₹,"cost_pct":0.12}
 2) "rotation": rank a universe by past return, hold top N equally. {"type":"rotation","universe":"nifty50"|"nifty200"|"fno"|"sectors"|group|[tickers],"lookback":days (21≈1m,63≈3m,126≈6m,252≈1y),"skip":recent days excluded,"top_n":int,"rebalance":"weekly"|"monthly","score":"momentum"|"risk_adj","min_score":0 (only positive momentum) or null,"trend_filter":{"symbol":"NIFTY","sma":200} or null,"capital":₹,"cost_pct":0.12}
-3) "option_selling": short index options, model-priced (Black-Scholes, India VIX). {"type":"option_selling","underlying":"NIFTY" (weekly, Tue)|"BANKNIFTY" (monthly),"structure":"strangle"|"straddle"|"iron_condor"|"short_put"|"short_call","strike_mode":"delta"|"otm_pct","delta":0.05–0.45 (15 delta = 0.15),"otm_pct":num,"wing_width":points,"stop_loss_mult":x credit|null,"profit_target_pct":% of credit|null,"exit_dte":int,"lots":int,"min_vix":num|null,"max_vix":num|null,"capital":₹}
-RULE LANGUAGE (entry/exit; evaluated each day; signal at close, fill next open): variables open high low close volume hl2 dow(0=Mon).
+3) "option_selling": short index options, model-priced (Black-Scholes, India VIX). {"type":"option_selling","underlying":"NIFTY" (weekly, Tue)|"BANKNIFTY"|"FINNIFTY"|"MIDCPNIFTY"|"NIFTYNXT50" (monthly, last Tue),"structure":"strangle"|"straddle"|"iron_condor"|"short_put"|"short_call","strike_mode":"delta"|"otm_pct","delta":0.05–0.45 (15 delta = 0.15),"otm_pct":num,"wing_width":points,"stop_loss_mult":x credit|null,"profit_target_pct":% of credit|null,"exit_dte":int,"lots":int,"min_vix":num|null,"max_vix":num|null,"capital":₹}
+RULE LANGUAGE (entry/exit; evaluated each day; signal at close, fill next open): variables open high low close volume hl2 dow(0=Mon), and for NSE indices marked (P/E,P/B,DY) also pe pb dy (valuation; NaN elsewhere) — e.g. buy NIFTY when pe < 20.
 Functions: sma(x,n) ema(x,n) wma(x,n) rsi(x,n=14) atr(n=14) atr_pct(n=14) macd(x,12,26) macd_signal(x,12,26,9) bb_upper(x,20,2) bb_lower(x,20,2) highest(x,n) lowest(x,n) (include today: breakouts use shift(highest(high,55),1)) shift(x,n) prev(x) change(x,n) roc(x,n)(%) stdev(x,n) zscore(x,n) volatility(x,n)(ann.%) cross_above(a,b) cross_below(a,b) count_true(cond,n) abs max min. Operators + - * / %, comparisons, and/or/not. Nothing else exists (no fundamentals, no intraday, no cross-symbol references).
 SURVIVORSHIP BIAS: stock lists are TODAY's index members applied to the whole history, so backtests of broad stock universes (nifty200, fno) are flattered. Say so when you report such results and rely on the out-of-sample and paper record.
 TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (train before, test from) or null}.`;

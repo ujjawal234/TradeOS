@@ -12,7 +12,7 @@
     "NIFTYPHARMA", "NIFTYFMCG", "NIFTYAUTO", "NIFTYMETAL", "NIFTYREALTY", "NIFTYENERGY", "NIFTYPSUBANK",
     "NIFTYMEDIA", "NIFTYINFRA", "NIFTYFIN"]);
   // indices and sector baskets are held in fractional units; stocks in whole shares ("BSE" alone is BSE Ltd, a stock)
-  const isIndex = (s) => INDEX_KEYS.has(s) || s.startsWith("^") || s.startsWith("SEC_") || s.startsWith("NIFTY") || (s.startsWith("BSE") && s.length > 3) || s === "BANKEX" || s === "SENSEX";
+  const isIndex = (s) => INDEX_KEYS.has(s) || s.startsWith("^") || s.startsWith("SEC_") || s.startsWith("NIFTY") || (s.startsWith("BSE") && s.length > 3) || s === "BANKEX" || s === "SENSEX" || s === "FINNIFTY" || s === "MIDCPNIFTY";
 
   // ----------------------------------------------------------------- series helpers
   function f64(n, v = NaNv) { const a = new Float64Array(n); if (v !== 0) a.fill(v); return a; }
@@ -83,7 +83,7 @@
   class RuleError extends Error {}
   const FUNCS = ["sma", "ema", "wma", "rsi", "atr", "atr_pct", "macd", "macd_signal", "bb_upper", "bb_lower", "highest", "lowest",
     "shift", "prev", "change", "roc", "stdev", "zscore", "volatility", "cross_above", "cross_below", "count_true", "abs", "max", "min"];
-  const VARS = ["open", "high", "low", "close", "volume", "hl2", "dow"];
+  const VARS = ["open", "high", "low", "close", "volume", "hl2", "dow", "pe", "pb", "dy"];
 
   function tokenize(src) {
     const t = []; let i = 0;
@@ -152,7 +152,8 @@
 
   function evaluate(ast, df) {
     const L = df.c.length;
-    const vars = { open: df.o, high: df.h, low: df.l, close: df.c, volume: df.v };
+    const nanArr = () => new Float64Array(L).fill(NaN);
+    const vars = { open: df.o, high: df.h, low: df.l, close: df.c, volume: df.v, pe: df.pe || nanArr(), pb: df.pb || nanArr(), dy: df.dy || nanArr() };
     const S = (x) => toF(x, L), B = (x) => toB(x, L);
     const bin = (op, a, b) => {
       if (isNum(a) && isNum(b)) return binNum(op, a, b);
@@ -238,7 +239,8 @@
     if (raw.f === 2) { // compact: close as cumulative deltas in paise; o/h/l as offsets from close
       const c = new Float64Array(n), o = new Float64Array(n), h = new Float64Array(n), l = new Float64Array(n);
       let cc = raw.c0; for (let i = 0; i < n; i++) { if (i) cc += raw.c[i]; c[i] = cc / 100; o[i] = (cc + raw.o[i]) / 100; h[i] = (cc + raw.h[i]) / 100; l[i] = (cc + raw.l[i]) / 100; }
-      return { d, o, h, l, c, v: Float64Array.from(raw.v) };
+      const val = (a) => a ? Float64Array.from(a, (x) => x == null ? NaN : x) : null;
+      return { d, o, h, l, c, v: Float64Array.from(raw.v), pe: val(raw.pe), pb: val(raw.pb), dy: val(raw.dy) };
     }
     return { d, o: Float64Array.from(raw.o), h: Float64Array.from(raw.h), l: Float64Array.from(raw.l), c: Float64Array.from(raw.c), v: Float64Array.from(raw.v) };
   }
@@ -490,7 +492,9 @@
     if (e < day) { const y = dt.getUTCMonth() === 11 ? dt.getUTCFullYear() + 1 : dt.getUTCFullYear(), m = (dt.getUTCMonth() + 1) % 12; e = lastWeekdayOfMonth(y, m, w); }
     return e;
   }
-  const UNDERLYINGS = { NIFTY: { lot_size: 65, strike_step: 50, expiry: "weekly" }, BANKNIFTY: { lot_size: 30, strike_step: 100, expiry: "monthly" }, NIFTYFIN: { lot_size: 60, strike_step: 50, expiry: "monthly" } };
+  const UNDERLYINGS = { NIFTY: { lot_size: 65, strike_step: 50, expiry: "weekly" }, BANKNIFTY: { lot_size: 30, strike_step: 100, expiry: "monthly" },
+    FINNIFTY: { lot_size: 60, strike_step: 50, expiry: "monthly" }, MIDCPNIFTY: { lot_size: 120, strike_step: 25, expiry: "monthly" },
+    NIFTYNXT50: { lot_size: 25, strike_step: 100, expiry: "monthly" } };
   function pyRound(x) { const f = Math.floor(x), d = x - f; if (d > 0.5) return f + 1; if (d < 0.5) return f; return f % 2 === 0 ? f : f + 1; }
 
   function runOptions(spec, frames, opt) {
@@ -574,9 +578,12 @@
   // Claude (or a person) may write values loosely: "15" for 0.15 delta, "Nifty 50" for nifty50, "RELIANCE.NS",
   // null for "use the default". Normalise all of that here so a sensible strategy never fails on format.
   const NULLABLE = new Set(["stop_loss_pct", "take_profit_pct", "min_score", "trend_filter", "min_vix", "max_vix", "stop_loss_mult", "profit_target_pct", "exit"]);
-  const ALIASES = { NIFTY50: "NIFTY", "NIFTY 50": "NIFTY", NSEI: "NIFTY", "BANK NIFTY": "BANKNIFTY", NIFTYBANK: "BANKNIFTY", NSEBANK: "BANKNIFTY", "INDIA VIX": "INDIAVIX", VIX: "INDIAVIX",
-    FINNIFTY: "NIFTYFIN", "NIFTY IT": "NIFTYIT", "NIFTY PHARMA": "NIFTYPHARMA", BSESN: "SENSEX", ZOMATO: "ETERNAL", TATAMOTORS: "TMPV", "TATA MOTORS": "TMPV", BAJAJAUTO: "BAJAJ-AUTO",
-    "M & M": "M&M", MM: "M&M", MAHINDRA: "M&M" };
+  const ALIASES = { NIFTY50: "NIFTY", "NIFTY 50": "NIFTY", NIFTY_50: "NIFTY", NSEI: "NIFTY", "BANK NIFTY": "BANKNIFTY", NIFTYBANK: "BANKNIFTY", NIFTY_BANK: "BANKNIFTY", NSEBANK: "BANKNIFTY",
+    "INDIA VIX": "INDIAVIX", INDIA_VIX: "INDIAVIX", VIX: "INDIAVIX", NIFTYFIN: "FINNIFTY", NIFTYFINSERVICE: "FINNIFTY", NIFTYFINANCIALSERVICES: "FINNIFTY", NIFTY_FINANCIAL_SERVICES: "FINNIFTY",
+    MIDCAPSELECT: "MIDCPNIFTY", NIFTYMIDSELECT: "MIDCPNIFTY", NIFTYMIDCAPSELECT: "MIDCPNIFTY", NIFTY_MIDCAP_SELECT: "MIDCPNIFTY", NIFTYNEXT50: "NIFTYNXT50", NEXT50: "NIFTYNXT50", NIFTY_NEXT_50: "NIFTYNXT50",
+    NIFTYIT: "NIFTY_IT", NIFTYPHARMA: "NIFTY_PHARMA", NIFTYAUTO: "NIFTY_AUTO", NIFTYFMCG: "NIFTY_FMCG", NIFTYMETAL: "NIFTY_METAL", NIFTYREALTY: "NIFTY_REALTY",
+    NIFTYENERGY: "NIFTY_ENERGY", NIFTYPSUBANK: "NIFTY_PSU_BANK", NIFTYMEDIA: "NIFTY_MEDIA", NIFTYPVTBANK: "NIFTY_PRIVATE_BANK", NIFTY100: "NIFTY_100", NIFTY200: "NIFTY_200", NIFTY500: "NIFTY_500",
+    BSESN: "SENSEX", ZOMATO: "ETERNAL", TATAMOTORS: "TMPV", "TATA MOTORS": "TMPV", BAJAJAUTO: "BAJAJ-AUTO", "M & M": "M&M", MM: "M&M", MAHINDRA: "M&M" };
   const groupKey = (x) => String(x).toLowerCase().replace(/[^a-z0-9]/g, "");
   function symKey(x) {
     let s = String(x).trim().toUpperCase().replace(/^\^/, "").replace(/\.(NS|BO)$/, "");
@@ -640,7 +647,7 @@
     if (type === "option_selling") {
       const s = Object.assign({}, OPT_DEF, clean(spec, OPT_DEF), { type });
       s.underlying = symKey(s.underlying);
-      if (!UNDERLYINGS[s.underlying]) throw new RuleError(`Option selling works on NIFTY or BANKNIFTY here, not '${s.underlying}'.`);
+      if (!UNDERLYINGS[s.underlying]) throw new RuleError(`Option selling works on NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY or NIFTYNXT50 here, not '${s.underlying}'.`);
       const base = UNDERLYINGS[s.underlying];
       for (const k of ["lot_size", "strike_step"]) s[k] = Math.trunc(numOr(s[k], base[k]));
       s.expiry = /week/i.test(String(s.expiry)) ? "weekly" : /month/i.test(String(s.expiry)) ? "monthly" : base.expiry;
