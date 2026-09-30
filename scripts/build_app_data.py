@@ -271,11 +271,28 @@ def main(out: Path) -> None:
     sh_file = ROOT / "data" / "shares.json"
     if sh_file.exists():
         raw_sh = json.loads(sh_file.read_text()).get("stocks", {})
+        floats = sorted(v["float"] for v in raw_sh.values() if v.get("float"))
+        f_default = floats[len(floats) // 2] if floats else 1.0  # median free float where Yahoo has none
+        SPLITS = (1.5, 2, 3, 4, 5, 10)
+
+        def split_adjusted(pts):
+            """Prices are split/bonus adjusted, so share counts must be too: walking back from today, a jump that
+            matches a split or bonus ratio (2x, 5x, 1:2 bonus = 1.5x ...) scales every earlier count up by that ratio."""
+            pts = sorted(pts)
+            out, mult = [], 1.0
+            for i in range(len(pts) - 1, -1, -1):
+                d, n = pts[i]
+                if i < len(pts) - 1:
+                    r = pts[i + 1][1] / n
+                    if any(abs(r / k - 1) < 0.03 for k in SPLITS):
+                        mult *= r
+                out.append([d, n * mult])
+            return sorted(out)
         out_sh = {}
         for s, v in raw_sh.items():
             pts = [[int(pd.Timestamp(d).value // 86_400_000_000_000), float(n)] for d, n in v.get("shares", []) if n and n > 0]
             if s in symbols and pts:
-                out_sh[s] = {"f": v.get("float") or 1.0, "s": sorted(pts)}
+                out_sh[s] = {"f": v.get("float") or f_default, "s": split_adjusted(pts)}
         (dst / "shares.json").write_text(json.dumps(out_sh, separators=(",", ":")))
         print(f"shares: {len(out_sh)} stocks with share counts")
     size = sum(p.stat().st_size for p in dst.rglob("*.json"))
