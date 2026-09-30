@@ -256,28 +256,39 @@ def corporate_actions(days: list[date], cache: Path, workers: int) -> tuple[pd.D
     return ca, {"files": len(parts), "new": got, "not_available": reasons, "records": len(ca)}
 
 
-NUM = r"(?:RS|RE|INR)\.?\s*([\d]+(?:\.\d+)?)"
+STD_SPLIT = [1 / 2, 2 / 5, 1 / 4, 1 / 5, 1 / 10, 1 / 3, 1 / 20, 1 / 100, 1 / 1.5]
+STD_BONUS = [1 / 2, 2 / 3, 1 / 3, 3 / 4, 1 / 4, 4 / 5, 1 / 5, 3 / 5, 5 / 6, 1 / 6, 2 / 5]
 
 
 def parse_purpose(p: str) -> list[tuple[str, float]]:
-    """'BONUS 1:1' -> ('ratio', 0.5); 'FACE VALUE SPLIT FROM RS 10 TO RS 2' -> ('ratio', 0.2); dividends -> ('div', rupees)."""
+    """NSE's (often abbreviated or cut-off) purpose text -> actions:
+    ('ratio', f) known price factor (bonus a:b -> b/(a+b); split/consolidation from X to Y -> Y/X)
+    ('split?', 0) / ('bonus?', 0) split or bonus with an unreadable ratio (matched to standard ratios on price)
+    ('demerger', 0) demerger / scheme of arrangement / capital reduction (adjusted by the ex-date price gap)
+    ('div', rupees) cash dividend."""
     import re
-    P = " ".join(str(p).upper().replace("/-", " ").split())
+    P = str(p).upper().replace("/-", " ").replace("-", " ")
+    P = re.sub(r"(\d)\s*TO\b", r"\1 TO", re.sub(r"\bTO\s*(\d)", r"TO \1", re.sub(r"(\d)TO", r"\1 TO ", re.sub(r"TO(\d)", r"TO \1", P))))
+    P = re.sub(r"(INT|FIN|SPL|SPECIAL|INTERIM|FINAL)DIV", r"\1 DIV", P)
+    P = " ".join(P.split())
     out = []
-    for a, b in re.findall(r"BONUS[^0-9]{0,20}(\d+)\s*:\s*(\d+)", P):
-        a, b = int(a), int(b)
-        if a > 0 and b > 0:
-            out.append(("ratio", b / (a + b)))
-    if re.search(r"SPLIT|SUB[- ]?DIVI", P) or re.search(r"CONSOLIDAT", P):
-        nums = [float(x) for x in re.findall(NUM, P)]
-        if len(nums) >= 2 and nums[0] > 0 and nums[1] > 0 and nums[0] != nums[1]:
-            out.append(("ratio", nums[1] / nums[0]))
-    if "DIV" in P:
-        for seg in re.split(r"/|\bAND\b|&", P):
-            if "DIV" in seg and "%" not in seg:
-                m = re.search(r"DIV[A-Z. ]*?[-:]?\s*" + NUM, seg)
-                if m:
-                    out.append(("div", float(m.group(1))))
+    bon = re.findall(r"\bBON(?:US)?(?![A-Z])[^0-9/]{0,12}(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)", P)
+    for x, y in bon:
+        x, y = float(x), float(y)
+        if x > 0 and y > 0:
+            out.append(("ratio", y / (x + y)))
+    if not bon and re.search(r"\bBON(?:US)?(?![A-Z])", P):
+        out.append(("bonus?", 0.0))
+    if re.search(r"SPLI?T|\bFV\s*SPL|FVSPL|SUB\s*DIV|CONSOL", P):
+        m = re.search(r"(?:FRM|FROM|FR|RS|RE|INR|SPLT|SPL|SPLIT)\.?\s*(\d+(?:\.\d+)?)[^0-9]{0,24}?\bTO\s*(?:RS|RE|INR)?\.?\s*(\d+(?:\.\d+)?)", P)
+        if m and float(m.group(1)) > 0 and float(m.group(2)) > 0 and m.group(1) != m.group(2):
+            out.append(("ratio", float(m.group(2)) / float(m.group(1))))
+        else:
+            out.append(("consol?" if "CONSOL" in P else "split?", 0.0))
+    if re.search(r"DEMERG|SCHEME OF ARR|ARRANGEMENT|CAP(?:ITAL)? RED|SPIN", P):
+        out.append(("demerger", 0.0))
+    for m in re.finditer(r"\bDIV(?:IDEND)?\b\s*[:]?\s*(?:RS|RE|INR)?\.?\s*(\d+(?:\.\d+)?)(?!\s*%|\d)", P):
+        out.append(("div", float(m.group(1))))
     return out
 
 
@@ -309,26 +320,47 @@ def adjust(g: pd.DataFrame, gaps: set = frozenset(), acts: list | None = None, s
     st = stats if stats is not None else {}
     by_day: dict = {}
     for ex, kind, val in acts or []:
-        by_day.setdefault(ex, {"ratio": [], "div": []})[kind].append(val)
+        by_day.setdefault(ex, []).append((kind, val))
     for ex, a in sorted(by_day.items()):
         t = int(np.searchsorted(dates, np.datetime64(ex)))
         if t <= 0 or t >= len(g) or (dates[t] - np.datetime64(ex)) > np.timedelta64(7, "D"):
             st["outside_data"] = st.get("outside_data", 0) + 1
             continue
         c = close[t - 1]
-        ratios = [x for x in a["ratio"] if abs(x - 1) >= 0.02]
-        if ratios and f[t] == 1.0:
-            # the same announcement can be listed more than once, and a bonus and a split can share an ex-date:
-            # take whichever combination matches the actual ex-date move
-            cands = {round(float(np.prod(ratios)), 6), round(float(np.prod(sorted(set(ratios)))), 6), *[round(x, 6) for x in set(ratios)]}
-            moves = [np.log(x / c) for x in (opn[t], close[t]) if x > 0]
-            best = min(cands, key=lambda v: min(abs(m - np.log(v)) for m in moves)) if moves else None
-            if best is not None and min(abs(m - np.log(best)) for m in moves) < 0.2:
+        moves = [np.log(x / c) for x in (opn[t], close[t]) if x > 0]
+        err = lambda v: min(abs(m - np.log(v)) for m in moves) if moves and v > 0 else 9  # noqa: E731
+        kinds = {k for k, _ in a}
+        ratios = [v for k, v in a if k == "ratio" and abs(v - 1) >= 0.02]
+        applied = False
+        if (ratios or kinds & {"split?", "bonus?", "consol?"}) and f[t] == 1.0:
+            # the same announcement can be listed more than once, and a bonus and a split can share an ex-date;
+            # unreadable ratios are matched to standard ones — whichever combination fits the ex-date move
+            cands = {round(float(np.prod(ratios)), 6), round(float(np.prod(sorted(set(ratios)))), 6), *[round(x, 6) for x in set(ratios)]} if ratios else set()
+            base = [float(np.prod(sorted(set(ratios))))] if ratios else [1.0]
+            if "split?" in kinds:
+                cands |= {round(b * x, 6) for b in base for x in STD_SPLIT}
+            if "bonus?" in kinds:
+                cands |= {round(b * x, 6) for b in base for x in STD_BONUS}
+            if "split?" in kinds and "bonus?" in kinds:
+                cands |= {round(x * y, 6) for x in STD_SPLIT for y in STD_BONUS}
+            if "consol?" in kinds:
+                cands |= {round(b * x, 6) for b in base for x in (2, 4, 5, 10, 20)}
+            known = ({round(float(np.prod(ratios)), 6), round(float(np.prod(sorted(set(ratios)))), 6), *[round(x, 6) for x in set(ratios)]}) if ratios else set()
+            cands.discard(1.0)
+            best = min(cands, key=err) if cands else None
+            tol = 0.2 if best in known else 0.1  # a ratio NSE stated may sit further from the move than one we infer
+            if best is not None and err(best) < tol:
                 f[t] *= best
+                applied = True
                 st["ratio_applied"] = st.get("ratio_applied", 0) + 1
             else:
                 st["ratio_rejected"] = st.get("ratio_rejected", 0) + 1
-        divs = sorted({round(x, 4) for x in a["div"] if x > 0})
+        if "demerger" in kinds and not applied and f[t] == 1.0 and moves:
+            gap = opn[t] / c if opn[t] > 0 else close[t] / c
+            if 0.05 < gap < 0.97:
+                f[t] *= gap
+                st["demergers"] = st.get("demergers", 0) + 1
+        divs = sorted({round(v, 4) for k, v in a if k == "div" and v > 0})
         if divs and sum(divs) < 0.25 * c:
             f[t] *= (c - sum(divs)) / c
             st["dividends"] = st.get("dividends", 0) + 1
@@ -402,10 +434,22 @@ def main() -> None:
             if sym == old and when < pd.Timestamp(d):
                 sym = new
         return sym
+    chain = {}
+    for old, new, _ in changes:
+        chain[old] = new
+    def final(sym: str) -> str:
+        seen = set()
+        while sym in chain and sym not in seen:
+            seen.add(sym)
+            sym = chain[sym]
+        return sym
     acts: dict[str, list] = {}
     for r in ca.itertuples(index=False):
+        cur = current(r.sym, r.ex)
+        if cur not in keep and final(r.sym) in keep:
+            cur = final(r.sym)
         for kind, val in parse_purpose(r.purpose):
-            acts.setdefault(current(r.sym, r.ex), []).append((r.ex, kind, val))
+            acts.setdefault(cur, []).append((r.ex, kind, val))
     ca_stats: dict = {}
     adj_stats, examples, ends, jumps = {"tickers_adjusted": 0, "events": 0, "small_events": 0}, {}, {}, []
     for sym, g in df[df["sym"].isin(keep)].groupby("sym", sort=True):
@@ -433,12 +477,12 @@ def main() -> None:
         "universes": uni}, indent=1))
     print(f"Corporate actions applied: {ca_stats}; one-day moves beyond ±40% left: {len(jumps)}", flush=True)
     # diagnostics: NSE's records near each unexplained move, and split/bonus texts the parser could not read
-    ca["cur"] = [current(a, b) for a, b in zip(ca["sym"], ca["ex"])]
+    ca["cur"] = [(current(a, b) if current(a, b) in keep else final(a)) for a, b in zip(ca["sym"], ca["ex"])]
     for j in jumps[:200]:
         near = ca[(ca["cur"] == j[0]) & ((ca["ex"] - pd.Timestamp(j[1])).abs() <= pd.Timedelta(days=20))]
         j.append([f"{str(r.ex)[:10]} {r.purpose}" for r in near.itertuples()][:4])
     kw = ca[ca["purpose"].str.upper().str.contains("SPLIT|SUB|BONUS|CONSOL|FV|FACE", regex=True, na=False)]
-    unread = sorted({p for p in kw["purpose"] if not any(k == "ratio" for k, _ in parse_purpose(p))})
+    unread = sorted({p for p in kw["purpose"] if not any(k in ("ratio", "split?", "bonus?", "demerger") for k, _ in parse_purpose(p))})
     (OUT / "_report.json").write_text(json.dumps({**info, "download": dl, "corporate_actions": {**ca_info, **ca_stats}, "big_moves_left": jumps[:200], "unread_split_texts": unread[:300], "gap_days": sorted(str(x)[:10] for x in gaps), "symbol_change_rows_moved": moved, "members": len(members),
         "members_no_longer_trading": len(stale), "examples_no_longer_trading": stale[:60], "adjustments": adj_stats,
         "adjustment_examples": examples, "sizes": {k: [len(x[1]) for x in v][-3:] for k, v in uni.items()}}, indent=1))
