@@ -129,6 +129,66 @@ def enc_full(df: pd.DataFrame) -> dict:
 PIT_DIR = ROOT / "data" / "pit"
 
 
+def consensus_fix(nse: pd.DataFrame, yahoo: pd.Series | None, sym: str, repairs: list) -> pd.DataFrame:
+    """NSE's corporate-action records occasionally miss an event (e.g. a bonus with no record that day), leaving a fake
+    jump. Where Yahoo's adjusted series exists, a one-day NSE move of 10%+ that Yahoo doesn't show — checked over a
+    5-day window so a one-day date offset in Yahoo's data doesn't count — is treated as a missed adjustment and the NSE
+    history before it is rescaled. NSE is kept where Yahoo has the jump (Yahoo's own demerger/bonus errors)."""
+    if yahoo is None or len(yahoo) < 50 or len(nse) < 50:
+        return nse
+    c = nse["close"]
+    r = np.log(c).diff()
+    y = yahoo.reindex(c.index).ffill()
+    for t in r.index[(r.abs() > 0.1).to_numpy()][::-1]:  # latest first, so each fix sees already-fixed later data
+        i = c.index.get_loc(t)
+        a, b = max(0, i - 3), min(len(c) - 1, i + 2)
+        if not (y.iloc[a] == y.iloc[a] and y.iloc[b] == y.iloc[b] and y.iloc[i - 1] == y.iloc[i - 1] and y.iloc[i] == y.iloc[i]):
+            continue
+        cc = nse["close"]
+        wn, wy = np.log(cc.iloc[b] / cc.iloc[a]), np.log(y.iloc[b] / y.iloc[a])
+        ry = np.log(y.iloc[i] / y.iloc[i - 1])
+        rn = np.log(cc.iloc[i] / cc.iloc[i - 1])
+        if abs(ry) < 0.04 and abs(wn - wy) > 0.1 and abs(rn - ry) > 0.1:
+            k = float(np.exp(rn - ry))
+            before = nse.index < t
+            for col in ("open", "high", "low", "close"):
+                nse.loc[before, col] = nse.loc[before, col] * k
+            if "volume" in nse:
+                nse.loc[before, "volume"] = nse.loc[before, "volume"] / k
+            repairs.append([sym, str(t.date()), round(k, 4)])
+    return nse
+
+
+PIT_FRAMES: dict = {}  # NSE bhavcopy series (after consensus_fix), reused as the app's main stock prices
+PIT_REPAIRS: list = []
+
+
+def load_pit_frames() -> tuple[dict, list]:
+    """NSE bhavcopy OHLCV per stock (scripts/fetch_bhavcopy.py), cross-checked against Yahoo (consensus_fix); cached"""
+    if PIT_FRAMES:
+        return PIT_FRAMES, PIT_REPAIRS
+    pdir = PIT_DIR / "prices"
+    if not pdir.exists():
+        return {}, []
+    frames, repairs = PIT_FRAMES, PIT_REPAIRS
+    for f in sorted(pdir.glob("*.csv")):
+        df = pd.read_csv(f, index_col=0, parse_dates=True).dropna(subset=["close"])
+        df = df[(df["close"] > 0) & ~df.index.duplicated(keep="last")].sort_index()
+        if len(df) < 20:
+            continue
+        yf = ROOT / "data" / "prices" / f"{f.stem}.csv"
+        if yf.exists():
+            y = pd.read_csv(yf, index_col=0, parse_dates=True)["close"].dropna()
+            df = consensus_fix(df, y[~y.index.duplicated(keep="last")].sort_index(), f.stem, repairs)
+        for col in ("open", "high", "low"):
+            df[col] = df[col].fillna(df["close"])
+        df["volume"] = df["volume"].fillna(0)
+        frames[f.stem] = df
+    return frames, repairs
+
+
+
+
 def build_pit(dst: Path, universes: dict) -> dict | None:
     """Survivorship-free universes (scripts/fetch_bhavcopy.py): data/pit/{closes.json, membership.json, p/<SYM>.json}.
     Their prices come from NSE bhavcopy and live apart from the Yahoo series, so a point-in-time backtest uses one
@@ -139,16 +199,7 @@ def build_pit(dst: Path, universes: dict) -> dict | None:
     mem = json.loads(mem_file.read_text())
     out = dst / "pit"
     (out / "full").mkdir(parents=True, exist_ok=True)
-    frames = {}
-    for f in sorted(pdir.glob("*.csv")):
-        df = pd.read_csv(f, index_col=0, parse_dates=True).dropna(subset=["close"])
-        df = df[(df["close"] > 0) & ~df.index.duplicated(keep="last")].sort_index()
-        if len(df) < 20:
-            continue
-        for col in ("open", "high", "low"):
-            df[col] = df[col].fillna(df["close"])
-        df["volume"] = df["volume"].fillna(0)
-        frames[f.stem] = df
+    frames, repairs = load_pit_frames()
     cal = pd.DatetimeIndex(sorted(set().union(*[set(df.index) for df in frames.values()])))
     days = cal.values.astype("datetime64[D]").astype("int64")
     pack = {"f": 2, "d0": int(days[0]), "dd": np.diff(days, prepend=days[0]).tolist(), "s": {}}
@@ -173,12 +224,14 @@ def build_pit(dst: Path, universes: dict) -> dict | None:
                                 "ever": len(universes[k]), "latest": v[-1][1] if v else []}
     gone = sum(1 for df in frames.values() if df.index[-1] < cal[-1] - pd.Timedelta(days=10))
     info["no_longer_trading"] = gone
+    info["repairs"] = repairs
     print(f"pit: {len(frames)} stocks ({gone} no longer trading), universes {', '.join(f'{k}={len(universes[k])}' for k in unis)}")
     return info
 
 
 def main(out: Path) -> None:
     src, dst = ROOT / "data" / "prices", out / "data"
+    nse_stocks, _ = load_pit_frames()
     (dst / "p").mkdir(parents=True, exist_ok=True)
     uni = json.loads((ROOT / "data" / "universe.json").read_text())["stocks"]
     fetched = json.loads((ROOT / "data" / "manifest.json").read_text())
@@ -239,6 +292,9 @@ def main(out: Path) -> None:
             continue  # NSE's official series replaces the Yahoo copy
         df = pd.read_csv(f, index_col=0, parse_dates=True).dropna(subset=["close"])
         df = df[~df.index.duplicated(keep="last")].sort_index()
+        src_name = "Yahoo"
+        if not is_idx and s in nse_stocks and len(nse_stocks[s]) >= MIN_ROWS:
+            df, src_name = nse_stocks[s][["open", "high", "low", "close", "volume"]].copy(), "NSE"  # NSE bhavcopy, adjusted from NSE's own records
         if len(df) < (MIN_ROWS_INDEX if is_idx else MIN_ROWS):
             continue
         frames[s] = df
@@ -247,7 +303,7 @@ def main(out: Path) -> None:
         symbols[s] = {"first": str(df.index[0].date()), "last": str(df.index[-1].date()), "rows": len(df),
                       "name": meta.get("name") or INDEX_NAMES.get(s, s), "industry": meta.get("industry") or ("Index" if s in INDEX_NAMES else ""),
                       "n50": bool(meta.get("nifty50")), "n200": bool(meta.get("nifty200")), "fno": bool(meta.get("fno")),
-                      "lot": meta.get("lot_size"), "kind": "index" if is_idx else "stock",
+                      "lot": meta.get("lot_size"), "kind": "index" if is_idx else "stock", **({} if is_idx else {"src": src_name}),
                       **({"group": "broad", "source": "Yahoo"} if is_idx else {})}
     # legacy keys (earlier builds used these names; saved agents may still refer to them) -> same series
     LEGACY = {"NIFTYBANK": "BANKNIFTY", "NIFTYIT": "NIFTY_IT", "NIFTYPHARMA": "NIFTY_PHARMA", "NIFTYNEXT50": "NIFTYNXT50",
@@ -316,7 +372,7 @@ def main(out: Path) -> None:
     }
     pit = build_pit(dst, universes)
     has_shares = (ROOT / "data" / "shares.json").exists()
-    manifest = {"generated": fetched.get("generated"), "shares": has_shares, "source": "Stocks: Yahoo Finance (split & dividend adjusted). Indices: NSE daily index files (with P/E, P/B, dividend yield). Lists: NSE.",
+    manifest = {"generated": fetched.get("generated"), "shares": has_shares, "source": "Stocks: NSE daily bhavcopy, adjusted with NSE's corporate-action records (splits, bonuses, dividends, demergers, rights) and cross-checked against Yahoo; Yahoo only where NSE history is missing. Indices: NSE daily index files (with P/E, P/B, dividend yield). Lists: NSE.",
                 "symbols": symbols, "universes": universes, "sectors": sectors, **({"pit": pit} if pit else {})}
     (dst / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":")))
     # share counts (for market-cap weights): {SYM: {"f": free-float ratio, "s": [[epoch_day, shares], ...]}}

@@ -462,7 +462,9 @@ def main() -> None:
     print(f"Reviews: {len(info['reviews'])} ({info['reviews'][0]} … {info['reviews'][-1]}); stocks ever in the top 200: {len(members)}", flush=True)
     prices = OUT / "prices"
     prices.mkdir(parents=True, exist_ok=True)
-    keep = set(members)
+    uni_file = ROOT / "data" / "universe.json"  # the app's own stock list gets NSE prices too (its main price source)
+    app_stocks = set(json.loads(uni_file.read_text()).get("stocks", {})) if uni_file.exists() else set()
+    keep = set(members) | (app_stocks & set(df["sym"].unique()))
     for f in prices.glob("*.csv"):
         if f.stem not in keep:
             f.unlink()
