@@ -66,9 +66,15 @@
       if (S.room.ver == null || !S.room.versions.find((v) => v.n === S.room.ver)) S.room.ver = a?.version || S.room.versions.length;
       renderRoomHead(); renderRoomBody();
     }, () => toast("Couldn't load this agent's versions.")));
-    S.room.unsubs.push(S.db.collection(`agents/${id}/messages`).orderBy("at").limit(300).onSnapshot((snap) => { S.room.messages = snap.docs.map((d) => ({ id: d.id, ...d.data() })); renderRoomLog(); }));
+    S.room.unsubs.push(S.db.collection(`agents/${id}/messages`).orderBy("at", "desc").limit(400).onSnapshot((snap) => { S.room.allMessages = snap.docs.map((d) => ({ id: d.id, ...d.data() })).reverse(); roomVisible(); renderRoomLog(); }));
   }
   const curAgent = () => S.agents.get(S.room.id);
+  function roomVisible() { const since = curAgent()?.chat_since || ""; S.room.messages = (S.room.allMessages || []).filter((m) => (m.at || "") > since); }
+  async function startNewRoomChat(quiet) {
+    const a = curAgent(); if (!a) return;
+    const since = new Date(Date.now() - 1).toISOString(); a.chat_since = since; roomVisible(); renderRoomLog();
+    try { await patchAgent(a.id, { chat_since: since }); if (!quiet) toast("New chat started. Earlier messages are archived; versions and results are kept."); } catch (e) { toast(e.message || String(e)); }
+  }
   const curVersion = () => S.room.versions.find((v) => v.n === S.room.ver);
   function renderRoomHead() {
     const a = curAgent(); if (!a) { $("roomName").textContent = "Agent not found"; return; }
@@ -244,14 +250,15 @@
   // ---------------------------------------------------------------- agent chat
   function renderRoomLog() {
     const log = $("roomLog"), msgs = S.room.messages; names(msgs.map((m) => m.by));
-    log.innerHTML = msgs.length ? msgs.map((m) => {
+    $("roomNewChat").hidden = !msgs.length || S.readOnly;
+    log.innerHTML = archivedBar("agent", (S.room.allMessages || []).length - msgs.length) + (msgs.length ? msgs.map((m) => {
       if (m.role === "system") return `<div class="msg system"><div class="body">${esc(m.text)} <span class="muted">· ${esc(fmtWhen(m.at))}</span></div></div>`;
       const who = m.role === "user" ? nameOf(m.by) : curAgent()?.name || "Agent";
       let prop = "";
       if (m.proposal) { const pr = m.proposal; prop = `<div class="proposal" style="margin-top:6px;padding:10px"><b>${pr.status === "saved" ? "Change applied" : pr.status === "discarded" ? "Change discarded" : "Suggested change"}</b><p class="small">${esc(pr.note || "")}</p><div data-chatres="${esc(m.id)}" class="small muted">${pr.status === "saved" ? `Saved as v${pr.saved_version}.` : pr.status === "discarded" ? "Discarded." : "Testing…"}</div>
         ${pr.status ? "" : `<div class="row"><button class="btn small" type="button" data-save-prop="${esc(m.id)}" ${S.readOnly ? "disabled" : ""}>Save as new version</button><button class="btn ghost small" type="button" data-drop-prop="${esc(m.id)}">Discard</button></div>`}</div>`; }
       return `<div class="msg ${m.role === "user" ? "user" : ""}"><div class="meta">${esc(who)} · ${esc(fmtWhen(m.at))}</div><div class="body">${md(m.text)}${attHtml(m.attachments)}${prop}</div></div>`;
-    }).join("") : `<p class="small muted">Ask this agent anything — how it behaved in 2020, why a stock is in the list, what to change. It can propose edits and you decide whether to keep them.</p>`;
+    }).join("") : "") + (msgs.length ? "" : `<p class="small muted">Ask this agent anything — how it behaved in 2020, why a stock is in the list, what to change. It can propose edits and you decide whether to keep them.</p>`);
     log.scrollTop = log.scrollHeight;
     for (const m of msgs) if (m.proposal && !m.proposal.status) fillChatProposal(m);
     log.querySelectorAll("[data-save-prop]").forEach((b) => b.addEventListener("click", async () => {
@@ -289,6 +296,7 @@ RULES
 - A change YOU suggest without being asked gets "apply_now": false; the user decides.
 - Your goal is profit. Answer with numbers from the data below or the backtest tool. No lectures or disclaimers. If you expect their change to lose money, say so in one sentence with the number, after making it.
 - For a plain question, "proposal" is null.
+- When the user asks to clear this chat, delete the history or start fresh, set "new_chat": true (earlier messages are archived; versions and results stay).
 - When the user states a lasting rule for this agent ("never…", "always…"), add it to "remember"; to cancel one, put its exact text in "forget".
 - Never invent data you weren't given.
 
@@ -308,7 +316,7 @@ VERSION HISTORY: ${JSON.stringify(S.room.versions.map((x) => ({ n: x.n, note: x.
 ${dataBrief()}
 
 When the user selects part of the page or attaches a photo/screenshot, answer about exactly that and set "attachment_notes" to 1-3 lines of the key facts it shows.
-REPLY with ONE JSON object only (no text before or after it, no code fences; keep "reply" under 200 words; escape quotes and newlines inside strings): {"reply":"markdown","attachment_notes":"","proposal":null or {"note":"what changed, in a few words","changes":{only the changed fields; null removes},"apply_now":true|false,"explanation":"updated one-paragraph description of the rules","test":null or {"start":"...","end":null,"split":"..."}},"remember":[],"forget":[]}
+REPLY with ONE JSON object only (no text before or after it, no code fences; keep "reply" under 200 words; escape quotes and newlines inside strings): {"reply":"markdown","attachment_notes":"","proposal":null or {"note":"what changed, in a few words","changes":{only the changed fields; null removes},"apply_now":true|false,"explanation":"updated one-paragraph description of the rules","test":null or {"start":"...","end":null,"split":"..."}},"remember":[],"forget":[],"new_chat":false}
 
 CONVERSATION:
 ${hist || "(new)"}
@@ -337,6 +345,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
         } catch (e) { msg.text += `\n\n_(That change couldn't be applied: ${e.message}. Say it again or edit the rules under Rules.)_`; }
       }
       msg.text += await applyOrderChanges("agent", a, out);
+      if (out?.new_chat === true && !S.readOnly) await startNewRoomChat(true);
       const mid = await addAgentMsg(a.id, msg); st.textContent = "";
       if (applyNow && msg.proposal) { st.innerHTML = '<span class="thinking">Applying your change<span class="dots"></span></span>'; const n = await saveChatProposal(a, mid, msg.proposal); st.textContent = ""; toast(`Applied as v${n}${a.status === "paper" ? " — paper trading now runs v" + n : ""}`); }
     } catch (e) { st.classList.add("err"); st.textContent = claudeError(e); }
@@ -440,6 +449,8 @@ USER NOW: ${text}${attachmentText(atts)}`;
   document.addEventListener("keydown", (e) => { if (e.key !== "Escape") return; closeMenus(); document.querySelectorAll(".sheet").forEach((x) => { x.hidden = true; }); document.body.classList.remove("chat-open"); });
   $("chatFab").addEventListener("click", () => { document.body.classList.add("chat-open"); const log = $("roomLog"); log.scrollTop = log.scrollHeight; setTimeout(() => $("roomInput").focus({ preventScroll: true }), 50); });
   $("chatClose").addEventListener("click", () => document.body.classList.remove("chat-open"));
+  $("newChatBtn").addEventListener("click", () => startNewMainChat(false));
+  $("roomNewChat").addEventListener("click", () => startNewRoomChat(false));
   $("roomInput").addEventListener("input", (e) => autoGrow(e.target));
   let rsT; window.addEventListener("resize", () => { clearTimeout(rsT); rsT = setTimeout(() => { if (S.view === "room" && S.room.tab === "performance") renderRoomBody(); }, 200); });
 
@@ -460,11 +471,12 @@ USER NOW: ${text}${attachmentText(atts)}`;
     S.db.collection("agents").onSnapshot((snap) => {
       S.agents = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }])); renderRail();
       setCount("agents", [...S.agents.values()].filter((a) => a.status !== "retired").length); renderOrdersAll();
-      if (S.view === "agents") renderFleet(); if (S.view === "room") renderRoomHead();
+      if (S.view === "agents") renderFleet(); if (S.view === "room") { renderRoomHead(); const before = S.room.messages?.length; roomVisible(); if (S.room.messages.length !== before) renderRoomLog(); }
       if (S.view === "signals") renderSignals(); else refreshSigCount();
     }, () => toast("Couldn't load agents."));
     ordersRef().onSnapshot((snap) => { S.orders = snap.exists ? (snap.data().items || []) : []; renderOrdersAll(); }, () => { /* no orders yet */ });
-    mainCol().orderBy("at").limit(300).onSnapshot((snap) => { S.mainMsgs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.kind === "main"); if (S.view === "main") renderMain(); });
+    sessionRef().onSnapshot((snap) => { const since = snap.exists ? (snap.data().since || "") : ""; if (since !== (S.chatSince || "")) { S.chatSince = since; S.mainMsgs = visibleMain(S.allMainMsgs || []); if (S.view === "main") renderMain(); } }, () => { /* none yet */ });
+    mainCol().orderBy("at", "desc").limit(400).onSnapshot((snap) => { S.allMainMsgs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.kind === "main").reverse(); S.mainMsgs = visibleMain(S.allMainMsgs); if (S.view === "main") renderMain(); });
     route();
     window.addEventListener("hashchange", route);
   })();

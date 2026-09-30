@@ -557,6 +557,39 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
     return { spec, cur };
   }
 
+  // ================================================================ chat history: "New chat" archives, delete is the user's own choice
+  // Main Agent: data/users/<id>/session {since}. Messages before `since` are archived: hidden and not sent to Claude.
+  // Agent chats: the agent's chat_since field (shared by the team). Versions and results are never touched.
+  const sessionRef = () => mainCol().doc("session");
+  function visibleMain(all) { const since = S.chatSince || ""; return all.filter((m) => (m.at || "") > since); }
+  async function startNewMainChat(quiet) {
+    const since = new Date(Date.now() - 1).toISOString();
+    S.chatSince = since; S.mainMsgs = visibleMain(S.allMainMsgs || []); renderMain();
+    try { await sessionRef().set({ kind: "session", since }); } catch (e) { toast("Couldn't save the new chat: " + (e.message || e.code || e)); }
+    if (!quiet) toast("New chat started. The earlier conversation is archived.");
+  }
+  async function restoreMainChat() { S.chatSince = ""; S.mainMsgs = visibleMain(S.allMainMsgs || []); renderMain(); try { await sessionRef().set({ kind: "session", since: "" }); } catch (e) { /* keep local */ } }
+  let delArm = null;
+  async function deleteArchived(scope, btn) {
+    const key = scope + (scope === "agent" ? S.room.id : "");
+    if (delArm !== key) { delArm = key; btn.textContent = btn.dataset.confirm; setTimeout(() => { if (delArm === key) { delArm = null; btn.textContent = btn.dataset.label; } }, 5000); return; }
+    delArm = null; btn.disabled = true; btn.textContent = "Deleting…";
+    let n = 0;
+    try {
+      if (scope === "main") { for (const m of (S.allMainMsgs || []).filter((m) => (m.at || "") <= (S.chatSince || ""))) { await mainCol().doc(m.id).delete(); n++; } }
+      else { const a = curAgent(); for (const m of (S.room.allMessages || []).filter((m) => (m.at || "") <= (a?.chat_since || ""))) { await S.db.doc(`agents/${a.id}/messages/${m.id}`).delete(); n++; } }
+      toast(`Deleted ${n} earlier message${n === 1 ? "" : "s"}.`);
+    } catch (e) { toast(`Deleted ${n}; the rest couldn't be deleted: ${e.message || e.code || e}`); btn.disabled = false; btn.textContent = btn.dataset.label; }
+  }
+  function archivedBar(scope, n) {
+    if (!n) return "";
+    return `<div class="archived"><span>${n} earlier message${n === 1 ? "" : "s"} archived</span><button class="linkbtn" type="button" data-restore="${scope}">Show them again</button><button class="linkbtn danger" type="button" data-del-archive="${scope}" data-label="Delete permanently" data-confirm="Tap again to delete ${n}">Delete permanently</button></div>`;
+  }
+  document.addEventListener("click", (e) => {
+    const r = e.target.closest("[data-restore]"); if (r) { if (r.dataset.restore === "main") restoreMainChat(); else { const a = curAgent(); if (a) patchAgent(a.id, { chat_since: "" }).catch((err) => toast(err.message || String(err))); } return; }
+    const d = e.target.closest("[data-del-archive]"); if (d) deleteArchived(d.dataset.delArchive, d);
+  });
+
   // ================================================================ MAIN AGENT
   function mainPrompt(userText, answers, attachments) {
     const hist = S.mainMsgs.slice(-14).map((m) => {
@@ -577,6 +610,7 @@ HOW YOU WORK
 - Test with the backtest tool before proposing, and report only numbers that came from tools or the user's attachments. You have NO internet: never quote outside figures as facts. To compare with a real NSE index, backtest with it as "benchmark".
 - Photos, screenshots, reports and parts of this page the user selects are data. When the user selects part of the page, answer about exactly that.
 - To change an existing agent, use an "update_agent" action with ONLY the fields that change in "changes" (null removes a setting); everything else stays as it is. Existing agents: ${JSON.stringify([...S.agents.values()].filter((a) => a.status !== "retired").map(agentBrief))}
+- When the user asks to delete the history, clear the chat or start fresh, add {"type":"new_chat"} to "actions": the app archives the earlier conversation (the user can delete it from the screen) and your reply opens the new chat. Standing orders and agents are kept unless they say otherwise.
 - Rotation activity: "orders" are individual buys/sells, "rebalances" are rebalance dates, "round_trips" are completed positions, "turnover_pct_yr" is one-sided annual turnover.
 - Be brief. Use ₹, lakh/crore and Indian market terms.
 
@@ -589,7 +623,7 @@ REPLY with ONE JSON object only — no text before or after it, no code fences. 
  "questions":[{"id":"short_id","label":"Question","type":"number"|"date"|"select"|"multiselect"|"text","options":["for select types"],"default":value,"unit":"₹ or %","help":"one line"}],
  "proposals":[{"name":"Short name","spec":{...},"test":{"start":"2012-01-01","end":null,"split":"2021-01-01"},"explanation":"what the rules do","rationale":"why it may work and when it fails","assumptions":["..."]}],
  "attachment_notes":"only when images or page selections were attached: 1-3 lines of the key facts they show (tickers, numbers, dates, what the chart does)",
- "actions":[{"type":"update_agent","agent_id":"...","changes":{only the fields that change; null removes a setting},"note":"what changed"} or {"type":"set_status","agent_id":"...","status":"paper"|"paused"|"retired"|"testing"}],
+ "actions":[{"type":"update_agent","agent_id":"...","changes":{only the fields that change; null removes a setting},"note":"what changed"} or {"type":"set_status","agent_id":"...","status":"paper"|"paused"|"retired"|"testing"} or {"type":"new_chat"}],
  "remember":["a lasting instruction from the user, in their words"],
  "forget":["exact text of a standing order the user cancelled"]}
 Use [] for anything not needed. Today's latest data: ${S.lastDay}.
@@ -623,7 +657,9 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
         try { prop.spec = E.normalize(p.spec || {}, S.man.universes); } catch (e) { prop.error = e.message; }
         proposals.push(prop);
       }
-      const actions = (Array.isArray(out?.actions) ? out.actions : []).filter((a) => a && S.agents.has(a.agent_id)).slice(0, 4).map((a) => ({ ...a, id: newId("x") }));
+      const fresh = (Array.isArray(out?.actions) ? out.actions : []).some((a) => a && a.type === "new_chat");
+      const actions = (Array.isArray(out?.actions) ? out.actions : []).filter((a) => a && a.type !== "new_chat" && S.agents.has(a.agent_id)).slice(0, 4).map((a) => ({ ...a, id: newId("x") }));
+      if (fresh) await startNewMainChat(true);
       const notes = atts.some((x) => x.kind === "image" || x.kind === "snippet") && typeof out?.attachment_notes === "string" ? out.attachment_notes.slice(0, 1200) : "";
       const learned = await applyOrderChanges("main", null, out);
       await addMainMsg({ role: "agent", text: reply + learned, questions, proposals, actions, ...(notes ? { att_notes: notes } : {}) });
@@ -648,7 +684,8 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
   ];
   function renderMain() {
     const box = $("convo"), msgs = S.mainMsgs;
-    let html = "";
+    let html = archivedBar("main", (S.allMainMsgs || []).length - msgs.length);
+    $("newChatBtn").hidden = !msgs.length;
     if (!msgs.length) {
       html += `<div class="welcome"><span class="eyebrow">Main Agent · NSE data to ${esc(fmtDate(S.lastDay))}</span><h1>What should we build?</h1>
         <p class="muted">Give an idea, a stock list, a chart or a broker note. I build it exactly your way, backtest it on 15 years of NSE data, and turn it into an agent that paper-trades daily and sends signals.</p>
