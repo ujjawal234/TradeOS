@@ -107,7 +107,8 @@ def download(start: date, cache: Path, workers: int) -> dict:
     missing = set(json.loads(miss_file.read_text())) if miss_file.exists() else set()
     today = date.today()
     days = [start + timedelta(days=i) for i in range((today - start).days + 1)]
-    todo = [d for d in days if d.weekday() < 5 and not (cache / f"{d:%Y%m%d}.csv.gz").exists() and d.isoformat() not in missing]
+    # weekends too: NSE holds special sessions (Diwali Muhurat, Saturday DR-site sessions) and the next day's PREVCLOSE refers to them
+    todo = [d for d in days if not (cache / f"{d:%Y%m%d}.csv.gz").exists() and d.isoformat() not in missing]
     print(f"Bhavcopy: {len(todo)} weekdays to fetch ({len(days)} calendar days since {start})", flush=True)
     session, got, reasons = requests.Session(), 0, {}
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -194,11 +195,26 @@ def apply_symbol_changes(df: pd.DataFrame, changes: list) -> tuple[pd.DataFrame,
     return df.reset_index(drop=True), moved
 
 
-def adjust(g: pd.DataFrame) -> tuple[pd.DataFrame, list]:
+def gap_days(df: pd.DataFrame) -> set:
+    """Days where PREVCLOSE differs from the previous file's close for most stocks: a session is missing from the
+    archive, so the difference is that session's price move, not a corporate action."""
+    d = df.sort_values(["sym", "date"])
+    f = d["prev"].to_numpy() / d.groupby("sym")["close"].shift(1).to_numpy()
+    moved = pd.Series(np.abs(f - 1) >= 0.0005, index=d["date"].to_numpy())[~np.isnan(f)]
+    grp = moved.groupby(level=0)
+    share, count = grp.mean(), grp.size()
+    out = set(share[(share > 0.3) & (count >= 50)].index)
+    print(f"Gap days ignored for adjustments: {len(out)} {sorted(str(x)[:10] for x in out)[:20]}", flush=True)
+    return out
+
+
+def adjust(g: pd.DataFrame, gaps: set = frozenset()) -> tuple[pd.DataFrame, list]:
     """Back-adjust one ticker for corporate actions using NSE's adjusted previous close."""
     close, prev = g["close"].to_numpy(), g["prev"].to_numpy()
     f = np.ones(len(g))
     f[1:] = prev[1:] / close[:-1]
+    if gaps:
+        f[g["date"].isin(gaps).to_numpy()] = 1.0
     f[~np.isfinite(f) | (f <= 0)] = 1.0
     f[np.abs(f - 1) < 0.0005] = 1.0
     f[(f < 0.001) | (f > 1000)] = 1.0
@@ -256,6 +272,7 @@ def main() -> None:
     df = load_cache(cache, start)
     df, moved = apply_symbol_changes(df, symbol_changes())
     uni, members, info = build(df)
+    gaps = gap_days(df)
     print(f"Reviews: {len(info['reviews'])} ({info['reviews'][0]} … {info['reviews'][-1]}); stocks ever in the top 200: {len(members)}", flush=True)
     prices = OUT / "prices"
     prices.mkdir(parents=True, exist_ok=True)
@@ -265,7 +282,7 @@ def main() -> None:
             f.unlink()
     adj_stats, examples, ends = {"tickers_adjusted": 0, "events": 0, "small_events": 0}, {}, {}
     for sym, g in df[df["sym"].isin(keep)].groupby("sym", sort=True):
-        out, events = adjust(g.sort_values("date").reset_index(drop=True))
+        out, events = adjust(g.sort_values("date").reset_index(drop=True), gaps)
         if events:
             adj_stats["tickers_adjusted"] += 1
             adj_stats["events"] += len(events)
@@ -284,7 +301,7 @@ def main() -> None:
                   "Uses only information available on the review date; members apply from the next trading day. Prices from NSE "
                   "bhavcopy, adjusted for splits, bonuses and rights (price only, no dividends).",
         "universes": uni}, indent=1))
-    (OUT / "_report.json").write_text(json.dumps({**info, "download": dl, "symbol_change_rows_moved": moved, "members": len(members),
+    (OUT / "_report.json").write_text(json.dumps({**info, "download": dl, "gap_days": sorted(str(x)[:10] for x in gaps), "symbol_change_rows_moved": moved, "members": len(members),
         "members_no_longer_trading": len(stale), "examples_no_longer_trading": stale[:60], "adjustments": adj_stats,
         "adjustment_examples": examples, "sizes": {k: [len(x[1]) for x in v][-3:] for k, v in uni.items()}}, indent=1))
     print(f"Wrote {len(members)} price files; {len(stale)} of them stopped trading (delisted, merged or suspended). Adjustments: {adj_stats}", flush=True)
