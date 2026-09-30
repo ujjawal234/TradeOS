@@ -75,6 +75,8 @@
     const [m, pack] = await Promise.all([fetch("data/manifest.json").then((r) => { if (!r.ok) throw new Error("Market data is missing from this page."); return r.json(); }),
       fetch("data/closes.json").then((r) => r.json())]);
     S.man = m; S.light = E.framesFromPack(pack);
+    let shares = null; if (m.shares) try { const r = await fetch("data/shares.json"); if (r.ok) shares = await r.json(); } catch (e) { /* optional */ }
+    E.setData({ meta: m.symbols, shares }); S.sharesCount = shares ? Object.keys(shares).length : 0;
     const lasts = Object.values(m.symbols).map((s) => s.last).sort(); S.lastDay = lasts[lasts.length - 1];
     const stocks = Object.values(m.symbols).filter((s) => s.kind === "stock").length;
     $("dataChip").textContent = `${stocks} stocks · data to ${fmtDate(S.lastDay)}`;
@@ -89,7 +91,7 @@
     const need = [...new Set(E.symbolsNeeded(spec, S.man.universes).concat(["NIFTY"]))];
     const missing = need.filter((s) => !S.man.symbols[s]);
     if (missing.length) throw new Error(`No data for ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? "…" : ""}. Use NSE tickers from the Nifty 200 / F&O list.`);
-    if (spec.type === "rule") await ensureFull(need, onProgress);
+    if (E.needsFull(spec)) await ensureFull(need, onProgress);
     const out = {}; for (const s of need) out[s] = S.full[s] || S.light[s];
     return out;
   }
@@ -107,8 +109,10 @@
   }
   function headline(res, test) {
     const m = res.metrics, b = res.benchMetrics || {};
-    const h = { cagr: m.cagr_pct, total: m.total_return_pct, mdd: m.max_drawdown_pct, sharpe: m.sharpe, trades: m.trades ?? m.cycles ?? m.rebalances,
-      win: m.win_rate_pct ?? null, nifty_cagr: b.cagr_pct, nifty_mdd: b.max_drawdown_pct, start: m.start, end: m.end };
+    // rotation: "trades" = buy/sell orders (not rebalances); round trips, turnover and rebalances are kept alongside
+    const h = { cagr: m.cagr_pct, total: m.total_return_pct, mdd: m.max_drawdown_pct, sharpe: m.sharpe, trades: m.trades ?? m.cycles ?? m.orders ?? m.executions ?? m.rebalances,
+      win: m.win_rate_pct ?? null, nifty_cagr: b.cagr_pct, nifty_mdd: b.max_drawdown_pct, start: m.start, end: m.end,
+      ...(m.rebalances != null ? { rebalances: m.rebalances, round_trips: m.round_trips, turnover: m.turnover_pct_yr } : {}), ...(res.benchName && res.benchName !== "NIFTY" ? { bench: res.benchName } : {}) };
     if (test?.split) { const sp = E.splitMetrics(res, test.split); h.train_cagr = sp.train.strategy.cagr_pct; h.test_cagr = sp.test.strategy.cagr_pct; h.test_nifty_cagr = sp.test.nifty?.cagr_pct; h.verdict = sp.verdict; h.flags = sp.flags; }
     return h;
   }
@@ -117,7 +121,48 @@
     if (spec.type === "rotation") return Array.isArray(spec.universe) ? `${spec.universe.length} symbols` : spec.universe;
     return `${spec.underlying} ${spec.structure.replace("_", " ")}`;
   }
+  // an actionable signal for the next session (rotation changes before their rebalance day are previews)
+  const isAction = (s, withExited) => (withExited ? /BUY|SELL|SHORT|COVER|NEW|EXITED/ : /BUY|SELL|SHORT|COVER|NEW/).test(s.action) && s.due !== false;
   const TYPE_LABEL = { rule: "Rule strategy", rotation: "Rotation", option_selling: "Option selling" };
+  // benchmark label ("Nifty" unless the spec names another series)
+  const benchLabel = (x) => { const k = typeof x === "string" ? x : x && (x.benchName || x.bench); if (!k || k === "NIFTY") return "Nifty"; return (S.man?.symbols[k]?.name || k).replace(/^NIFTY/i, "Nifty"); };
+  // how a rotation ranks, in words
+  function rankWords(s) {
+    const f = s.factors, rb = s.rebalance_months ? `in ${s.rebalance_months.map((m) => ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][m - 1]).join("/")}` : s.rebalance;
+    const top = s.top_pct ? `top ${s.top_pct}%` : `top ${s.top_n}`;
+    let by;
+    if (f && f.length) by = f.map((x) => `${x.name}${x.lookback ? ` ${x.lookback}d` : ""}${x.skip ? ` skip ${x.skip}` : ""}${(x.weight ?? 1) !== 1 ? ` ×${x.weight}` : ""}${x.invert ? " (lower better)" : ""}`).join(" + ") + (f.length > 1 || s.combine ? " (z-scores averaged)" : "");
+    else if (s.score === "nse_momentum") by = `NSE-style momentum (6m & 12m returns ÷ 1y volatility, z-scored${s.skip ? `, skip ${s.skip}` : ""})`;
+    else if (s.score === "momentum" || s.score === "risk_adj") by = `${s.score === "risk_adj" ? "risk-adjusted " : ""}${s.lookback}-day return (skip ${s.skip})`;
+    else by = s.score;
+    return `${top} by ${by}, rebalance ${rb}`;
+  }
+  // settings beyond the basics, as [label, html] rows (shared by proposal cards and the Rules tab)
+  function extraKV(s) {
+    const out = [], c = (x) => `<code>${esc(x)}</code>`, pc = (x) => `${x}%`;
+    if (s.type === "rule") {
+      if (s.max_positions) out.push(["Portfolio", `max ${s.max_positions} positions, shared capital${s.rank_by ? `; ranked by ${c(s.rank_by)}` : ""}`]);
+      if (s.trailing_stop_pct) out.push(["Trailing stop", pc(s.trailing_stop_pct)]);
+      if (s.stop_atr_mult || s.target_atr_mult) out.push(["ATR exits", `${s.stop_atr_mult ? `stop ${s.stop_atr_mult}× ATR` : ""}${s.stop_atr_mult && s.target_atr_mult ? " · " : ""}${s.target_atr_mult ? `target ${s.target_atr_mult}× ATR` : ""} (ATR ${s.atr_period || 14})`]);
+      if (s.max_hold_days) out.push(["Time exit", `after ${s.max_hold_days} trading days`]);
+    }
+    if (s.type === "rotation") {
+      if (s.filters) out.push(["Filters", s.filters.map(c).join(" and ")]);
+      if (s.exclude?.length) out.push(["Excluded", esc(s.exclude.join(", "))]);
+      if (s.weighting) out.push(["Weighting", esc(s.weighting)]);
+      if (s.max_weight_pct) out.push(["Max weight", pc(s.max_weight_pct)]);
+      if (s.buffer_rank) out.push(["Buffer", `keep holdings while ranked ≤ ${s.buffer_rank}`]);
+      if (s.max_per_sector) out.push(["Sector cap", `≤ ${s.max_per_sector} per industry`]);
+      if (s.short_n) out.push(["Short leg", `short the weakest ${s.short_n} (${s.short_exposure_pct}% gross) — F&O stocks only in practice`]);
+      if (s.regime) out.push(["Regime", `${c(s.regime.expr)} on ${esc(s.regime.symbol)} → when off: ${s.regime_action || "cash"}${s.regime_action === "reduce" ? ` to ${s.regime_exposure_pct ?? 50}%` : ""}${s.regime_action === "defensive" ? ` (${esc(s.defensive)})` : ""}`]);
+      if (s.target_vol_pct) out.push(["Vol target", `${s.target_vol_pct}% a year (max ${s.max_leverage || 1}× exposure)`]);
+      if (s.cash_symbol) out.push(["Idle cash in", esc(s.cash_symbol)]);
+      if (s.cash_yield_pct) out.push(["Cash yield", pc(s.cash_yield_pct)]);
+      if (s.slippage_pct) out.push(["Slippage", `${s.slippage_pct}% per side`]);
+    }
+    if (s.benchmark) out.push(["Benchmark", esc(benchLabel(s.benchmark))]);
+    return out;
+  }
 
   // ================================================================ people
   async function names(ids) {
@@ -228,29 +273,60 @@
   function dataBrief() {
     const m = S.man, st = Object.entries(m.symbols).filter(([, v]) => v.kind === "stock");
     const tick = st.map(([s, v]) => `${s}=${v.name.replace(/ (Ltd|Limited)\.?$/i, "")}`).join("; ");
-    const idx = Object.entries(m.symbols).filter(([, v]) => v.kind === "index" && !v.alias_of).map(([s, v]) => `${s}=${v.name}${v.val ? " (P/E,P/B,DY)" : ""}`).join("; ");
+    const byGroup = (g) => Object.entries(m.symbols).filter(([, v]) => v.kind === "index" && !v.alias_of && (v.group || "broad") === g).map(([s, v]) => `${s}=${v.name}${v.val ? " (P/E,P/B,DY)" : ""}`).join("; ");
     const groups = Object.entries(m.universes).map(([k, v]) => `${k} (${v.length})`).join(", ");
     const secs = Object.entries(m.sectors || {}).map(([k, v]) => `${k}=${v.label}`).join(", ");
-    return `DATA: daily OHLCV ${Object.values(m.symbols).map((s) => s.first).sort()[0]} to ${S.lastDay}; stocks split/dividend adjusted.
-Indices (NSE official where available; option underlyings NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY, NIFTYNXT50): ${idx}
+    const nSh = S.sharesCount || 0;
+    return `DATA: daily OHLCV ${Object.values(m.symbols).map((s) => s.first).sort()[0]} to ${S.lastDay}; stocks split/dividend adjusted. Every symbol below can be traded, ranked, used in ref("SYMBOL", ...) or as a benchmark.
+Broad indices: ${byGroup("broad")}
+Sector indices: ${byGroup("sector")}
+Factor / strategy indices (real NSE series — use them as benchmarks to check a replica, e.g. "benchmark":"NIFTY200_MOMENTUM_30"): ${byGroup("factor")}
+Thematic indices: ${byGroup("theme")}
+Debt & cash (defensive / cash_symbol; NIFTY_1D_RATE_INDEX ≈ overnight money, aliases CASH/LIQUID; GSEC = 10-yr G-Sec): ${byGroup("debt")}
+Derived (leveraged, inverse, futures, arbitrage, USD): ${byGroup("derived")}
 Equal-weight baskets of Nifty 200 members by industry (closes only): ${secs}.
 Named groups usable as "symbols" entries or "universe": ${groups}.
+Market-cap weights: ${nSh ? `share counts available for ${nSh} stocks (Yahoo; free float = today's ratio)` : "no share-count data loaded yet — mcap weights fall back to equal"}.
 Stocks (ticker=company): ${tick}`;
   }
-  const SCHEMAS = `STRATEGY SPEC — choose ONE "type":
-1) "rule": each symbol traded independently. {"type":"rule","symbols":[tickers or group names],"entry":expr,"exit":expr or "","side":"long"|"short","stop_loss_pct":num|null,"take_profit_pct":num|null,"position_size_pct":num (default 100),"capital":₹,"cost_pct":0.12}
-2) "rotation": rank a universe by past return, hold top N equally. {"type":"rotation","universe":"nifty50"|"nifty200"|"fno"|"sectors"|group|[tickers],"lookback":days (21≈1m,63≈3m,126≈6m,252≈1y),"skip":recent days excluded,"top_n":int,"rebalance":"weekly"|"monthly","score":"momentum"|"risk_adj","min_score":0 (only positive momentum) or null,"trend_filter":{"symbol":"NIFTY","sma":200} or null,"capital":₹,"cost_pct":0.12}
-3) "option_selling": short index options, model-priced (Black-Scholes, India VIX). {"type":"option_selling","underlying":"NIFTY" (weekly, Tue)|"BANKNIFTY"|"FINNIFTY"|"MIDCPNIFTY"|"NIFTYNXT50" (monthly, last Tue),"structure":"strangle"|"straddle"|"iron_condor"|"short_put"|"short_call","strike_mode":"delta"|"otm_pct","delta":0.05–0.45 (15 delta = 0.15),"otm_pct":num,"wing_width":points,"stop_loss_mult":x credit|null,"profit_target_pct":% of credit|null,"exit_dte":int,"lots":int,"min_vix":num|null,"max_vix":num|null,"capital":₹}
-RULE LANGUAGE (entry/exit; evaluated each day; signal at close, fill next open): variables open high low close volume hl2 dow(0=Mon), and for NSE indices marked (P/E,P/B,DY) also pe pb dy (valuation; NaN elsewhere) — e.g. buy NIFTY when pe < 20.
-Functions: sma(x,n) ema(x,n) wma(x,n) rsi(x,n=14) atr(n=14) atr_pct(n=14) macd(x,12,26) macd_signal(x,12,26,9) bb_upper(x,20,2) bb_lower(x,20,2) highest(x,n) lowest(x,n) (include today: breakouts use shift(highest(high,55),1)) shift(x,n) prev(x) change(x,n) roc(x,n)(%) stdev(x,n) zscore(x,n) volatility(x,n)(ann.%) cross_above(a,b) cross_below(a,b) count_true(cond,n) abs max min. Operators + - * / %, comparisons, and/or/not. Nothing else exists (no fundamentals, no intraday, no cross-symbol references).
-SURVIVORSHIP BIAS: stock lists are TODAY's index members applied to the whole history, so backtests of broad stock universes (nifty200, fno) are flattered. Say so when you report such results and rely on the out-of-sample and paper record.
+  const SCHEMAS = `STRATEGY SPEC — choose ONE "type". Every field beyond the basics is optional; omit what you don't need.
+1) "rule": entry/exit rules per symbol. {"type":"rule","symbols":[tickers or group names],"entry":expr,"exit":expr or "","side":"long"|"short","stop_loss_pct":num|null,"take_profit_pct":num|null,"position_size_pct":num (default 100),"capital":₹,"cost_pct":0.12,
+   "trailing_stop_pct":num,"stop_atr_mult":num,"target_atr_mult":num,"atr_period":14,"max_hold_days":int,
+   "max_positions":int (PORTFOLIO MODE: one shared pot, at most N open positions, each position_size_pct of equity — default 100/N),"rank_by":expr (which signals win when slots are short; default roc(close,63)),"benchmark":symbol}
+   Without max_positions each symbol gets capital/number_of_symbols and trades independently.
+2) "rotation": rank a universe and hold the best (a general portfolio engine: momentum, low-vol, quality-style price factors, sector/index rotation, NSE factor-index replicas, long-short).
+   {"type":"rotation","universe":group|[tickers] (stocks, sector indices, factor indices, debt, anything),"exclude":[...],
+    ranking — either "score":"momentum"|"risk_adj"|"nse_momentum"|expr with "lookback":days (21≈1m,63≈3m,126≈6m,252≈1y),"skip":recent days excluded,
+      or "factors":[{"name":"momentum"|"risk_adj"|"volatility"|"low_vol"|"trend"|"high_52w"|"reversal"|"liquidity"|expr,"lookback":n,"skip":n,"vol_lookback":n,"weight":1,"invert":bool}] (several factors are z-scored across the universe, capped at ±3 and averaged by weight; "combine":"zscore" z-scores a single one),
+      "nse_momentum" = average z of 6m and 12m returns each ÷ 1-year volatility (NSE's momentum-index recipe),
+    "filters":[expr,...] (all must be true on the ranking day, e.g. "close > sma(close,200)", "sma(close*volume,63) > 2e8" for ₹20 cr average daily value),"min_history_days":int,"min_score":num|null,
+    selection: "top_n":int or "top_pct":num,"buffer_rank":int (keep a holding while it ranks within this),"max_per_sector":int,"short_n":int (short the weakest N; "short_exposure_pct":100,"long_exposure_pct":100),
+    weights: "weighting":"equal"(default: 1/top_n per slot, unfilled slots stay cash; "underfill":"spread" to share them)|"score"(NSE normalised score)|"inverse_vol"|"mcap"|"mcap_score"(NSE style)|"rank"|expr (∝ its value),"max_weight_pct":num,"vol_lookback":63,
+    schedule: "rebalance":"daily"|"weekly"|"biweekly"|"monthly"|"quarterly"|"semiannual"|"annual" or "rebalance_months":[6,12] (first trading day of those months),"rebalance_band_pct":1,
+    risk: "trend_filter":{"symbol":"NIFTY","sma":200}|null (cash when below),"regime":expr or {"symbol":"NIFTY","expr":"close > sma(close,200)"},"regime_action":"cash"|"reduce"|"defensive","regime_exposure_pct":50,"defensive":symbol (e.g. GSEC),
+      "target_vol_pct":num,"max_leverage":1,"cash_symbol":"CASH" (park idle cash in the overnight-rate index),"cash_yield_pct":num,
+    costs: "cost_pct":0.12,"slippage_pct":num; "capital":₹,"benchmark":symbol}
+   Rotation trades at the close of the first day of each period using data up to the previous close. Its "trades" count is ORDERS (every buy/sell, several per rebalance) — not round trips; report rebalances, round_trips and turnover_pct_yr to describe activity.
+3) "option_selling": short index options, model-priced (Black-Scholes, India VIX). {"type":"option_selling","underlying":"NIFTY" (weekly, Tue)|"BANKNIFTY"|"FINNIFTY"|"MIDCPNIFTY"|"NIFTYNXT50" (monthly, last Tue),"structure":"strangle"|"straddle"|"iron_condor"|"short_put"|"short_call","strike_mode":"delta"|"otm_pct","delta":0.05–0.45 (15 delta = 0.15),"otm_pct":num,"wing_width":points,"stop_loss_mult":x credit|null,"profit_target_pct":% of credit|null,"exit_dte":int,"lots":int,"min_vix":num|null,"max_vix":num|null,"capital":₹,"benchmark":symbol}
+RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime and expression weights; evaluated each day on that symbol; rules signal at the close and fill at the next open):
+ variables: open high low close volume hl2 hlc3 dow(0=Mon) dom(day of month) month(1-12) year; pe pb dy for NSE indices marked (P/E,P/B,DY) (NaN elsewhere).
+ functions: sma ema wma(x,n) rsi(x,14) atr(14) atr_pct(14) macd(x,12,26) macd_signal(x,12,26,9) bb_upper/bb_lower(x,20,2) keltner_upper/keltner_lower(20,2) supertrend(10,3) highest/lowest(x,n) (include today: breakouts use shift(highest(high,55),1))
+  shift(x,n) prev(x) change(x,n) roc(x,n)(%) ret(x,n)(fraction) sum(x,n) median(x,n) stdev(x,n) zscore(x,n) volatility(x,n)(ann.%) pct_rank(x,n)(0-100) slope(x,n) drawdown(x)(% from peak) days_since(cond) count_true(cond,n)
+  adx(14) plus_di(14) minus_di(14) stoch_k(14) stoch_d(14,3) cci(20) mfi(14) williams_r(14) obv() vwap(20) corr(a,b,n) beta(a,b,n) cross_above(a,b) cross_below(a,b) abs max min log sqrt sign iff(cond,a,b) clip(x,lo,hi)
+  ref("SYMBOL", expr): expr computed on another symbol, aligned by date — e.g. entry "close > sma(close,50) and ref(\\"NIFTY\\", close > sma(close,200))", or beta(ret(close,1), ref("NIFTY", ret(close,1)), 252).
+ Operators + - * / % **, comparisons, and/or/not. No company fundamentals (only index P/E, P/B, DY), no intraday.
+SURVIVORSHIP BIAS: stock lists are TODAY's index members applied to the whole history, so backtests of broad stock universes (nifty200, fno) are flattered — for stock momentum this can be 10-20+ points a year. Say so, and where a real NSE index exists for the idea (e.g. NIFTY200_MOMENTUM_30) set it as the benchmark and compare.
 TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (train before, test from) or null}.`;
 
   // ================================================================ tools Claude can call from the page
   function compactRes(res, test) {
     const h = headline(res, test);
-    return { cagr_pct: h.cagr, total_return_pct: h.total, max_drawdown_pct: h.mdd, sharpe: h.sharpe, trades: h.trades, win_rate_pct: h.win, nifty_cagr_pct: h.nifty_cagr,
-      nifty_max_drawdown_pct: h.nifty_mdd, period: `${h.start} to ${h.end}`, train_cagr_pct: h.train_cagr, test_cagr_pct: h.test_cagr, test_nifty_cagr_pct: h.test_nifty_cagr, split_verdict: h.verdict, flags: h.flags,
+    const m = res.metrics, rot = m.rebalances != null, b = res.benchName || "NIFTY";
+    return { cagr_pct: h.cagr, total_return_pct: h.total, max_drawdown_pct: h.mdd, sharpe: h.sharpe,
+      ...(rot ? { orders: m.orders ?? m.executions, rebalances: m.rebalances, round_trips: m.round_trips, turnover_pct_yr: m.turnover_pct_yr, avg_holdings: m.avg_holdings, avg_hold_days: m.avg_hold_days }
+        : { trades: h.trades }), win_rate_pct: h.win,
+      benchmark: b, [b === "NIFTY" ? "nifty_cagr_pct" : "benchmark_cagr_pct"]: h.nifty_cagr, [b === "NIFTY" ? "nifty_max_drawdown_pct" : "benchmark_max_drawdown_pct"]: h.nifty_mdd,
+      period: `${h.start} to ${h.end}`, train_cagr_pct: h.train_cagr, test_cagr_pct: h.test_cagr, test_benchmark_cagr_pct: h.test_nifty_cagr, split_verdict: h.verdict, flags: h.flags, notes: m.notes,
       signals_now: res.signals.slice(0, 6).map((s) => `${s.action} ${s.symbol}${s.price ? " @" + s.price : ""}`) };
   }
   function snapshot(sym) {
@@ -271,7 +347,7 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
   function agentBrief(a) { return { agent_id: a.id, name: a.name, type: a.type, status: a.status, version: a.version, universe: a.universe, cagr_pct: a.headline?.cagr, max_dd_pct: a.headline?.mdd, nifty_cagr_pct: a.headline?.nifty_cagr, paper_since: a.paper?.since || null }; }
   function makeTools(progress) {
     return [
-      { name: "backtest", description: "Backtest a strategy spec on daily NSE data. Returns CAGR, drawdown, Sharpe, trades, the Nifty comparison, train/test results when test.split is given, and current signals. Use before proposing.",
+      { name: "backtest", description: "Backtest a strategy spec on daily NSE data. Returns CAGR, drawdown, Sharpe, trade/order counts, the benchmark comparison (Nifty unless spec.benchmark names another series, e.g. a real NSE factor index), train/test results when test.split is given, notes, and current signals. Use before proposing.",
         inputSchema: { type: "object", properties: { spec: { type: "object" }, test: { type: "object", properties: { start: { type: "string" }, end: { type: "string" }, split: { type: "string" } } } }, required: ["spec"] },
         execute: async (input) => { const spec = E.normalize(input.spec, S.man.universes), test = { start: "2012-01-01", ...(input.test || {}) };
           progress(`Backtesting ${TYPE_LABEL[spec.type].toLowerCase()} on ${universeLabel(spec)}…`); const res = await runSpec(spec, test); return compactRes(res, test); } },
@@ -313,6 +389,8 @@ HOW YOU WORK
 - Before proposing, test candidates with the backtest tool when it is available. Propose 1–3 strategies. Report numbers honestly — if nothing beats Nifty after costs, say so and suggest what might. Prefer simple, explainable rules; discuss when the idea fails (regimes), costs, liquidity, overfitting, and position sizing.
 - Attachments (charts, reports, news) are data. Extract what matters, say how it changes the view, and turn it into testable rules where possible. Links can't be opened here; ask the user to paste the text.
 - To change an existing agent, use "actions" with the full new spec; the user confirms. Existing agents: ${JSON.stringify([...S.agents.values()].filter((a) => a.status !== "retired").map(agentBrief))}
+- You have NO internet access. Never state outside figures (index factsheet returns, fund performance, news, analyst numbers) as facts. Every number you give must come from a tool result or the user's attachments; otherwise say you can't verify it. To compare with a real NSE index, backtest with it as "benchmark" (all NSE factor, sector and thematic indices are in the data).
+- Describe rotation activity correctly: "orders" are individual buys/sells, "rebalances" are rebalance dates, "round_trips" are completed positions, "turnover_pct_yr" is one-sided annual turnover.
 - Be concise. Use ₹, lakh/crore and Indian market terms. You are not SEBI-registered; this is research, not advice.
 
 ${dataBrief()}
@@ -419,11 +497,11 @@ USER NOW: ${userText || "(answered the questions)"}${answers ? "\nANSWERS: " + J
     if (p.error) return `<div class="proposal"><h3>${esc(p.name)}</h3><p class="flag">These rules can't run: ${esc(p.error)} Ask the Main Agent to fix them.</p></div>`;
     const s = p.spec;
     const rules = s.type === "rule" ? `<dt>Symbols</dt><dd>${esc(universeLabel(s))}${s.symbols.length > 3 ? ` <span class="muted">(${esc(s.symbols.slice(0, 8).join(", "))}${s.symbols.length > 8 ? "…" : ""})</span>` : ""}</dd><dt>Entry</dt><dd><code>${esc(s.entry)}</code></dd><dt>Exit</dt><dd>${s.exit ? `<code>${esc(s.exit)}</code>` : "stop / target only"}</dd><dt>Risk</dt><dd>${s.side === "short" ? "Short · " : ""}stop ${s.stop_loss_pct ? s.stop_loss_pct + "%" : "none"} · target ${s.take_profit_pct ? s.take_profit_pct + "%" : "none"}</dd>`
-      : s.type === "rotation" ? `<dt>Universe</dt><dd>${esc(universeLabel(s))}</dd><dt>Rule</dt><dd>Top ${s.top_n} by ${s.score === "risk_adj" ? "risk-adjusted " : ""}${s.lookback}-day return (skip ${s.skip}), rebalance ${s.rebalance}${s.trend_filter ? `, cash when ${s.trend_filter.symbol} &lt; ${s.trend_filter.sma}-day average` : ""}</dd>`
+      : s.type === "rotation" ? `<dt>Universe</dt><dd>${esc(universeLabel(s))}</dd><dt>Rule</dt><dd>${esc(rankWords(s))}${s.trend_filter ? `, cash when ${s.trend_filter.symbol} &lt; ${s.trend_filter.sma}-day average` : ""}</dd>`
       : `<dt>Structure</dt><dd>${esc(s.underlying)} ${esc(s.structure.replace("_", " "))} · ${s.strike_mode === "delta" ? s.delta + " delta" : s.otm_pct + "% OTM"} · ${s.lots} lot(s) of ${s.lot_size}</dd><dt>Exits</dt><dd>stop ${s.stop_loss_mult ? s.stop_loss_mult + "× credit" : "none"} · target ${s.profit_target_pct ? s.profit_target_pct + "%" : "none"}${s.max_vix ? ` · skip when VIX &gt; ${s.max_vix}` : ""}</dd>`;
     return `<div class="proposal" id="prop_${esc(pid)}"><div class="row"><span class="eyebrow">Proposal</span><span class="pill">${esc(TYPE_LABEL[s.type])}</span><span class="grow"></span>${p.created ? `<button class="btn ghost small" type="button" data-open="${esc(p.created)}">Open agent →</button>` : ""}</div>
       <h3>${esc(p.name)}</h3>${p.explanation ? `<p>${esc(p.explanation)}</p>` : ""}${p.rationale ? `<p class="small muted">${esc(p.rationale)}</p>` : ""}
-      <dl class="kv">${rules}<dt>Capital</dt><dd>${inr(s.capital)}</dd></dl>
+      <dl class="kv">${rules}${extraKV(s).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}<dt>Capital</dt><dd>${inr(s.capital)}</dd></dl>
       ${p.assumptions.length ? `<ul class="small muted" style="margin:0;padding-left:18px">${p.assumptions.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>` : ""}
       ${p.created ? "" : `<div class="row">
         <div class="field"><label for="ts_${esc(pid)}">Test from</label><input class="input" type="date" id="ts_${esc(pid)}" value="${esc(p.test.start || "2012-01-01")}"></div>
@@ -443,12 +521,14 @@ USER NOW: ${userText || "(answered the questions)"}${answers ? "\nANSWERS: " + J
   }
   function miniKpis(res, test) {
     const h = headline(res, test);
-    const tiles = [["CAGR", pct(h.cagr), `Nifty ${pct(h.nifty_cagr)}`], ["Worst fall", pct(h.mdd), `Nifty ${pct(h.nifty_mdd)}`], ["Sharpe", n2(h.sharpe), "rf 6.5%"],
-      [res.metrics.cycles != null ? "Cycles" : res.metrics.rebalances != null ? "Rebalances" : "Trades", String(h.trades ?? "–"), h.win != null ? `${pct(h.win, 0, false)} winners` : ""]];
-    if (test?.split) tiles.push(["Train → test CAGR", `${pct(h.train_cagr, 1)} → ${pct(h.test_cagr, 1)}`, `Nifty test ${pct(h.test_nifty_cagr)}`]);
+    const bl = benchLabel(res);
+    const tiles = [["CAGR", pct(h.cagr), `${bl} ${pct(h.nifty_cagr)}`], ["Worst fall", pct(h.mdd), `${bl} ${pct(h.nifty_mdd)}`], ["Sharpe", n2(h.sharpe), "rf 6.5%"],
+      res.metrics.rebalances != null ? ["Orders", String(h.trades ?? "–"), `${res.metrics.rebalances} rebalances · ${res.metrics.turnover_pct_yr ?? "–"}%/yr turnover`]
+        : [res.metrics.cycles != null ? "Cycles" : "Trades", String(h.trades ?? "–"), h.win != null ? `${pct(h.win, 0, false)} winners` : ""]];
+    if (test?.split) tiles.push(["Train → test CAGR", `${pct(h.train_cagr, 1)} → ${pct(h.test_cagr, 1)}`, `${bl} test ${pct(h.test_nifty_cagr)}`]);
     return `<div class="mini-kpis">${tiles.map(([k, v, b]) => `<div class="mini"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${b}</span></div>`).join("")}</div>
       ${test?.split ? (h.flags?.length ? `<p class="flag">Out-of-sample warning: ${esc(h.flags.join("; "))}.</p>` : `<p class="flag ok">Consistent out of sample: test-period results hold up against training.</p>`) : ""}
-      <p class="small muted">${fmtDate(h.start)} – ${fmtDate(h.end)} · costs included · ${res.signals.filter((s) => /BUY|SELL|SHORT|COVER|NEW/.test(s.action)).length} action signal(s) today</p>`;
+      <p class="small muted">${fmtDate(h.start)} – ${fmtDate(h.end)} · costs included · ${res.signals.filter((s) => isAction(s)).length} action signal(s) today</p>`;
   }
   function testFromInputs(pid, p) {
     const g = (k) => { const el = $(`${k}_${pid}`); return el && el.value ? el.value : null; };

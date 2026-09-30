@@ -8,7 +8,7 @@
     const P = Object.fromEntries(papers);
     const live = papers.map(([, p]) => p).filter((p) => p && !p.pending);
     const avg = live.length ? live.reduce((s, p) => s + p.ret, 0) / live.length : null, avgN = live.length ? live.reduce((s, p) => s + (p.nifty ?? 0), 0) / live.length : null;
-    const actions = paper.reduce((n, a) => n + ((P[a.id]?.signals || []).filter((s) => /BUY|SELL|SHORT|COVER|NEW/.test(s.action)).length), 0);
+    const actions = paper.reduce((n, a) => n + ((P[a.id]?.signals || []).filter((s) => isAction(s)).length), 0);
     $("fleetStats").innerHTML = [["Agents", String(all.length), `${paper.length} paper · ${testing.length} testing`], ["Paper return (avg)", pct(avg), avg == null ? "starts after the next daily update" : `Nifty ${pct(avgN)} over the same days`],
       ["Signals today", String(actions), "buy / sell actions for next session"], ["Data", fmtDate(S.lastDay), "latest daily close"]]
       .map(([k, v, b]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${esc(b)}</span></div>`).join("");
@@ -16,8 +16,8 @@
       .sort((a, b) => ({ paper: 0, testing: 1, paused: 2, retired: 3 }[a.status] - { paper: 0, testing: 1, paused: 2, retired: 3 }[b.status]) || (b.updated_at || "").localeCompare(a.updated_at || ""));
     await names(show.map((a) => a.updated_by || a.created_by));
     if (!show.length) { $("fleetTable").innerHTML = `<div class="empty"><h2>No agents here yet</h2><p class="muted">Ask the Main Agent for an idea. Proposals you accept become agents.</p><button class="btn" type="button" data-go="main">Talk to the Main Agent</button></div>`; wireGo($("fleetTable")); return; }
-    $("fleetTable").innerHTML = `<table><thead><tr><th>Agent</th><th>Status</th><th>Trades in</th><th class="r">Backtest CAGR</th><th class="r">vs Nifty</th><th class="r">Worst fall</th><th class="r">Out-of-sample</th><th class="r">Paper return</th><th>Today</th><th>Version</th><th>Updated</th></tr></thead><tbody>${show.map((a) => {
-      const h = a.headline || {}, p = P[a.id], sig = (p?.signals || []).filter((s) => /BUY|SELL|SHORT|COVER|NEW|EXITED/.test(s.action));
+    $("fleetTable").innerHTML = `<table><thead><tr><th>Agent</th><th>Status</th><th>Trades in</th><th class="r">Backtest CAGR</th><th class="r">vs benchmark</th><th class="r">Worst fall</th><th class="r">Out-of-sample</th><th class="r">Paper return</th><th>Today</th><th>Version</th><th>Updated</th></tr></thead><tbody>${show.map((a) => {
+      const h = a.headline || {}, p = P[a.id], sig = (p?.signals || []).filter((s) => isAction(s, true));
       const today = a.status !== "paper" ? '<span class="muted">—</span>' : sig.length ? sig.slice(0, 3).map((s) => `<span class="act ${s.action.replace(/ /g, "-")}">${esc(s.action)} ${esc(s.symbol)}</span>`).join(" ") + (sig.length > 3 ? ` +${sig.length - 3}` : "") : '<span class="muted">No action</span>';
       return `<tr class="link" data-open="${esc(a.id)}" tabindex="0"><td><b>${esc(a.name)}</b><div class="small muted">${esc(TYPE_LABEL[a.type] || a.type)}</div></td><td><span class="pill ${esc(a.status)}">${esc(a.status)}</span></td><td>${esc(a.universe || "")}</td>
         <td class="r ${cls(h.cagr)}">${pct(h.cagr)}</td><td class="r ${cls((h.cagr ?? 0) - (h.nifty_cagr ?? 0))}">${h.cagr == null ? "–" : pct(h.cagr - (h.nifty_cagr ?? 0)) + " pts"}</td><td class="r">${pct(h.mdd)}</td>
@@ -33,7 +33,7 @@
     $("sigTable").innerHTML = '<p class="small muted">Working out today’s signals…</p>';
     const rows = [];
     for (const a of paper) { try { const p = await paperResult(a); for (const s of p?.signals || []) rows.push({ a, s, pending: p.pending }); } catch (e) { rows.push({ a, s: { action: "WAIT", symbol: "-", note: e.message } }); } }
-    const act = rows.filter((r) => /BUY|SELL|SHORT|COVER|NEW|EXITED/.test(r.s.action));
+    const act = rows.filter((r) => isAction(r.s, true));
     $("sigCount").textContent = String(act.length); $("sigCount").classList.toggle("hot", act.length > 0);
     const ord = { BUY: 0, SHORT: 0, "SELL NEW": 0, SELL: 1, COVER: 1, EXITED: 2 };
     const sorted = [...act.sort((x, y) => (ord[x.s.action] ?? 5) - (ord[y.s.action] ?? 5)), ...rows.filter((r) => /HOLD/.test(r.s.action))];
@@ -91,17 +91,19 @@
   function signalTable(sigs, limit = 60) {
     if (!sigs.length) return '<p class="muted">No signals.</p>';
     return `<div class="tablewrap tall"><table><thead><tr><th>Action</th><th>Symbol</th><th class="r">Price</th><th class="r">Entry</th><th class="r">Stop</th><th class="r">Target</th><th class="r">P&amp;L</th><th>Note</th></tr></thead><tbody>${sigs.slice(0, limit).map((s) =>
-      `<tr><td><span class="act ${s.action.replace(/ /g, "-")}">${esc(s.action)}</span></td><td><b>${esc(s.symbol)}</b>${s.weight_pct != null ? ` <span class="small muted">${pct(s.weight_pct, 0, false)}</span>` : ""}</td><td class="r">${px(s.price)}</td><td class="r">${px(s.entry)}</td><td class="r">${px(s.stop)}</td><td class="r">${px(s.target)}</td><td class="r ${cls(s.pnl_pct)}">${pct(s.pnl_pct)}</td><td class="wrap small muted">${esc(s.note || "")}</td></tr>`).join("")}</tbody></table></div>${sigs.length > limit ? `<p class="small muted">${sigs.length - limit} more waiting symbols not shown.</p>` : ""}`;
+      `<tr><td><span class="act ${s.action.replace(/ /g, "-")}">${esc(s.action)}</span>${s.due === false ? ' <span class="small muted" title="Takes effect on the next rebalance day">preview</span>' : ""}</td><td><b>${esc(s.symbol)}</b>${s.weight_pct != null ? ` <span class="small muted">${pct(s.weight_pct, 0, false)}</span>` : ""}</td><td class="r">${px(s.price)}</td><td class="r">${px(s.entry)}</td><td class="r">${px(s.stop)}</td><td class="r">${px(s.target)}</td><td class="r ${cls(s.pnl_pct)}">${pct(s.pnl_pct)}</td><td class="wrap small muted">${esc(s.note || "")}</td></tr>`).join("")}</tbody></table></div>${sigs.length > limit ? `<p class="small muted">${sigs.length - limit} more waiting symbols not shown.</p>` : ""}`;
   }
   function kpiTiles(res) {
     const m = res.metrics, b = res.benchMetrics || {};
-    const count = m.cycles != null ? ["Option cycles", String(m.cycles), `${pct(m.win_rate_pct, 1, false)} winners · PF ${n2(m.profit_factor)}`] : m.rebalances != null ? ["Rebalances", String(m.rebalances), `${m.executions} orders · fees ${inrShort(m.total_fees)}`]
+    const count = m.cycles != null ? ["Option cycles", String(m.cycles), `${pct(m.win_rate_pct, 1, false)} winners · PF ${n2(m.profit_factor)}`]
+      : m.rebalances != null ? ["Orders", String(m.orders ?? m.executions), `${m.rebalances} rebalances · ${m.round_trips ?? "–"} round trips (${pct(m.win_rate_pct, 0, false)} won) · turnover ${m.turnover_pct_yr ?? "–"}%/yr · fees ${inrShort(m.total_fees)}`]
       : ["Trades", String(m.trades ?? 0), `${pct(m.win_rate_pct, 1, false)} winners · PF ${n2(m.profit_factor)}`];
-    return `<div class="stats">${[["CAGR", pct(m.cagr_pct), `Nifty ${pct(b.cagr_pct)}`], ["Total return", pct(m.total_return_pct, 0), `Nifty ${pct(b.total_return_pct, 0)}`], ["Worst fall", pct(m.max_drawdown_pct), `Nifty ${pct(b.max_drawdown_pct)}`],
-      ["Sharpe", n2(m.sharpe), `Nifty ${n2(b.sharpe)} · rf 6.5%`], count, ["Final value", inrShort(m.end_equity), `from ${inrShort(m.start_equity)}`]].map(([k, v, s]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${esc(s)}</span></div>`).join("")}</div>`;
+    const bl = benchLabel(res);
+    return `${m.notes?.length ? `<p class="flag">${esc(m.notes.join(" "))}</p>` : ""}<div class="stats">${[["CAGR", pct(m.cagr_pct), `${bl} ${pct(b.cagr_pct)}`], ["Total return", pct(m.total_return_pct, 0), `${bl} ${pct(b.total_return_pct, 0)}`], ["Worst fall", pct(m.max_drawdown_pct), `${bl} ${pct(b.max_drawdown_pct)}`],
+      ["Sharpe", n2(m.sharpe), `${bl} ${n2(b.sharpe)} · rf 6.5%`], count, ["Final value", inrShort(m.end_equity), `from ${inrShort(m.start_equity)}`]].map(([k, v, s]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${esc(s)}</span></div>`).join("")}</div>`;
   }
   function verdictLine(res) { const m = res.metrics, b = res.benchMetrics || {}, d = (m.cagr_pct ?? 0) - (b.cagr_pct ?? 0);
-    return `<p class="verdict">${pct(m.cagr_pct)} a year vs Nifty's ${pct(b.cagr_pct)} — <span class="${d >= 0 ? "up" : "down"}">${d >= 0 ? "ahead" : "behind"} by ${Math.abs(d).toFixed(1)} points</span>, worst fall ${pct(m.max_drawdown_pct)} vs ${pct(b.max_drawdown_pct)}.</p>`; }
+    return `<p class="verdict">${pct(m.cagr_pct)} a year vs ${esc(benchLabel(res))}'s ${pct(b.cagr_pct)} — <span class="${d >= 0 ? "up" : "down"}">${d >= 0 ? "ahead" : "behind"} by ${Math.abs(d).toFixed(1)} points</span>, worst fall ${pct(m.max_drawdown_pct)} vs ${pct(b.max_drawdown_pct)}.</p>`; }
   async function tabOverview(a, v, res, test, body, seq) {
     let paperHtml = "";
     if (a.status === "paper" || a.status === "paused") {
@@ -123,11 +125,11 @@
     body.innerHTML = `${paperHtml}
       <div class="card stack"><div class="row"><h2>${a.status === "paper" ? "Today's signals (paper account)" : "Signals if this ran today"}</h2><span class="grow"></span><span class="small muted">close of ${fmtDate(S.lastDay)} · act at next open</span></div>${signalTable(signals, 40)}</div>
       <div class="card stack"><div class="row"><h2>Backtest v${v.n}</h2><span class="small muted">${fmtDate(h.start)} – ${fmtDate(h.end)}</span></div>${verdictLine(res)}${survivor}${kpiTiles(res)}
-        ${split ? `<div class="grid2">${["train", "test"].map((k) => { const s = split[k].strategy, n = split[k].nifty || {}; return `<div class="mini" style="padding:12px"><span class="k">${k === "train" ? "Training" : "Test (unseen)"} · ${fmtDate(s.start)} – ${fmtDate(s.end)}</span><span class="v">${pct(s.cagr_pct)} <span class="small muted" style="font-family:var(--font-body);font-weight:400">vs Nifty ${pct(n.cagr_pct)}</span></span><span class="b">worst fall ${pct(s.max_drawdown_pct)} · Sharpe ${n2(s.sharpe)}${s.trades != null && v.spec.type !== "rotation" ? ` · ${s.trades} ${v.spec.type === "option_selling" ? "cycles" : "trades"}` : ""}</span></div>`; }).join("")}</div>
+        ${split ? `<div class="grid2">${["train", "test"].map((k) => { const s = split[k].strategy, n = split[k].nifty || {}; return `<div class="mini" style="padding:12px"><span class="k">${k === "train" ? "Training" : "Test (unseen)"} · ${fmtDate(s.start)} – ${fmtDate(s.end)}</span><span class="v">${pct(s.cagr_pct)} <span class="small muted" style="font-family:var(--font-body);font-weight:400">vs ${esc(benchLabel(res))} ${pct(n.cagr_pct)}</span></span><span class="b">worst fall ${pct(s.max_drawdown_pct)} · Sharpe ${n2(s.sharpe)}${s.trades != null && v.spec.type !== "rotation" ? ` · ${s.trades} ${v.spec.type === "option_selling" ? "cycles" : "trades"}` : ""}</span></div>`; }).join("")}</div>
           ${split.flags.length ? `<p class="flag">${esc(split.flags.join(". "))}.</p>` : `<p class="flag ok">Results hold up on the unseen test period.</p>`}` : `<p class="small muted">No train/test split set for this version. Set one under Rules & versions to check for overfitting.</p>`}</div>
       ${runs.length ? `<div class="card"><h2>Earlier paper runs</h2><div class="tablewrap"><table><thead><tr><th>Version</th><th>From</th><th>Until</th></tr></thead><tbody>${runs.map((r) => `<tr><td>v${r.version}</td><td>${fmtDate(r.since)}</td><td>${fmtDate(r.until)}</td></tr>`).join("")}</tbody></table></div></div>` : ""}`;
     const pc = document.getElementById("paperChart");
-    if (pc) { const p = await paperResult(a); if (p && !p.pending) chart(pc, p.res.days, [{ short: "Nifty", color: "var(--series-b)", values: p.res.bench || [], width: 1.6 }, { short: "Paper", color: "var(--series-a)", values: p.res.eq, width: 2 }], { height: 200, endLabels: true, aria: "Paper equity", fmt: inrShort, fmtEnd: inrShort, fmtTip: inr }); }
+    if (pc) { const p = await paperResult(a); if (p && !p.pending) chart(pc, p.res.days, [{ short: benchLabel(p.res), color: "var(--series-b)", values: p.res.bench || [], width: 1.6 }, { short: "Paper", color: "var(--series-a)", values: p.res.eq, width: 2 }], { height: 200, endLabels: true, aria: "Paper equity", fmt: inrShort, fmtEnd: inrShort, fmtTip: inr }); }
   }
   function yearly(days, eq) { const out = new Map(); let prev = eq[0];
     for (let i = 0; i < days.length; i++) { const y = new Date(days[i] * 864e5).getUTCFullYear(), nx = i + 1 < days.length ? new Date(days[i + 1] * 864e5).getUTCFullYear() : null; if (nx !== y) { out.set(y, (eq[i] / prev - 1) * 100); prev = eq[i]; } } return out; }
@@ -136,14 +138,14 @@
     let breakdown = "";
     if (v.spec.type === "rule") { const rows = Object.entries(res.perSymbol).sort((x, y) => (y[1].total_return_pct ?? -1e9) - (x[1].total_return_pct ?? -1e9));
       breakdown = `<h2>By symbol</h2><div class="tablewrap tall"><table><thead><tr><th>Symbol</th><th class="r">Return</th><th class="r">CAGR</th><th class="r">Worst fall</th><th class="r">Trades</th><th class="r">Win %</th></tr></thead><tbody>${rows.map(([s, r]) => r.note ? `<tr><td>${esc(s)}</td><td colspan="5" class="muted">${esc(r.note)}</td></tr>` : `<tr><td>${esc(s)}</td><td class="r ${cls(r.total_return_pct)}">${pct(r.total_return_pct, 0)}</td><td class="r">${pct(r.cagr_pct)}</td><td class="r">${pct(r.max_drawdown_pct)}</td><td class="r">${r.trades ?? 0}</td><td class="r">${pct(r.win_rate_pct, 0, false)}</td></tr>`).join("")}</tbody></table></div>`; }
-    else if (v.spec.type === "rotation") breakdown = `<h2>Leaders now</h2><div class="tablewrap"><table><thead><tr><th>#</th><th>Symbol</th><th class="r">Momentum</th></tr></thead><tbody>${res.ranking.map(([s, x], i) => `<tr><td>${i + 1}</td><td>${esc(s)} <span class="small muted">${esc(S.man.symbols[s]?.name || "")}</span></td><td class="r ${cls(x)}">${v.spec.score === "risk_adj" ? n2(x / 100) : pct(x)}</td></tr>`).join("")}</tbody></table></div>`;
+    else if (v.spec.type === "rotation") breakdown = `<h2>Leaders now</h2><div class="tablewrap"><table><thead><tr><th>#</th><th>Symbol</th><th class="r">${v.spec.score === "momentum" && !v.spec.factors ? "Momentum" : "Score"}</th></tr></thead><tbody>${res.ranking.map(([s, x], i) => `<tr><td>${i + 1}</td><td>${esc(s)} <span class="small muted">${esc(S.man.symbols[s]?.name || "")}</span></td><td class="r ${cls(x)}">${v.spec.score === "momentum" && !v.spec.factors ? pct(x) : n2(x / 100)}</td></tr>`).join("")}</tbody></table></div>`;
     else { const g = {}; for (const c of res.trades) { const x = g[c.reason] || (g[c.reason] = { n: 0, pnl: 0 }); x.n++; x.pnl += c.pnl; }
       breakdown = `<h2>How cycles ended</h2><div class="tablewrap"><table><thead><tr><th>Exit</th><th class="r">Cycles</th><th class="r">Total P&amp;L</th><th class="r">Average</th></tr></thead><tbody>${Object.entries(g).map(([k, x]) => `<tr><td>${esc(k)}</td><td class="r">${x.n}</td><td class="r ${cls(x.pnl)}">${inr(x.pnl)}</td><td class="r ${cls(x.pnl)}">${inr(x.pnl / x.n)}</td></tr>`).join("")}</tbody></table></div>`; }
     body.innerHTML = `${kpiTiles(res)}
-      <div class="card"><div class="chart-head"><h2 style="margin:0">Growth of capital</h2><div class="legend"><span><i style="background:var(--series-a)"></i>v${v.n}</span><span><i style="background:var(--series-b)"></i>Nifty 50 buy &amp; hold</span></div>
+      <div class="card"><div class="chart-head"><h2 style="margin:0">Growth of capital</h2><div class="legend"><span><i style="background:var(--series-a)"></i>v${v.n}</span><span><i style="background:var(--series-b)"></i>${esc(benchLabel(res) === "Nifty" ? "Nifty 50" : benchLabel(res))} buy &amp; hold</span></div>
         <div class="seg" role="group" aria-label="Scale"><button type="button" data-scale="lin" aria-pressed="${!S.log}">Linear</button><button type="button" data-scale="log" aria-pressed="${S.log}">Log</button></div></div>
         <div class="chart" id="eqChart"></div><p class="subtitle">Drawdown from previous peak</p><div class="chart" id="ddChart"></div>${test.split ? `<p class="small muted">Dashed line: train/test split on ${fmtDate(test.split)}.</p>` : ""}</div>
-      <div class="grid2"><div class="card"><h2>Year by year</h2><div class="tablewrap"><table><thead><tr><th>Year</th><th class="r">Strategy</th><th class="r">Nifty</th><th class="r">Difference</th></tr></thead><tbody>${[...ys.entries()].reverse().map(([y, x]) => { const bx = yb.get(y), d = bx == null ? null : x - bx;
+      <div class="grid2"><div class="card"><h2>Year by year</h2><div class="tablewrap"><table><thead><tr><th>Year</th><th class="r">Strategy</th><th class="r">${esc(benchLabel(res))}</th><th class="r">Difference</th></tr></thead><tbody>${[...ys.entries()].reverse().map(([y, x]) => { const bx = yb.get(y), d = bx == null ? null : x - bx;
         return `<tr><td>${y}${test.split && String(y) >= test.split.slice(0, 4) ? ' <span class="small muted">test</span>' : ""}</td><td class="r ${cls(x)}">${pct(x)}</td><td class="r ${cls(bx)}">${pct(bx)}</td><td class="r ${cls(d)}">${d == null ? "–" : pct(d)}</td></tr>`; }).join("")}</tbody></table></div></div>
       <div class="card">${breakdown}</div></div>
       <p class="small muted">${m.start} to ${m.end}. ${v.spec.type === "rule" ? `Signals at close, fills at next open; costs ${v.spec.cost_pct}% per side.` : v.spec.type === "rotation" ? `Rebalancing at close with ${v.spec.cost_pct}% costs.` : "Model-priced with Black-Scholes and India VIX; no skew."} Stocks are today's index members for the whole period (survivorship bias).</p>`;
@@ -152,7 +154,7 @@
   }
   function drawPerf(res, test) {
     const el = document.getElementById("eqChart"); if (!el) return;
-    const A = { short: "Strategy", color: "var(--series-a)", values: res.eq, width: 2 }, B = { short: "Nifty", color: "var(--series-b)", values: res.bench || [], width: 1.6 };
+    const A = { short: "Strategy", color: "var(--series-a)", values: res.eq, width: 2 }, B = { short: benchLabel(res), color: "var(--series-b)", values: res.bench || [], width: 1.6 };
     const mark = test?.split ? E.dayOf(test.split) : null;
     chart(el, res.days, res.bench ? [B, A] : [A], { height: 300, log: S.log, endLabels: true, mark, aria: "Growth of capital", fmt: inrShort, fmtEnd: inrShort, fmtTip: inr });
     chart(document.getElementById("ddChart"), res.days, res.bench ? [{ ...B, values: dd(res.bench), width: 1.2 }, { ...A, values: dd(res.eq), area: true, color: "var(--bad)", width: 1.4 }] : [{ ...A, values: dd(res.eq), area: true, color: "var(--bad)" }],
@@ -171,9 +173,9 @@
     const st = stressCache.get(key), r = st.risk, mc = st.monteCarlo;
     const tile = (k, val, b) => `<div class="kpi"><span class="k">${k}</span><span class="v">${val}</span><span class="b">${esc(b)}</span></div>`;
     const base = st.sensitivity.find((x) => x.factor === 1)?.cagr_pct ?? 0, spread = Math.max(...st.sensitivity.map((x) => Math.abs((x.cagr_pct ?? 0) - base)));
-    body.innerHTML = `<div class="stats">${tile("Beta to Nifty", n2(r.beta), `correlation ${n2(r.correlation)}`)}${tile("If Nifty falls 10%", pct(r.nifty_fall_10_impact_pct), "expected move from beta")}${tile("1-day VaR (95%)", pct(-r.var95_daily_pct), `average of worst 5%: ${pct(-r.cvar95_daily_pct)}`)}
+    body.innerHTML = `<div class="stats">${tile(`Beta to ${benchLabel(res)}`, n2(r.beta), `correlation ${n2(r.correlation)}`)}${tile(`If ${benchLabel(res)} falls 10%`, pct(r.nifty_fall_10_impact_pct), "expected move from beta")}${tile("1-day VaR (95%)", pct(-r.var95_daily_pct), `average of worst 5%: ${pct(-r.cvar95_daily_pct)}`)}
         ${tile("Worst month", pct(r.worst_month?.pct), r.worst_month?.month || "")}${tile("Months positive", pct(r.positive_months_pct, 0, false), `best ${pct(r.best_month?.pct)} (${r.best_month?.month || ""})`)}${tile("Longest drawdown", `${Math.round(r.longest_drawdown_days / 30.4)} mo`, `${r.longest_drawdown_days} days below a prior peak`)}</div>
-      <div class="card"><h2>Crisis replays</h2><p class="small muted" style="margin:4px 0 8px">How this version behaved through past Indian market shocks.</p><div class="tablewrap"><table><thead><tr><th>Period</th><th>Dates</th><th class="r">Strategy</th><th class="r">Nifty</th><th class="r">Strategy worst fall</th><th class="r">Nifty worst fall</th></tr></thead><tbody>${st.crises.map((c) => c.note
+      <div class="card"><h2>Crisis replays</h2><p class="small muted" style="margin:4px 0 8px">How this version behaved through past Indian market shocks.</p><div class="tablewrap"><table><thead><tr><th>Period</th><th>Dates</th><th class="r">Strategy</th><th class="r">${esc(benchLabel(res))}</th><th class="r">Strategy worst fall</th><th class="r">${esc(benchLabel(res))} worst fall</th></tr></thead><tbody>${st.crises.map((c) => c.note
         ? `<tr><td>${esc(c.name)}</td><td class="small muted">${fmtDate(c.from)} – ${fmtDate(c.to)}</td><td colspan="4" class="muted">${esc(c.note)}</td></tr>`
         : `<tr><td>${esc(c.name)}</td><td class="small muted">${fmtDate(c.from)} – ${fmtDate(c.to)}</td><td class="r ${cls(c.strategy_pct)}">${pct(c.strategy_pct)}</td><td class="r ${cls(c.nifty_pct)}">${pct(c.nifty_pct)}</td><td class="r">${pct(c.strategy_max_dd_pct)}</td><td class="r">${pct(c.nifty_max_dd_pct)}</td></tr>`).join("")}</tbody></table></div></div>
       <div class="grid2">
@@ -198,8 +200,9 @@
   function tabRules(a, v, res, test, body) {
     const s = v.spec;
     const kv = s.type === "rule" ? [["Symbols", `${esc(s.symbols.join(", "))}`], ["Entry", `<code>${esc(s.entry)}</code>`], ["Exit", s.exit ? `<code>${esc(s.exit)}</code>` : "stop / target only"], ["Side", s.side], ["Stop loss", s.stop_loss_pct ? s.stop_loss_pct + "%" : "none"], ["Take profit", s.take_profit_pct ? s.take_profit_pct + "%" : "none"], ["Position size", s.position_size_pct + "% of each symbol's share"]]
-      : s.type === "rotation" ? [["Universe", esc(Array.isArray(s.universe) ? s.universe.join(", ") : s.universe)], ["Ranking", `${s.score} over ${s.lookback} days, skip ${s.skip}`], ["Hold", `top ${s.top_n}, ${s.rebalance}`], ["Momentum floor", s.min_score == null ? "none" : s.min_score], ["Trend filter", s.trend_filter ? `${s.trend_filter.symbol} above ${s.trend_filter.sma}-day average` : "none"]]
+      : s.type === "rotation" ? [["Universe", esc(Array.isArray(s.universe) ? s.universe.join(", ") : s.universe)], ["Ranking", esc(rankWords(s))], ["Score floor", s.min_score == null ? "none" : s.min_score], ["Trend filter", s.trend_filter ? `${s.trend_filter.symbol} above ${s.trend_filter.sma}-day average` : "none"]]
       : [["Underlying", `${s.underlying} (${s.expiry}, lot ${s.lot_size} × ${s.lots})`], ["Structure", s.structure], ["Strikes", s.strike_mode === "delta" ? s.delta + " delta" : s.otm_pct + "% OTM"], ["Wings", s.structure === "iron_condor" ? s.wing_width + " pts" : "—"], ["Stop", s.stop_loss_mult ? s.stop_loss_mult + "× credit" : "none"], ["Target", s.profit_target_pct ? s.profit_target_pct + "%" : "none"], ["VIX filter", `${s.min_vix ?? "–"} to ${s.max_vix ?? "–"}`]];
+    kv.push(...extraKV(s));
     kv.push(["Capital", inr(s.capital)], ["Test window", `${fmtDate(test.start)} – ${test.end ? fmtDate(test.end) : "latest"}${test.split ? `, split ${fmtDate(test.split)}` : ", no split"}`]);
     const ids = S.room.versions.map((x) => x.by); names(ids);
     body.innerHTML = `<div class="card stack"><div class="row"><h2>Rules · v${v.n}</h2><span class="grow"></span><span class="small muted">by ${esc(nameOf(v.by))} · ${esc(fmtWhen(v.at))}</span></div>
@@ -267,7 +270,7 @@ TEST WINDOW: ${JSON.stringify(v.test || {})}
 EXPLANATION: ${v.meta?.explanation || ""}
 RESULTS: ${JSON.stringify(compactRes(res, v.test))}
 RISK & STRESS: ${JSON.stringify(stats)}
-YEARLY RETURNS (strategy vs Nifty): ${JSON.stringify([...yearly(res.days, res.eq).entries()].map(([y, r]) => [y, +r.toFixed(1), res.bench ? +(yearly(res.days, res.bench).get(y) ?? 0).toFixed(1) : null]))}
+YEARLY RETURNS (strategy vs ${benchLabel(res)}): ${JSON.stringify([...yearly(res.days, res.eq).entries()].map(([y, r]) => [y, +r.toFixed(1), res.bench ? +(yearly(res.days, res.bench).get(y) ?? 0).toFixed(1) : null]))}
 RECENT TRADES: ${trades.join(" | ")}
 TODAY'S SIGNALS: ${JSON.stringify(res.signals.slice(0, 15))}
 VERSION HISTORY: ${JSON.stringify(S.room.versions.map((x) => ({ n: x.n, note: x.note, cagr: x.headline?.cagr, mdd: x.headline?.mdd })))}
@@ -398,4 +401,4 @@ USER NOW: ${text}${attachmentText(atts)}`;
     window.addEventListener("hashchange", route);
   })();
   let sigT;
-  function refreshSigCount() { clearTimeout(sigT); sigT = setTimeout(async () => { let n = 0; for (const a of [...S.agents.values()].filter((x) => x.status === "paper")) { try { const p = await paperResult(a); n += (p?.signals || []).filter((s) => /BUY|SELL|SHORT|COVER|NEW/.test(s.action)).length; } catch (e) { /* ignore */ } } $("sigCount").textContent = String(n); $("sigCount").classList.toggle("hot", n > 0); }, 400); }
+  function refreshSigCount() { clearTimeout(sigT); sigT = setTimeout(async () => { let n = 0; for (const a of [...S.agents.values()].filter((x) => x.status === "paper")) { try { const p = await paperResult(a); n += (p?.signals || []).filter((s) => isAction(s)).length; } catch (e) { /* ignore */ } } $("sigCount").textContent = String(n); $("sigCount").classList.toggle("hot", n > 0); }, 400); }

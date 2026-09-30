@@ -16,6 +16,8 @@ const data = path.join(dir, "data");
 const man = JSON.parse(fs.readFileSync(path.join(data, "manifest.json"), "utf8"));
 const light = E.framesFromPack(JSON.parse(fs.readFileSync(path.join(data, "closes.json"), "utf8")));
 const lastDay = Object.values(man.symbols).map((s) => s.last).sort().pop();
+let shares = null; try { shares = JSON.parse(fs.readFileSync(path.join(data, "shares.json"), "utf8")); } catch (e) { /* optional */ }
+E.setData({ meta: man.symbols, shares });
 const full = {};
 const fullFrame = (s) => (full[s] ||= E.frame(JSON.parse(fs.readFileSync(path.join(data, "p", `${s}.json`), "utf8"))));
 function framesFor(spec) {
@@ -23,7 +25,7 @@ function framesFor(spec) {
   const out = {};
   for (const s of need) {
     if (!man.symbols[s]) throw new Error(`no data for ${s}`);
-    out[s] = spec.type === "rule" && man.symbols[s].kind !== "basket" ? fullFrame(s) : light[s];
+    out[s] = E.needsFull(spec) && man.symbols[s].kind !== "basket" ? fullFrame(s) : light[s];
   }
   return out;
 }
@@ -45,7 +47,7 @@ for (const a of agents) {
         max_drawdown_pct: m.max_drawdown_pct, equity: Math.round(m.end_equity), start_equity: Math.round(m.start_equity) };
       r.signals = E.signals(spec, res);
     }
-    r.actions = r.signals.filter((s) => ACTION.test(s.action));
+    r.actions = r.signals.filter((s) => ACTION.test(s.action) && s.due !== false);  // rotation changes count only on their rebalance day
   } catch (e) { r.error = String(e.message || e); r.signals = []; r.actions = []; }
   results.push(r);
 }

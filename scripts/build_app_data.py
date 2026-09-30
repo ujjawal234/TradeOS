@@ -29,7 +29,12 @@ PRIMARY = {"NIFTY_50": "NIFTY", "NIFTY_BANK": "BANKNIFTY", "NIFTY_FINANCIAL_SERV
 # Yahoo copies (verified identical to NSE) extend history before NSE's archive starts (Feb 2012; VIX May 2014)
 YAHOO_BACKFILL = {"NIFTY": "NIFTY", "BANKNIFTY": "BANKNIFTY", "NIFTY_IT": "NIFTYIT", "NIFTY_PHARMA": "NIFTYPHARMA", "NIFTYNXT50": "NIFTYNEXT50",
                   "INDIAVIX": "INDIAVIX", "NIFTY_100": "NIFTY100", "NIFTY_200": "NIFTY200", "NIFTY_500": "NIFTY500", "NIFTY_MIDCAP_50": "NIFTYMIDCAP50"}
-DEBT = re.compile(r"G-?SEC|GILT|BOND|SDL|T-?BILL|1D RATE|CORPORATE|AAA|DEBT|CRISIL|MONEY MARKET|GSEC|INVERSE|LEVERAGE|FUTURES|ARBITRAGE|USD|DIVIDEND POINTS| - OLD|^NIFTY50 TR|^NIFTY TR", re.I)
+# every NSE series is kept except superseded copies and non-price series; debt (G-Sec, bond, overnight rate) and
+# derived (leveraged, inverse, futures, arbitrage, USD) series are tagged so they can serve as cash, defensive
+# assets, benchmarks or rotation universes of their own.
+SKIP = re.compile(r" - OLD$|DIVIDEND POINTS", re.I)
+DEBT = re.compile(r"G-?SEC|GILT|BHARAT BOND|\bBOND\b|\bSDL\b|T-?BILL|1D RATE|MONEY MARKET|CRISIL|\bAAA\b|CORPORATE BOND|DEBT", re.I)
+DERIVED = re.compile(r"INVERSE|LEVERAGE|FUTURES|ARBITRAGE|\bUSD\b", re.I)
 # NSE renamed its indices (S&P CNX -> CNX -> NIFTY, ~2015); these chains are stitched into one history.
 RENAMES = {
     "Nifty 50": ["S&P CNX Nifty", "CNX Nifty"], "Nifty Next 50": ["CNX Nifty Junior"], "Nifty 100": ["CNX 100"], "Nifty 200": ["CNX 200"],
@@ -145,7 +150,7 @@ def main(out: Path) -> None:
                 raw[c] = stitch(raw[c], [raw[code_of(o)] for o in olds if code_of(o) in raw], new)
         for code, df in raw.items():
             name = nse_names.get(code, code)
-            if code in old_codes or DEBT.search(name):
+            if code in old_codes or SKIP.search(name):
                 continue
             if len(df) >= MIN_ROWS_INDEX and df.index[-1] >= pd.Timestamp.today() - pd.Timedelta(days=30):
                 nse[code] = df
@@ -159,6 +164,11 @@ def main(out: Path) -> None:
             fill = y[~y.index.isin(df.index) & (y.index <= df.index[-1])]  # earlier history + days NSE's archive missed
             if len(fill):
                 df = pd.concat([df, fill]).sort_index()
+        gaps = df.index.to_series().diff().dt.days
+        if (gaps > 45).any():  # stray early points before a long hole in NSE's archive: keep the continuous recent history
+            cut = gaps[gaps > 45].index[-1]
+            print(f"  {key}: dropped {int((df.index < cut).sum())} row(s) before a {int(gaps.loc[cut])}-day gap ending {cut.date()}")
+            df = df[df.index >= cut]
         for col in ("open", "high", "low"):
             df[col] = df[col].fillna(df["close"])
         df["volume"] = df["volume"].fillna(0)
@@ -169,7 +179,8 @@ def main(out: Path) -> None:
                         "name": name,
                         "industry": "Index", "n50": False, "n200": False, "fno": key in PRIMARY.values(), "lot": None, "kind": "index",
                         "val": bool(df.get("pe") is not None and df["pe"].notna().sum() >= 50), "source": "NSE",
-                        "group": ("broad" if BROAD_RX.search(name) else "sector" if SECTOR_RX.search(name) else "factor" if FACTOR_RX.search(name) else "theme")}
+                        "group": ("debt" if DEBT.search(name) else "derived" if DERIVED.search(name) else "broad" if BROAD_RX.search(name) else "sector" if SECTOR_RX.search(name)
+                                  else "factor" if FACTOR_RX.search(name) else "theme")}
     for f in sorted(src.glob("*.csv")):
         s = f.stem
         is_idx = s in INDEX_NAMES
@@ -242,7 +253,9 @@ def main(out: Path) -> None:
         "fno": members(lambda m: m["fno"]), "all": members(lambda m: True),
         "sectors": sorted(s for s, m in symbols.items() if m.get("group") == "sector" and not m.get("alias_of")) or sorted(sectors),
         "baskets": sorted(sectors),
-        "indices": sorted(s for s, m in symbols.items() if m["kind"] == "index" and s != "INDIAVIX" and not m.get("alias_of")),
+        "indices": sorted(s for s, m in symbols.items() if m["kind"] == "index" and s != "INDIAVIX" and not m.get("alias_of") and m.get("group") not in ("debt", "derived")),
+        "debt": sorted(s for s, m in symbols.items() if m.get("group") == "debt" and not m.get("alias_of") and "CLEAN_PRICE" not in s),  # total-return series only
+        "derived": sorted(s for s, m in symbols.items() if m.get("group") == "derived" and not m.get("alias_of")),
         "broad": sorted(s for s, m in symbols.items() if m.get("group") == "broad" and not m.get("alias_of")),
         "themes": sorted(s for s, m in symbols.items() if m.get("group") == "theme" and s != "INDIAVIX" and not m.get("alias_of")),
         "factors": sorted(s for s, m in symbols.items() if m.get("group") == "factor" and not m.get("alias_of")),
@@ -250,9 +263,21 @@ def main(out: Path) -> None:
         "banks": [s for s in ["HDFCBANK", "ICICIBANK", "SBIN", "AXISBANK", "KOTAKBANK", "INDUSINDBK", "BANKBARODA", "PNB", "CANBK", "FEDERALBNK", "IDFCFIRSTB", "AUBANK", "UNIONBANK", "BANKINDIA", "INDIANB"] if s in symbols],
         **industries,
     }
-    manifest = {"generated": fetched.get("generated"), "source": "Stocks: Yahoo Finance (split & dividend adjusted). Indices: NSE daily index files (with P/E, P/B, dividend yield). Lists: NSE.",
+    has_shares = (ROOT / "data" / "shares.json").exists()
+    manifest = {"generated": fetched.get("generated"), "shares": has_shares, "source": "Stocks: Yahoo Finance (split & dividend adjusted). Indices: NSE daily index files (with P/E, P/B, dividend yield). Lists: NSE.",
                 "symbols": symbols, "universes": universes, "sectors": sectors}
     (dst / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":")))
+    # share counts (for market-cap weights): {SYM: {"f": free-float ratio, "s": [[epoch_day, shares], ...]}}
+    sh_file = ROOT / "data" / "shares.json"
+    if sh_file.exists():
+        raw_sh = json.loads(sh_file.read_text()).get("stocks", {})
+        out_sh = {}
+        for s, v in raw_sh.items():
+            pts = [[int(pd.Timestamp(d).value // 86_400_000_000_000), float(n)] for d, n in v.get("shares", []) if n and n > 0]
+            if s in symbols and pts:
+                out_sh[s] = {"f": v.get("float") or 1.0, "s": sorted(pts)}
+        (dst / "shares.json").write_text(json.dumps(out_sh, separators=(",", ":")))
+        print(f"shares: {len(out_sh)} stocks with share counts")
     size = sum(p.stat().st_size for p in dst.rglob("*.json"))
     kinds = {k: sum(1 for m in symbols.values() if m["kind"] == k) for k in ("stock", "index", "basket")}
     print(f"{kinds} | NSE indices: {len(nse)} | universes: {', '.join(f'{k}={len(v)}' for k, v in universes.items())} | {size / 1e6:.1f} MB -> {dst}")

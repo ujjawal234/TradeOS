@@ -82,8 +82,12 @@
   // ----------------------------------------------------------------- DSL parser (Python-like expressions)
   class RuleError extends Error {}
   const FUNCS = ["sma", "ema", "wma", "rsi", "atr", "atr_pct", "macd", "macd_signal", "bb_upper", "bb_lower", "highest", "lowest",
-    "shift", "prev", "change", "roc", "stdev", "zscore", "volatility", "cross_above", "cross_below", "count_true", "abs", "max", "min"];
-  const VARS = ["open", "high", "low", "close", "volume", "hl2", "dow", "pe", "pb", "dy"];
+    "shift", "prev", "change", "roc", "stdev", "zscore", "volatility", "cross_above", "cross_below", "count_true", "abs", "max", "min",
+    // added: returns, statistics, oscillators, trend and volume indicators, maths, cross-symbol reference
+    "ret", "sum", "median", "pct_rank", "slope", "drawdown", "days_since", "corr", "beta",
+    "adx", "plus_di", "minus_di", "stoch_k", "stoch_d", "cci", "mfi", "williams_r", "obv", "vwap", "supertrend", "keltner_upper", "keltner_lower",
+    "log", "sqrt", "sign", "iff", "clip", "ref"];
+  const VARS = ["open", "high", "low", "close", "volume", "hl2", "hlc3", "dow", "dom", "month", "year", "pe", "pb", "dy"];
 
   function tokenize(src) {
     const t = []; let i = 0;
@@ -92,6 +96,7 @@
       const c = src[i];
       if (/\s/.test(c)) { i++; continue; }
       if (/[0-9.]/.test(c)) { let j = i; while (j < src.length && /[0-9.eE]/.test(src[j])) { if (/[eE]/.test(src[j]) && /[+-]/.test(src[j + 1])) j++; j++; } const v = Number(src.slice(i, j)); if (!isFinite(v)) throw new RuleError(`Bad number '${src.slice(i, j)}'`); t.push({ k: "num", v }); i = j; continue; }
+      if (c === '"' || c === "'") { const j = src.indexOf(c, i + 1); if (j < 0) throw new RuleError("Unclosed quote"); t.push({ k: "str", v: src.slice(i + 1, j) }); i = j + 1; continue; }
       if (/[A-Za-z_]/.test(c)) { let j = i; while (j < src.length && /[A-Za-z0-9_]/.test(src[j])) j++; t.push({ k: "id", v: src.slice(i, j) }); i = j; continue; }
       const p2 = src.slice(i, i + 2);
       if (two.includes(p2)) { t.push({ k: "op", v: p2 === "&&" ? "and" : p2 === "||" ? "or" : p2 }); i += 2; continue; }
@@ -122,6 +127,7 @@
       const tk = next();
       if (!tk) throw new RuleError(`Unexpected end of '${src}'`);
       if (tk.k === "num") return { t: "num", v: tk.v };
+      if (tk.k === "str") return { t: "str", v: tk.v };
       if (tk.k === "op" && tk.v === "(") { const n = orE(); expect(")"); return n; }
       if (tk.k === "id") {
         if (tk.v === "True" || tk.v === "true") return { t: "num", v: 1 };
@@ -140,7 +146,7 @@
           if (!FUNCS.includes(tk.v)) throw new RuleError(`Unknown function '${tk.v}'. Allowed: ${FUNCS.join(", ")}`);
           return { t: "call", f: tk.v, args, kw };
         }
-        if (!VARS.includes(tk.v)) throw new RuleError(`Unknown variable '${tk.v}'. Allowed: ${VARS.join(", ")}`);
+        if (!VARS.includes(tk.v)) throw new RuleError(`Unknown variable '${tk.v}'. Allowed: ${VARS.join(", ")}${/^[A-Z0-9_&-]{2,}$/.test(tk.v) ? `. To use another symbol's data write ref("${tk.v}", close)` : ""}`);
         return { t: "var", v: tk.v };
       }
       throw new RuleError(`Unexpected '${tk.v}' in '${src}'`);
@@ -150,7 +156,27 @@
     return ast;
   }
 
-  function evaluate(ast, df) {
+  // shared data context: set once by the app / runner (E.setData) so ref() can reach other symbols,
+  // and rotation can use industries (sector caps) and share counts (market-cap weights)
+  const DATA = { frames: null, meta: null, shares: null };
+  function setData(o) { Object.assign(DATA, o || {}); }
+  function alignTo(days, src, vals) { // value of src series at or before each day (forward fill)
+    const o = f64(days.length); let j = 0, last = NaNv;
+    for (let i = 0; i < days.length; i++) { while (j < src.length && src[j] <= days[i]) { last = vals[j]; j++; } o[i] = last; }
+    return o;
+  }
+  function rolling2(A, B, n, fn) {
+    n = Math.trunc(n); const L = A.length, out = f64(L);
+    for (let i = n - 1; i < L; i++) {
+      const xs = [], ys = []; let ok = true;
+      for (let j = i - n + 1; j <= i; j++) { if (!(isFinite(A[j]) && isFinite(B[j]))) { ok = false; break; } xs.push(A[j]); ys.push(B[j]); }
+      if (ok) out[i] = fn(xs, ys);
+    }
+    return out;
+  }
+  const cov1 = (x, y) => { const mx = mean(x), my = mean(y); let s = 0; for (let k = 0; k < x.length; k++) s += (x[k] - mx) * (y[k] - my); return s / (x.length - 1); };
+
+  function evaluate(ast, df, ctx = {}) {
     const L = df.c.length;
     const nanArr = () => new Float64Array(L).fill(NaN);
     const vars = { open: df.o, high: df.h, low: df.l, close: df.c, volume: df.v, pe: df.pe || nanArr(), pb: df.pb || nanArr(), dy: df.dy || nanArr() };
@@ -195,6 +221,64 @@
         case "count_true": { const c = B(arg(a, kw, 0, "cond")), n = Math.trunc(num(arg(a, kw, 1, "n"))), o = f64(L); let s = 0; for (let i = 0; i < L; i++) { s += c[i]; if (i >= n) s -= c[i - n]; o[i] = s; } return o; }
         case "abs": { const x = arg(a, kw, 0, "x"); return isNum(x) ? Math.abs(x) : S(x).map(Math.abs); }
         case "max": case "min": { const A = S(arg(a, kw, 0, "a")), Bb = S(arg(a, kw, 1, "b")); return A.map((v, i) => (v !== v || Bb[i] !== Bb[i]) ? NaNv : (f === "max" ? Math.max(v, Bb[i]) : Math.min(v, Bb[i]))); }
+        // ---- added functions
+        case "ret": { const x = S(arg(a, kw, 0, "x")), s = shift(x, num(arg(a, kw, 1, "n", 1))); return x.map((v, i) => v / s[i] - 1); }
+        case "sum": return rolling(S(arg(a, kw, 0, "x")), num(arg(a, kw, 1, "n")), (w) => { let s = 0; for (const v of w) s += v; return s; });
+        case "median": return rolling(S(arg(a, kw, 0, "x")), num(arg(a, kw, 1, "n")), (w) => { const s = w.slice().sort((p, q) => p - q), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; });
+        case "pct_rank": return rolling(S(arg(a, kw, 0, "x")), num(arg(a, kw, 1, "n", 252)), (w) => { const v = w[w.length - 1]; let c = 0; for (const u of w) if (u <= v) c++; return c / w.length * 100; });
+        case "slope": return rolling(S(arg(a, kw, 0, "x")), num(arg(a, kw, 1, "n", 20)), (w) => { const k = w.length, mx = (k - 1) / 2, my = mean(w); let sxy = 0, sxx = 0; for (let j = 0; j < k; j++) { sxy += (j - mx) * (w[j] - my); sxx += (j - mx) ** 2; } return sxy / sxx; });
+        case "drawdown": { const x = S(arg(a, kw, 0, "x", df.c)); let pk = -Infinity; return x.map((v) => { if (v !== v) return NaNv; pk = Math.max(pk, v); return (v / pk - 1) * 100; }); }
+        case "days_since": { const c = B(arg(a, kw, 0, "cond")), o = f64(L); let last = -1; for (let i = 0; i < L; i++) { if (c[i]) last = i; o[i] = last < 0 ? NaNv : i - last; } return o; }
+        case "corr": return rolling2(S(arg(a, kw, 0, "a")), S(arg(a, kw, 1, "b")), num(arg(a, kw, 2, "n", 63)), (x, y) => cov1(x, y) / (std1(x) * std1(y)));
+        case "beta": return rolling2(S(arg(a, kw, 0, "a")), S(arg(a, kw, 1, "b")), num(arg(a, kw, 2, "n", 252)), (x, y) => cov1(x, y) / (std1(y) ** 2));
+        case "adx": case "plus_di": case "minus_di": {
+          const n = Math.trunc(num(arg(a, kw, 0, "n", 14))), tr = f64(L), pdm = f64(L), mdm = f64(L);
+          for (let i = 0; i < L; i++) {
+            if (i === 0) { tr[i] = df.h[i] - df.l[i]; pdm[i] = 0; mdm[i] = 0; continue; }
+            const pc = df.c[i - 1], up = df.h[i] - df.h[i - 1], dn = df.l[i - 1] - df.l[i];
+            tr[i] = Math.max(df.h[i] - df.l[i], Math.abs(df.h[i] - pc), Math.abs(df.l[i] - pc));
+            pdm[i] = up > dn && up > 0 ? up : 0; mdm[i] = dn > up && dn > 0 ? dn : 0;
+          }
+          const at = ewm(tr, 1 / n, n), p = ewm(pdm, 1 / n, n), m = ewm(mdm, 1 / n, n);
+          const pdi = p.map((v, i) => 100 * v / at[i]), mdi = m.map((v, i) => 100 * v / at[i]);
+          if (f === "plus_di") return pdi; if (f === "minus_di") return mdi;
+          const dx = pdi.map((v, i) => { const s = v + mdi[i]; return s > 0 ? 100 * Math.abs(v - mdi[i]) / s : (s === 0 ? 0 : NaNv); });
+          return ewm(dx, 1 / n, n);
+        }
+        case "stoch_k": case "williams_r": {
+          const n = num(arg(a, kw, 0, "n", 14)), hh = rolling(df.h, n, (w) => Math.max(...w)), ll = rolling(df.l, n, (w) => Math.min(...w));
+          return f === "stoch_k" ? df.c.map((v, i) => hh[i] > ll[i] ? (v - ll[i]) / (hh[i] - ll[i]) * 100 : 50) .map((v, i) => hh[i] === hh[i] ? v : NaNv)
+            : df.c.map((v, i) => hh[i] > ll[i] ? (hh[i] - v) / (hh[i] - ll[i]) * -100 : (hh[i] === hh[i] ? -50 : NaNv));
+        }
+        case "stoch_d": { const n = num(arg(a, kw, 0, "n", 14)), k = num(arg(a, kw, 1, "k", 3)); return IND.sma(call("stoch_k", [n], {}), k); }
+        case "cci": { const n = num(arg(a, kw, 0, "n", 20)), tp = df.h.map((v, i) => (v + df.l[i] + df.c[i]) / 3), m = IND.sma(tp, n);
+          const md = rolling(tp, n, (w) => { const mu = mean(w); let s = 0; for (const v of w) s += Math.abs(v - mu); return s / w.length; });
+          return tp.map((v, i) => md[i] > 0 ? (v - m[i]) / (0.015 * md[i]) : (md[i] === 0 ? 0 : NaNv)); }
+        case "mfi": { const n = Math.trunc(num(arg(a, kw, 0, "n", 14))), tp = df.h.map((v, i) => (v + df.l[i] + df.c[i]) / 3), pos = f64(L), neg = f64(L);
+          for (let i = 1; i < L; i++) { const mf = tp[i] * df.v[i]; pos[i] = tp[i] > tp[i - 1] ? mf : 0; neg[i] = tp[i] < tp[i - 1] ? mf : 0; }
+          const sp = rolling(pos, n, (w) => w.reduce((p, q) => p + q, 0)), sn = rolling(neg, n, (w) => w.reduce((p, q) => p + q, 0));
+          return sp.map((v, i) => sn[i] === 0 ? (v > 0 ? 100 : 50) : 100 - 100 / (1 + v / sn[i])); }
+        case "obv": { const o = f64(L); let s = 0; for (let i = 0; i < L; i++) { if (i > 0) s += df.c[i] > df.c[i - 1] ? df.v[i] : df.c[i] < df.c[i - 1] ? -df.v[i] : 0; o[i] = s; } return o; }
+        case "vwap": { const n = num(arg(a, kw, 0, "n", 20)), pv = df.c.map((v, i) => (df.h[i] + df.l[i] + v) / 3 * df.v[i]);
+          const a1 = rolling(pv, n, (w) => w.reduce((p, q) => p + q, 0)), b1 = rolling(df.v, n, (w) => w.reduce((p, q) => p + q, 0));
+          return a1.map((v, i) => b1[i] > 0 ? v / b1[i] : NaNv); }
+        case "supertrend": {
+          const n = num(arg(a, kw, 0, "n", 10)), m = num(arg(a, kw, 1, "mult", 3)), at = IND.atr(df, n), o = f64(L);
+          let fu = NaNv, fl = NaNv, dir = 1;
+          for (let i = 0; i < L; i++) {
+            if (at[i] !== at[i]) continue;
+            const mid = (df.h[i] + df.l[i]) / 2, bu = mid + m * at[i], bl = mid - m * at[i], pc = i ? df.c[i - 1] : df.c[i];
+            fu = (fu !== fu || bu < fu || pc > fu) ? bu : fu; fl = (fl !== fl || bl > fl || pc < fl) ? bl : fl;
+            if (dir === 1 && df.c[i] < fl) dir = -1; else if (dir === -1 && df.c[i] > fu) dir = 1;
+            o[i] = dir === 1 ? fl : fu;
+          }
+          return o;
+        }
+        case "keltner_upper": case "keltner_lower": { const n = num(arg(a, kw, 0, "n", 20)), m = num(arg(a, kw, 1, "mult", 2)), e = IND.ema(df.c, n), at = IND.atr(df, n);
+          return e.map((v, i) => f === "keltner_upper" ? v + m * at[i] : v - m * at[i]); }
+        case "log": case "sqrt": case "sign": { const x = arg(a, kw, 0, "x"), fn = f === "log" ? Math.log : f === "sqrt" ? Math.sqrt : Math.sign; return isNum(x) ? fn(x) : S(x).map(fn); }
+        case "iff": { const c = B(arg(a, kw, 0, "cond")), A = S(arg(a, kw, 1, "a")), Bb = S(arg(a, kw, 2, "b")); return A.map((v, i) => c[i] ? v : Bb[i]); }
+        case "clip": { const x = S(arg(a, kw, 0, "x")), lo = S(arg(a, kw, 1, "lo")), hi = S(arg(a, kw, 2, "hi")); return x.map((v, i) => v !== v ? NaNv : Math.min(Math.max(v, lo[i]), hi[i])); }
       }
       throw new RuleError(`Unknown function ${f}`);
     }
@@ -204,7 +288,12 @@
         case "var":
           if (n.v === "hl2") return df.h.map((v, i) => (v + df.l[i]) / 2);
           if (n.v === "dow") return Float64Array.from(df.d, (d) => (new Date(d * 864e5).getUTCDay() + 6) % 7);
+          if (n.v === "hlc3") return df.h.map((v, i) => (v + df.l[i] + df.c[i]) / 3);
+          if (n.v === "dom") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCDate());
+          if (n.v === "month") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCMonth() + 1);
+          if (n.v === "year") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCFullYear());
           return vars[n.v];
+        case "str": return n.v;
         case "neg": { const a = ev(n.a); return isNum(a) ? -a : S(a).map((v) => -v); }
         case "not": { const a = B(ev(n.a)), o = new Uint8Array(L); for (let i = 0; i < L; i++) o[i] = a[i] ? 0 : 1; return o; }
         case "bool": { const a = B(ev(n.a)), b = B(ev(n.b)), o = new Uint8Array(L); for (let i = 0; i < L; i++) o[i] = n.op === "and" ? (a[i] & b[i]) : (a[i] | b[i]); return o; }
@@ -219,17 +308,36 @@
           }
           return res;
         }
-        case "call": return call(n.f, n.args.map(ev), Object.fromEntries(Object.entries(n.kw).map(([k, v]) => [k, ev(v)])));
+        case "call": {
+          if (n.f === "ref") { // ref("SYMBOL", expression): the expression evaluated on another symbol, aligned to these dates
+            const sn = n.args[0] || n.kw.symbol, en = n.args[1] || n.kw.x;
+            if (!sn || sn.t !== "str") throw new RuleError('ref needs a quoted symbol first, e.g. ref("NIFTY", close > sma(close,200))');
+            if (!en) throw new RuleError("ref needs an expression second");
+            const sym = symKey(sn.v), frames = ctx.frames || DATA.frames;
+            if (ctx.validating) return evaluate(en, df, ctx);
+            const other = frames && frames[sym];
+            if (!other) throw new RuleError(`ref: no data loaded for ${sym}`);
+            const key = sym + "|" + unparse(en), cache = ctx.refCache || (ctx.refCache = new Map());
+            let v = cache.get(key);
+            if (!v) { v = toF(evaluate(en, other, ctx), other.c.length); cache.set(key, v); }
+            return alignTo(df.d, other.d, v);
+          }
+          const args = n.args.map(ev), kw = Object.fromEntries(Object.entries(n.kw).map(([k, v]) => [k, ev(v)]));
+          if ([...args, ...Object.values(kw)].some((x) => typeof x === "string")) throw new RuleError(`Quoted text is only allowed as ref()'s symbol (in ${n.f})`);
+          return call(n.f, args, kw);
+        }
       }
     }
     return ev(ast);
   }
-  function condition(expr, df) { return toB(evaluate(parse(expr), df), df.c.length); }
+  function condition(expr, df, ctx) { return toB(evaluate(typeof expr === "string" ? parse(expr) : expr, df, ctx), df.c.length); }
   function validate(expr) {
     const n = 300, d = new Float64Array(n), c = new Float64Array(n);
     let x = 100; for (let i = 0; i < n; i++) { x *= 1 + Math.sin(i) * 0.01; c[i] = x; d[i] = 18000 + i; }
-    condition(expr, { d, o: c, h: c.map((v) => v * 1.01), l: c.map((v) => v * 0.99), c, v: c.map(() => 1000) });
+    condition(expr, { d, o: c, h: c.map((v) => v * 1.01), l: c.map((v) => v * 0.99), c, v: c.map(() => 1000) }, { validating: true });
   }
+  // symbols named inside ref("...") anywhere in an expression
+  function refSymbols(expr) { const out = []; const rx = /ref\s*\(\s*["']([^"']+)["']/g; let m; while ((m = rx.exec(String(expr || "")))) out.push(symKey(m[1])); return out; }
 
   // ----------------------------------------------------------------- data frames
   // raw JSON: {d0, dd:[day offsets], o,h,l,c,v}. Dates are integer days since 1970-01-01.
@@ -261,7 +369,9 @@
     if (fromDay != null) while (a < b && df.d[a] < fromDay) a++;
     if (toDay != null) while (b > a && df.d[b - 1] > toDay) b--;
     const s = (x) => x.slice(a, b);
-    return { d: s(df.d), o: s(df.o), h: s(df.h), l: s(df.l), c: s(df.c), v: s(df.v) };
+    const out = { d: s(df.d), o: s(df.o), h: s(df.h), l: s(df.l), c: s(df.c), v: s(df.v) };
+    for (const k of ["pe", "pb", "dy"]) if (df[k]) out[k] = s(df[k]);  // index valuation series travel with the slice
+    return out;
   }
   const dayOf = (iso) => Math.floor(Date.parse(iso + "T00:00:00Z") / 864e5);
   const isoOf = (day) => new Date(day * 864e5).toISOString().slice(0, 10);
@@ -294,9 +404,10 @@
   }
 
   // ----------------------------------------------------------------- rule backtest (port of backtest_signals)
-  function backtestSignals(df, en, ex, capital, side, slPct, tpPct, costPct, sizePct, symbol) {
+  // x (all optional): trailPct, maxBars, stopAtr, tgtAtr, atr (series) — added exits; with none of them the result is unchanged
+  function backtestSignals(df, en, ex, capital, side, slPct, tpPct, costPct, sizePct, symbol, x = {}) {
     const { o, h, l, c } = df, n = c.length, cost = costPct / 100, sgn = side === "long" ? 1 : -1;
-    let cash = capital, qty = 0, entryPx = 0, entryFee = 0, entryI = 0;
+    let cash = capital, qty = 0, entryPx = 0, entryFee = 0, entryI = 0, entryAtr = NaNv, peak = 0;
     const trades = [], eq = f64(n, capital);
     const closePos = (i, px, reason) => {
       const fee = Math.abs(qty) * px * cost; cash += qty * px - fee;
@@ -305,32 +416,47 @@
         qty: Math.abs(qty), pnl, return_pct: sgn * (px / entryPx - 1) * 100, reason, bars: i - entryI });
       qty = 0;
     };
+    const levels = () => exitLevels(side, entryPx, peak, entryAtr, slPct, tpPct, x);
     for (let i = 1; i < n; i++) {
+      const flatAtOpen = !qty;
       if (qty && ex[i - 1]) closePos(i, o[i], "exit signal");
-      else if (!qty && en[i - 1] && !ex[i - 1]) {
+      else if (qty && x.maxBars && i - entryI >= x.maxBars) closePos(i, o[i], "time exit");
+      else if (flatAtOpen && en[i - 1] && !ex[i - 1]) {
         const px = o[i], q = Math.floor(cash * sizePct / 100 / (px * (1 + cost)));
-        if (q > 0) { qty = sgn * q; entryPx = px; entryI = i; entryFee = q * px * cost; cash -= qty * px + entryFee; }
+        if (q > 0) { qty = sgn * q; entryPx = px; entryI = i; entryFee = q * px * cost; cash -= qty * px + entryFee; peak = px; entryAtr = x.atr ? x.atr[i - 1] : NaNv; }
       }
       if (qty) {
+        const { stop, tgt, stopWhy } = levels();
         if (side === "long") {
-          const stop = slPct ? entryPx * (1 - slPct / 100) : null, tgt = tpPct ? entryPx * (1 + tpPct / 100) : null;
-          if (stop !== null && l[i] <= stop) closePos(i, Math.min(o[i], stop), "stop loss");
+          if (stop !== null && l[i] <= stop) closePos(i, Math.min(o[i], stop), stopWhy);
           else if (tgt !== null && h[i] >= tgt) closePos(i, Math.max(o[i], tgt), "take profit");
         } else {
-          const stop = slPct ? entryPx * (1 + slPct / 100) : null, tgt = tpPct ? entryPx * (1 - tpPct / 100) : null;
-          if (stop !== null && h[i] >= stop) closePos(i, Math.max(o[i], stop), "stop loss");
+          if (stop !== null && h[i] >= stop) closePos(i, Math.max(o[i], stop), stopWhy);
           else if (tgt !== null && l[i] <= tgt) closePos(i, Math.min(o[i], tgt), "take profit");
         }
       }
+      if (qty) peak = side === "long" ? Math.max(peak, h[i]) : Math.min(peak, l[i]);
       eq[i] = cash + qty * c[i];
     }
     if (qty) trades.push({ symbol, side, entry_date: isoOf(df.d[entryI]), entry_price: entryPx, qty: Math.abs(qty), open: true, unrealized: qty * (c[n - 1] - entryPx) });
-    const last = n - 1, lastTrade = trades.length ? trades[trades.length - 1] : null;
+    const last = n - 1, lastTrade = trades.length ? trades[trades.length - 1] : null, lv = qty ? levels() : null;
     const state = { symbol, side, lastDate: isoOf(df.d[last]), close: c[last], inPosition: !!qty, qty: Math.abs(qty),
       entryPrice: qty ? entryPx : null, entryDate: qty ? isoOf(df.d[entryI]) : null,
       pendingBuy: !qty && !!en[last] && !ex[last], pendingSell: !!qty && !!ex[last],
-      exitedToday: !qty && lastTrade && !lastTrade.open && lastTrade.exit_date === isoOf(df.d[last]) ? lastTrade.reason : null };
+      exitedToday: !qty && lastTrade && !lastTrade.open && lastTrade.exit_date === isoOf(df.d[last]) ? lastTrade.reason : null,
+      stopLevel: lv ? lv.stop : null, targetLevel: lv ? lv.tgt : null, atrNow: x.atr ? x.atr[last] : null };
     return { days: df.d, eq, trades, state };
+  }
+  // tightest stop and nearest target among: fixed %, ATR multiples at entry, trailing % from the best price since entry
+  function exitLevels(side, entryPx, peak, entryAtr, slPct, tpPct, x) {
+    const long = side === "long"; let stop = null, tgt = null, stopWhy = "stop loss";
+    const better = (a, b) => a === null ? b : b === null ? a : (long ? Math.max(a, b) : Math.min(a, b));
+    if (slPct) stop = entryPx * (long ? 1 - slPct / 100 : 1 + slPct / 100);
+    if (x.stopAtr && entryAtr === entryAtr) stop = better(stop, long ? entryPx - x.stopAtr * entryAtr : entryPx + x.stopAtr * entryAtr);
+    if (x.trailPct) { const tr = long ? peak * (1 - x.trailPct / 100) : peak * (1 + x.trailPct / 100); const b = better(stop, tr); if (b === tr && tr !== stop) stopWhy = "trailing stop"; stop = b; }
+    if (tpPct) tgt = entryPx * (long ? 1 + tpPct / 100 : 1 - tpPct / 100);
+    if (x.tgtAtr && entryAtr === entryAtr) { const t = long ? entryPx + x.tgtAtr * entryAtr : entryPx - x.tgtAtr * entryAtr; tgt = tgt === null ? t : (long ? Math.min(tgt, t) : Math.max(tgt, t)); }
+    return { stop, tgt, stopWhy };
   }
   function combine(curves, caps) {
     const set = new Set(); for (const cv of curves) for (const d of cv.days) set.add(d);
@@ -379,20 +505,25 @@
   }
 
   // ----------------------------------------------------------------- strategies
+  function ruleExtras(spec) {
+    return { trailPct: spec.trailing_stop_pct || null, maxBars: spec.max_hold_days || null, stopAtr: spec.stop_atr_mult || null, tgtAtr: spec.target_atr_mult || null };
+  }
   function runRule(spec, frames, opt) {
+    if (spec.max_positions) return runRulePortfolio(spec, frames, opt);
     const syms = spec.symbols.filter((s) => frames[s]), alloc = spec.capital / spec.symbols.length;
     const curves = [], caps = [], trades = [], perSymbol = {}, states = [];
-    const en0 = parse(spec.entry), ex0 = spec.exit ? parse(spec.exit) : null;
+    const en0 = parse(spec.entry), ex0 = spec.exit ? parse(spec.exit) : null, X = ruleExtras(spec), ctx = { frames };
     for (const s of syms) {
       let df = sliceFrame(frames[s], null, opt.endDay);
       if (df.c.length < 60) { perSymbol[s] = { note: "not enough data" }; continue; }
-      let en = toB(evaluate(en0, df), df.c.length), ex = ex0 ? toB(evaluate(ex0, df), df.c.length) : new Uint8Array(df.c.length);
+      let en = toB(evaluate(en0, df, ctx), df.c.length), ex = ex0 ? toB(evaluate(ex0, df, ctx), df.c.length) : new Uint8Array(df.c.length);
+      let atr = X.stopAtr || X.tgtAtr ? IND.atr(df, spec.atr_period || 14) : null;
       if (opt.startDay != null) {
         let a = 0; while (a < df.d.length && df.d[a] < opt.startDay) a++;
-        df = sliceFrame(df, opt.startDay, null); en = en.slice(a); ex = ex.slice(a);
+        df = sliceFrame(df, opt.startDay, null); en = en.slice(a); ex = ex.slice(a); if (atr) atr = atr.slice(a);
       }
       if (df.c.length < 2) { perSymbol[s] = { note: "no data in range" }; continue; }
-      const r = backtestSignals(df, en, ex, alloc, spec.side, spec.stop_loss_pct, spec.take_profit_pct, spec.cost_pct, spec.position_size_pct, s);
+      const r = backtestSignals(df, en, ex, alloc, spec.side, spec.stop_loss_pct, spec.take_profit_pct, spec.cost_pct, spec.position_size_pct, s, { ...X, atr });
       curves.push(r); caps.push(alloc); trades.push(...r.trades); states.push(r.state);
       const m = computeMetrics(r.days, r.eq, r.trades, 0);
       perSymbol[s] = { total_return_pct: m.total_return_pct, cagr_pct: m.cagr_pct, max_drawdown_pct: m.max_drawdown_pct, trades: m.trades, win_rate_pct: m.win_rate_pct };
@@ -401,69 +532,316 @@
     return { days: comb.days, eq: comb.eq, trades, metrics: computeMetrics(comb.days, comb.eq, trades, opt.rf), perSymbol, states };
   }
 
-  function runRotation(spec, frames, opt, universe) {
-    const tf = spec.trend_filter, syms = universe.concat(tf ? [tf.symbol] : []);
-    const cm = closeMatrix(Object.fromEntries(syms.filter((s) => frames[s]).map((s) => [s, sliceFrame(frames[s], null, opt.endDay)])), syms);
-    const { days, cols } = cm, lb = spec.lookback, skip = spec.skip, uni = universe.filter((s) => cols[s]);
-    // monthly -> year*100+month; weekly -> the Thursday of the ISO week (unique per ISO week)
-    const period = (day) => { if (spec.rebalance === "monthly") { const dt = new Date(day * 864e5); return dt.getUTCFullYear() * 100 + dt.getUTCMonth(); }
-      return day - ((new Date(day * 864e5).getUTCDay() + 6) % 7) + 3; };
-    function ranking(i) { // uses rows [0, i)
-      if (i < lb + skip + 1) return [];
-      const out = [];
-      for (const s of uni) {
-        const a = cols[s][i - 1 - skip], b = cols[s][i - 1 - skip - lb]; let m = a / b - 1;
-        if (m !== m) continue;
-        if (spec.score === "risk_adj") {
-          const r = []; for (let k = Math.max(1, i - lb); k < i; k++) { const x = cols[s][k] / cols[s][k - 1] - 1; if (x === x) r.push(x); }
-          const v = std1(r) * Math.sqrt(252); m = m / v; if (!isFinite(m)) continue;
-        }
-        out.push([s, m]);
+  // Portfolio mode: one shared pot of capital, at most max_positions open at once; when more symbols signal than there
+  // are free slots, the highest rank_by value (as of the signal close) wins. Each new position gets position_size_pct of equity.
+  function runRulePortfolio(spec, frames, opt) {
+    const ctx = { frames }, en0 = parse(spec.entry), ex0 = spec.exit ? parse(spec.exit) : null, rk0 = parse(spec.rank_by || "roc(close,63)");
+    const X = ruleExtras(spec), long = spec.side === "long", sgn = long ? 1 : -1, cost = spec.cost_pct / 100;
+    const size = (spec.position_size_pct && spec.position_size_pct < 100 ? spec.position_size_pct : 100 / spec.max_positions) / 100;
+    const S = {}, perSymbol = {};
+    for (const s of spec.symbols) {
+      if (!frames[s]) continue;
+      const df = sliceFrame(frames[s], null, opt.endDay);
+      if (df.c.length < 60) { perSymbol[s] = { note: "not enough data" }; continue; }
+      const L = df.c.length, row = new Map(); for (let i = 0; i < L; i++) row.set(df.d[i], i);
+      S[s] = { df, row, en: toB(evaluate(en0, df, ctx), L), ex: ex0 ? toB(evaluate(ex0, df, ctx), L) : new Uint8Array(L), rank: toF(evaluate(rk0, df, ctx), L),
+        atr: X.stopAtr || X.tgtAtr ? IND.atr(df, spec.atr_period || 14) : null, qty: 0, entryPx: 0, entryFee: 0, entryR: 0, entryAtr: NaNv, peak: 0, last: NaNv };
+    }
+    const syms = Object.keys(S), set = new Set();
+    for (const s of syms) for (const d of S[s].df.d) if (opt.startDay == null || d >= opt.startDay) set.add(d);
+    const days = Float64Array.from([...set].sort((a, b) => a - b)), eq = new Float64Array(days.length), trades = [];
+    let cash = spec.capital, openN = 0;
+    for (const s of syms) { const st = S[s]; if (opt.startDay != null) { let a = 0; while (a < st.df.d.length && st.df.d[a] < opt.startDay) a++; if (a > 0) st.last = st.df.c[a - 1]; } }
+    const closePos = (s, r, px, reason) => {
+      const st = S[s], fee = Math.abs(st.qty) * px * cost; cash += st.qty * px - fee;
+      trades.push({ symbol: s, side: spec.side, entry_date: isoOf(st.df.d[st.entryR]), entry_price: st.entryPx, exit_date: isoOf(st.df.d[r]), exit_price: px,
+        qty: Math.abs(st.qty), pnl: st.qty * (px - st.entryPx) - fee - st.entryFee, return_pct: sgn * (px / st.entryPx - 1) * 100, reason, bars: r - st.entryR });
+      st.qty = 0; openN--;
+    };
+    const equityAt = () => { let e = cash; for (const s of syms) { const st = S[s]; if (st.qty) e += st.qty * (st.last === st.last ? st.last : st.entryPx); } return e; };
+    for (let k = 0; k < days.length; k++) {
+      const d = days[k], today = [];
+      for (const s of syms) { const r = S[s].row.get(d); if (r !== undefined && r >= 1) today.push([s, r]); }
+      const flat = new Set();
+      for (const [s, r] of today) {
+        const st = S[s];
+        if (!st.qty) { flat.add(s); continue; }
+        if (st.ex[r - 1]) closePos(s, r, st.df.o[r], "exit signal");
+        else if (X.maxBars && r - st.entryR >= X.maxBars) closePos(s, r, st.df.o[r], "time exit");
       }
+      const cands = today.filter(([s, r]) => flat.has(s) && S[s].en[r - 1] && !S[s].ex[r - 1])
+        .sort((a, b) => { const x = S[a[0]].rank[a[1] - 1], y = S[b[0]].rank[b[1] - 1]; return (y === y ? y : -Infinity) - (x === x ? x : -Infinity) || a[0].localeCompare(b[0]); });
+      const equity = equityAt();
+      for (const [s, r] of cands) {
+        if (openN >= spec.max_positions) break;
+        const st = S[s], px = st.df.o[r], budget = long ? Math.min(equity * size, cash) : equity * size, q = Math.floor(budget / (px * (1 + cost)));
+        if (q <= 0) continue;
+        st.qty = sgn * q; st.entryPx = px; st.entryR = r; st.entryFee = q * px * cost; cash -= st.qty * px + st.entryFee; st.peak = px;
+        st.entryAtr = st.atr ? st.atr[r - 1] : NaNv; openN++;
+      }
+      for (const [s, r] of today) {
+        const st = S[s];
+        if (st.qty) {
+          const { stop, tgt, stopWhy } = exitLevels(spec.side, st.entryPx, st.peak, st.entryAtr, spec.stop_loss_pct, spec.take_profit_pct, X), o = st.df.o[r], h = st.df.h[r], l = st.df.l[r];
+          if (long) { if (stop !== null && l <= stop) closePos(s, r, Math.min(o, stop), stopWhy); else if (tgt !== null && h >= tgt) closePos(s, r, Math.max(o, tgt), "take profit"); }
+          else { if (stop !== null && h >= stop) closePos(s, r, Math.max(o, stop), stopWhy); else if (tgt !== null && l <= tgt) closePos(s, r, Math.min(o, tgt), "take profit"); }
+          if (st.qty) st.peak = long ? Math.max(st.peak, h) : Math.min(st.peak, l);
+        }
+        st.last = st.df.c[r];
+      }
+      for (const s of syms) { const r = S[s].row.get(d); if (r === 0) S[s].last = S[s].df.c[0]; }
+      eq[k] = equityAt();
+    }
+    const states = [];
+    for (const s of syms) {
+      const st = S[s], L = st.df.c.length, last = L - 1;
+      if (st.qty) trades.push({ symbol: s, side: spec.side, entry_date: isoOf(st.df.d[st.entryR]), entry_price: st.entryPx, qty: Math.abs(st.qty), open: true, unrealized: st.qty * (st.df.c[last] - st.entryPx) });
+      const lastTrade = trades.filter((t) => t.symbol === s).pop(), lv = st.qty ? exitLevels(spec.side, st.entryPx, st.peak, st.entryAtr, spec.stop_loss_pct, spec.take_profit_pct, X) : null;
+      states.push({ symbol: s, side: spec.side, lastDate: isoOf(st.df.d[last]), close: st.df.c[last], inPosition: !!st.qty, qty: Math.abs(st.qty),
+        entryPrice: st.qty ? st.entryPx : null, entryDate: st.qty ? isoOf(st.df.d[st.entryR]) : null,
+        pendingBuy: !st.qty && !!st.en[last] && !st.ex[last], pendingSell: !!st.qty && !!st.ex[last], rank: st.rank[last],
+        exitedToday: !st.qty && lastTrade && !lastTrade.open && lastTrade.exit_date === isoOf(st.df.d[last]) ? lastTrade.reason : null,
+        stopLevel: lv ? lv.stop : null, targetLevel: lv ? lv.tgt : null });
+      const tr = trades.filter((t) => t.symbol === s && !t.open), w = tr.filter((t) => t.pnl > 0).length;
+      perSymbol[s] = { trades: tr.length, win_rate_pct: tr.length ? Math.round(w / tr.length * 1000) / 10 : null, total_pnl: Math.round(tr.reduce((a, t) => a + t.pnl, 0)) };
+    }
+    // free slots tomorrow: open positions not exiting, and pending entries ranked into the remaining slots
+    const staying = states.filter((x) => x.inPosition && !x.pendingSell).length;
+    const queue = states.filter((x) => x.pendingBuy).sort((a, b) => (b.rank === b.rank ? b.rank : -Infinity) - (a.rank === a.rank ? a.rank : -Infinity));
+    queue.forEach((x, i) => { x.slotOk = i < spec.max_positions - staying; });
+    const m = computeMetrics(days, eq, trades, opt.rf);
+    m.max_positions = spec.max_positions;
+    return { days, eq, trades, metrics: m, perSymbol, states, portfolio: { max_positions: spec.max_positions, open: states.filter((x) => x.inPosition).length } };
+  }
+
+  // ---- portfolio / rotation engine
+  // Rebalance periods. A new period starts the first trading day whose key differs from the previous day's.
+  function periodKey(spec, day) {
+    const dt = new Date(day * 864e5), y = dt.getUTCFullYear(), m = dt.getUTCMonth(), thu = day - ((dt.getUTCDay() + 6) % 7) + 3;
+    const months = spec.rebalance_months;
+    if (months && months.length) { // rebalance on entering any of these calendar months (1-12)
+      const ms = months.map((x) => x - 1).sort((a, b) => a - b); let k = -1; for (const x of ms) if (x <= m) k = x;
+      return k < 0 ? (y - 1) * 100 + ms[ms.length - 1] : y * 100 + k;
+    }
+    switch (spec.rebalance) {
+      case "daily": return day;
+      case "weekly": return thu;            // the Thursday of the ISO week (unique per week)
+      case "biweekly": return Math.floor(thu / 14);
+      case "quarterly": return y * 10 + Math.floor(m / 3);
+      case "semiannual": return y * 10 + Math.floor(m / 6);
+      case "annual": return y;
+      default: return y * 100 + m;          // monthly
+    }
+  }
+  function nextRebalanceDay(spec, lastDay) {
+    const k0 = periodKey(spec, lastDay);
+    for (let d = lastDay + 1; d < lastDay + 800; d++) if (((new Date(d * 864e5).getUTCDay() + 6) % 7) <= 4 && periodKey(spec, d) !== k0) return d;
+    return lastDay + 1;
+  }
+  const PRESETS = ["momentum", "risk_adj", "volatility", "trend", "high_52w", "reversal", "liquidity"];
+  // the factor list a rotation spec ranks by (old "score" specs map onto one momentum / risk_adj factor)
+  function factorList(spec) {
+    if (Array.isArray(spec.factors) && spec.factors.length) return spec.factors;
+    if (spec.score === "nse_momentum") return [
+      { name: "risk_adj", lookback: 126, skip: spec.skip, vol_lookback: 252, weight: 1 },
+      { name: "risk_adj", lookback: 252, skip: spec.skip, vol_lookback: 252, weight: 1 }];
+    if (spec.score && !PRESETS.includes(spec.score)) return [{ name: spec.score, weight: 1 }]; // expression
+    return [{ name: spec.score || "momentum", lookback: spec.lookback, skip: spec.skip, weight: 1 }];
+  }
+  const isPreset = (f) => PRESETS.includes(f.name);
+  function exprsOf(spec) { // every rule-language expression inside a rotation spec
+    const out = [];
+    for (const f of factorList(spec)) if (!isPreset(f)) out.push(f.name);
+    for (const x of spec.filters || []) out.push(x);
+    if (spec.regime) out.push(typeof spec.regime === "string" ? spec.regime : spec.regime.expr);
+    if (typeof spec.weighting === "string" && !WEIGHTINGS.includes(spec.weighting)) out.push(spec.weighting);
+    return out.filter(Boolean);
+  }
+  const WEIGHTINGS = ["equal", "score", "inverse_vol", "mcap", "mcap_score", "rank"];
+  function sharesAt(s, day) {
+    const sh = DATA.shares && DATA.shares[s]; if (!sh || !sh.s || !sh.s.length) return NaNv;
+    let v = sh.s[0][1]; for (const [d, n] of sh.s) { if (d <= day) v = n; else break; }
+    return v * (sh.f || 1);
+  }
+
+  function runRotation(spec, frames, opt, universe) {
+    const excl = new Set(spec.exclude || []);
+    universe = universe.filter((s) => !excl.has(s));
+    const tf = spec.trend_filter, reg = spec.regime ? (typeof spec.regime === "string" ? { symbol: "NIFTY", expr: spec.regime } : { symbol: spec.regime.symbol || "NIFTY", expr: spec.regime.expr }) : null;
+    const extra = [tf && tf.symbol, reg && reg.symbol, spec.defensive, spec.cash_symbol].filter(Boolean);
+    const syms = [...new Set(universe.concat(extra))];
+    const sliced = Object.fromEntries(syms.filter((s) => frames[s]).map((s) => [s, sliceFrame(frames[s], null, opt.endDay)]));
+    const cm = closeMatrix(sliced, syms);
+    const { days, cols } = cm, N = days.length, uni = universe.filter((s) => cols[s]);
+    const facs = factorList(spec), ctx = { frames };
+    const meta = DATA.meta || {}, notes = [];
+    // expression series aligned to the calendar (value known at each day's close)
+    const exprCache = new Map();
+    function exprSeries(expr, s) {
+      const key = expr + "|" + s; let v = exprCache.get(key);
+      if (!v) { const df = sliced[s]; v = df ? alignTo(days, df.d, toF(evaluate(parse(expr), df, ctx), df.c.length)) : f64(N); exprCache.set(key, v); }
+      return v;
+    }
+    const firstValid = Object.fromEntries(uni.map((s) => { let k = 0; while (k < N && cols[s][k] !== cols[s][k]) k++; return [s, k]; }));
+    const retAt = (s, k) => cols[s][k] / cols[s][k - 1] - 1;
+    function volAt(s, i, n) { const r = []; for (let k = Math.max(1, i - n); k < i; k++) { const x = retAt(s, k); if (x === x) r.push(x); } return std1(r) * Math.sqrt(252); }
+    // raw factor value for symbol s using data up to row i-1
+    function factorRaw(f, s, i) {
+      const lb = f.lookback ?? spec.lookback, sk = f.skip ?? spec.skip ?? 0, c = cols[s];
+      switch (f.name) {
+        case "momentum": case "risk_adj": {
+          if (i - 1 - sk - lb < 0) return NaNv;
+          let m = c[i - 1 - sk] / c[i - 1 - sk - lb] - 1; if (m !== m) return NaNv;
+          if (f.name === "risk_adj" || f.vol_adjust) { m = m / volAt(s, i, f.vol_lookback ?? lb); if (!isFinite(m)) return NaNv; }
+          return m;
+        }
+        case "volatility": { const v = volAt(s, i, lb || 63); return isFinite(v) ? v : NaNv; }
+        case "trend": { const n = lb || 200; if (i - n < 0) return NaNv; let t = 0; for (let k = i - n; k < i; k++) t += c[k]; return c[i - 1] / (t / n) - 1; }
+        case "high_52w": { const n = lb || 252; if (i - n < 0) return NaNv; let hi = -Infinity; for (let k = i - n; k < i; k++) if (c[k] > hi) hi = c[k]; return c[i - 1] / hi - 1; }
+        case "reversal": { const n = lb || 21; return i - 1 - n < 0 ? NaNv : -(c[i - 1] / c[i - 1 - n] - 1); }
+        case "liquidity": return exprSeries(`sma(close*volume,${lb || 63})`, s)[i - 1];
+        default: return exprSeries(f.name, s)[i - 1];
+      }
+    }
+    const lowerBetter = (f) => f.invert ?? (f.name === "volatility");
+    const zs = (vals) => { const ok = vals.filter((v) => v === v); const mu = mean(ok), sd = std1(ok); return vals.map((v) => v !== v ? NaNv : sd > 0 ? Math.max(-3, Math.min(3, (v - mu) / sd)) : 0); };
+    const combineZ = facs.length > 1 || spec.combine === "zscore";
+    function ranking(i) { // [symbol, score] best first, using rows [0, i)
+      const elig = uni.filter((s) => (!spec.min_history_days || i - firstValid[s] >= spec.min_history_days)
+        && (spec.filters || []).every((x) => { const v = exprSeries(x, s)[i - 1]; return v === v && v !== 0; }));
+      if (!combineZ) {
+        const f = facs[0], sg = lowerBetter(f) ? -1 : 1, out = [];
+        for (const s of elig) { const v = factorRaw(f, s, i); if (v === v && isFinite(v)) out.push([s, sg * v]); }
+        return out.sort((x, y) => y[1] - x[1]);
+      }
+      const raw = facs.map((f) => elig.map((s) => { const v = factorRaw(f, s, i); return isFinite(v) ? (lowerBetter(f) ? -v : v) : NaNv; }));
+      const Z = raw.map(zs), wsum = facs.reduce((a, f) => a + (f.weight ?? 1), 0), out = [];
+      elig.forEach((s, j) => { let t = 0; for (let q = 0; q < facs.length; q++) { const z = Z[q][j]; if (z !== z) return; t += (facs[q].weight ?? 1) * z; } out.push([s, t / wsum]); });
       return out.sort((x, y) => y[1] - x[1]);
     }
-    function weights(i) {
+    function regimeOn(i) {
       if (tf && cols[tf.symbol]) {
         const s = []; for (let k = 0; k < i; k++) { const v = cols[tf.symbol][k]; if (v === v) s.push(v); }
         const n = tf.sma || 200;
-        if (s.length >= n && s[s.length - 1] < mean(s.slice(-n))) return {};
+        if (s.length >= n && s[s.length - 1] < mean(s.slice(-n))) return false;
       }
+      if (reg && sliced[reg.symbol]) { const v = exprSeries(reg.expr, reg.symbol)[i - 1]; if (!(v === v && v !== 0)) return false; }
+      return true;
+    }
+    const mcapAt = (s, i) => sharesAt(s, days[i - 1]) * cols[s][i - 1];
+    const normScore = (z) => z >= 0 ? 1 + z : 1 / (1 - z);
+    function capWeights(w, cap) {
+      for (let it = 0; it < 50; it++) {
+        const over = Object.keys(w).filter((s) => w[s] > cap + 1e-12); if (!over.length) break;
+        let excess = 0; for (const s of over) { excess += w[s] - cap; w[s] = cap; }
+        const free = Object.keys(w).filter((s) => w[s] < cap - 1e-12), tot = free.reduce((a, s) => a + w[s], 0);
+        if (!free.length || tot <= 0) break;
+        for (const s of free) w[s] += excess * w[s] / tot;
+      }
+      return w;
+    }
+    const held = new Set();
+    let eqHist = [];
+    function weights(i) {
+      const on = regimeOn(i), act = spec.regime_action || "cash";
+      if (!on && act === "cash") return spec.cash_symbol && cols[spec.cash_symbol] ? { [spec.cash_symbol]: 1 } : {};
+      if (!on && act === "defensive") return spec.defensive && cols[spec.defensive] ? { [spec.defensive]: 1 } : {};
       let r = ranking(i);
       if (spec.min_score != null) r = r.filter(([, v]) => v > spec.min_score);
-      const w = {}; for (const [s] of r.slice(0, spec.top_n)) w[s] = 1 / spec.top_n; return w;
+      const nTop = spec.top_pct ? Math.max(1, Math.ceil(r.length * spec.top_pct / 100)) : spec.top_n;
+      // selection with optional buffer (keep current holdings while they stay within buffer_rank) and sector caps
+      const pick = [], perInd = {}, cap = spec.max_per_sector;
+      const indOf = (s) => (meta[s] && meta[s].industry && meta[s].industry !== "Index") ? meta[s].industry : null;
+      const take = (s) => { const ind = indOf(s); if (cap && ind && (perInd[ind] || 0) >= cap) return false; pick.push(s); if (ind) perInd[ind] = (perInd[ind] || 0) + 1; return true; };
+      if (spec.buffer_rank && spec.buffer_rank > nTop) r.slice(0, spec.buffer_rank).forEach(([s]) => { if (held.has(s) && pick.length < nTop) take(s); });
+      for (const [s] of r) { if (pick.length >= nTop) break; if (!pick.includes(s)) take(s); }
+      const zr = combineZ ? r.map((x) => x[1]) : zs(r.map((x) => x[1])), zAll = Object.fromEntries(r.map(([s], j) => [s, zr[j]]));
+      const wt = spec.weighting || "equal", w = {};
+      if (wt === "equal") { const d = spec.underfill === "spread" ? pick.length : nTop; for (const s of pick) w[s] = 1 / d; }
+      else {
+        const raw = {};
+        for (const [j, s] of pick.entries()) {
+          let x;
+          if (wt === "score") x = normScore(zAll[s]);
+          else if (wt === "inverse_vol") x = 1 / volAt(s, i, spec.vol_lookback || 63);
+          else if (wt === "mcap" || wt === "mcap_score") { x = mcapAt(s, i); if (wt === "mcap_score") x *= normScore(zAll[s]); }
+          else if (wt === "rank") x = pick.length - j;
+          else x = Math.max(0, exprSeries(wt, s)[i - 1]);
+          raw[s] = isFinite(x) && x > 0 ? x : NaNv;
+        }
+        const good = pick.filter((s) => raw[s] === raw[s]);
+        if (good.length < pick.length) { const msg = `weighting "${wt}" had no data for some names (e.g. ${pick.find((x) => raw[x] !== raw[x])}); they got an equal share instead`; if (!notes.some((x) => x.startsWith(`weighting "${wt}"`))) notes.push(msg); }
+        const miss = pick.filter((s) => raw[s] !== raw[s]), totGood = good.reduce((a, s) => a + raw[s], 0), share = pick.length ? good.length / pick.length : 0;
+        for (const s of good) w[s] = share * raw[s] / totGood; for (const s of miss) w[s] = 1 / pick.length;
+      }
+      if (spec.max_weight_pct) capWeights(w, spec.max_weight_pct / 100);
+      let expo = on ? 1 : (spec.regime_exposure_pct ?? 50) / 100;
+      if (spec.target_vol_pct && eqHist.length > 21) {
+        const h = eqHist.slice(-(spec.vol_lookback || 63) - 1), rr = []; for (let k = 1; k < h.length; k++) rr.push(h[k] / h[k - 1] - 1);
+        const v = std1(rr) * Math.sqrt(252) * 100; if (v > 0) expo *= Math.min(spec.max_leverage || 1, spec.target_vol_pct / v);
+      }
+      const longX = (spec.long_exposure_pct ?? 100) / 100;
+      for (const s of Object.keys(w)) w[s] *= expo * longX;
+      if (spec.short_n) {
+        const shorts = r.slice().reverse().map(([s]) => s).filter((s) => !(s in w)).slice(0, spec.short_n), sx = (spec.short_exposure_pct ?? 100) / 100;
+        for (const s of shorts) w[s] = -expo * sx / spec.short_n;
+      }
+      const invested = Object.values(w).filter((x) => x > 0).reduce((a, x) => a + x, 0);
+      if (spec.cash_symbol && cols[spec.cash_symbol] && invested < 0.999) w[spec.cash_symbol] = (w[spec.cash_symbol] || 0) + (1 - invested);
+      return w;
     }
-    const b = new Broker(spec.capital, spec.cost_pct), eqD = [], eqV = [];
-    let lastPer = null, rebals = 0;
-    const startI = lb + skip + 2;
-    for (let i = startI; i < days.length; i++) {
+    const b = new Broker(spec.capital, spec.cost_pct + (spec.slippage_pct || 0)), eqD = [], eqV = [];
+    let lastPer = null, rebals = 0, holdSum = 0, traded = 0;
+    const maxLb = Math.max(...facs.map((f) => isPreset(f) ? (f.lookback ?? spec.lookback) + (f.skip ?? spec.skip ?? 0) + (f.name === "risk_adj" && f.vol_lookback ? 0 : 0) : 0));
+    const startI = facs.length === 1 && isPreset(facs[0]) && !spec.factors ? spec.lookback + spec.skip + 2 : maxLb + 2;
+    const cashY = spec.cash_yield_pct ? spec.cash_yield_pct / 100 : 0;
+    for (let i = startI; i < N; i++) {
       if (opt.startDay != null && days[i] < opt.startDay) continue;
+      if (cashY && eqD.length && b.cash > 0) b.cash *= Math.pow(1 + cashY, (days[i] - eqD[eqD.length - 1]) / 365);
       const marks = {}; for (const s of syms) if (cols[s] && cols[s][i] === cols[s][i]) marks[s] = cols[s][i];
-      const per = period(days[i]);
+      const per = periodKey(spec, days[i]);
       if (per !== lastPer) {
+        eqHist = eqV;
         const w = weights(i), equity = b.equity(marks), band = equity * spec.rebalance_band_pct / 100, orders = [];
         for (const s of new Set([...b.pos.keys(), ...Object.keys(w)])) {
           const p = marks[s]; if (!p || p <= 0) continue;
-          let tq = equity * (w[s] || 0) * 0.995 / p; if (!isIndex(s)) tq = Math.floor(tq);
+          let tq = equity * (w[s] || 0) * 0.995 / p; if (!isIndex(s)) tq = tq < 0 ? -Math.floor(-tq) : Math.floor(tq);
           const dq = tq - b.qty(s);
           if (Math.abs(dq) < 1e-9 || (tq !== 0 && Math.abs(dq * p) < band)) continue;
           orders.push([s, dq, p]);
         }
         orders.sort((x, y) => x[1] - y[1]);
-        for (const [s, dq, p] of orders) b.execute(days[i], s, dq, p, "rebalance");
+        for (const [s, dq, p] of orders) { b.execute(days[i], s, dq, p, "rebalance"); traded += Math.abs(dq * p); }
         lastPer = per; rebals++;
+        held.clear(); for (const s of b.pos.keys()) held.add(s);
+        holdSum += [...b.pos.keys()].filter((s) => s !== spec.cash_symbol).length;
       }
       eqD.push(days[i]); eqV.push(b.equity(marks));
     }
     const m = computeMetrics(eqD, eqV, null, opt.rf);
-    Object.assign(m, { rebalances: rebals, executions: b.trades.length, total_fees: Math.round(b.fees * 100) / 100 });
-    const cur = ranking(days.length).slice(0, 10).map(([s, v]) => [s, Math.round(v * 10000) / 100]);
-    const lastI = days.length - 1, lastMarks = {}; for (const s of syms) if (cols[s] && cols[s][lastI] === cols[s][lastI]) lastMarks[s] = cols[s][lastI];
+    // round trips: from opening a position to flat again (fees included)
+    const trips = [], open = {};
+    for (const t of b.trades) {
+      const o = open[t.symbol] || (open[t.symbol] = { q: 0, pnl: 0, from: t.date });
+      if (o.q === 0) { o.from = t.date; o.pnl = 0; }
+      o.q += t.qty; o.pnl += t.realized;
+      if (Math.abs(o.q) < 1e-9) { trips.push({ symbol: t.symbol, from: o.from, to: t.date, pnl: o.pnl }); o.q = 0; }
+    }
+    const wins = trips.filter((t) => t.pnl > 0).length, avgEq = eqV.length ? mean(eqV) : spec.capital;
+    Object.assign(m, { rebalances: rebals, executions: b.trades.length, orders: b.trades.length, total_fees: Math.round(b.fees * 100) / 100,
+      round_trips: trips.length, win_rate_pct: trips.length ? Math.round(wins / trips.length * 1000) / 10 : null,
+      avg_hold_days: trips.length ? Math.round(mean(trips.map((t) => (dayOf(t.to) - dayOf(t.from)))) ) : null,
+      turnover_pct_yr: m.years ? Math.round(traded / 2 / avgEq / m.years * 1000) / 10 : null,
+      avg_holdings: rebals ? Math.round(holdSum / rebals * 10) / 10 : null });
+    if (notes.length) m.notes = notes;
+    eqHist = eqV;
+    const curRank = ranking(N), cur = curRank.slice(0, 10).map(([s, v]) => [s, Math.round(v * 10000) / 100]);
+    const lastI = N - 1, lastMarks = {}; for (const s of syms) if (cols[s] && cols[s][lastI] === cols[s][lastI]) lastMarks[s] = cols[s][lastI];
     const holdings = [...b.pos.entries()].map(([s, p]) => ({ symbol: s, qty: p.qty, avg: p.avg, price: lastMarks[s], value: p.qty * (lastMarks[s] ?? p.avg) }));
-    const lastDay = days[lastI], dt = new Date(lastDay * 864e5);
-    let nextReb = spec.rebalance === "monthly" ? Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 1) / 864e5 : lastDay + (7 - ((dt.getUTCDay() + 6) % 7));
-    while (((new Date(nextReb * 864e5).getUTCDay() + 6) % 7) > 4) nextReb++;
-    const rotState = { lastDate: isoOf(lastDay), holdings, nextTargets: weights(days.length), nextRebalance: isoOf(nextReb), equity: b.equity(lastMarks), prices: lastMarks };
-    return { days: Float64Array.from(eqD), eq: Float64Array.from(eqV), trades: b.trades, metrics: m, ranking: cur, rotState };
+    const lastDay = days[lastI];
+    const rotState = { lastDate: isoOf(lastDay), holdings, nextTargets: weights(N), nextRebalance: isoOf(nextRebalanceDay(spec, lastDay)), equity: b.equity(lastMarks), prices: lastMarks,
+      regimeOn: regimeOn(N), ranks: Object.fromEntries(curRank.map(([s], j) => [s, j + 1])) };
+    return { days: Float64Array.from(eqD), eq: Float64Array.from(eqV), trades: b.trades, metrics: m, ranking: cur, rotState, roundTrips: trips };
   }
 
   // ---- option selling (port of agents/option_selling.py)
@@ -583,6 +961,9 @@
     MIDCAPSELECT: "MIDCPNIFTY", NIFTYMIDSELECT: "MIDCPNIFTY", NIFTYMIDCAPSELECT: "MIDCPNIFTY", NIFTY_MIDCAP_SELECT: "MIDCPNIFTY", NIFTYNEXT50: "NIFTYNXT50", NEXT50: "NIFTYNXT50", NIFTY_NEXT_50: "NIFTYNXT50",
     NIFTYIT: "NIFTY_IT", NIFTYPHARMA: "NIFTY_PHARMA", NIFTYAUTO: "NIFTY_AUTO", NIFTYFMCG: "NIFTY_FMCG", NIFTYMETAL: "NIFTY_METAL", NIFTYREALTY: "NIFTY_REALTY",
     NIFTYENERGY: "NIFTY_ENERGY", NIFTYPSUBANK: "NIFTY_PSU_BANK", NIFTYMEDIA: "NIFTY_MEDIA", NIFTYPVTBANK: "NIFTY_PRIVATE_BANK", NIFTY100: "NIFTY_100", NIFTY200: "NIFTY_200", NIFTY500: "NIFTY_500",
+    CASH: "NIFTY_1D_RATE_INDEX", LIQUID: "NIFTY_1D_RATE_INDEX", OVERNIGHT: "NIFTY_1D_RATE_INDEX", NIFTY1DRATE: "NIFTY_1D_RATE_INDEX",
+    GSEC: "NIFTY_10_YR_BENCHMARK_G_SEC", GSEC10: "NIFTY_10_YR_BENCHMARK_G_SEC", GILT: "NIFTY_10_YR_BENCHMARK_G_SEC", "10YGSEC": "NIFTY_10_YR_BENCHMARK_G_SEC",
+    MOMENTUM30: "NIFTY200_MOMENTUM_30", NIFTY200MOMENTUM30: "NIFTY200_MOMENTUM_30",
     BSESN: "SENSEX", ZOMATO: "ETERNAL", TATAMOTORS: "TMPV", "TATA MOTORS": "TMPV", BAJAJAUTO: "BAJAJ-AUTO", "M & M": "M&M", MM: "M&M", MAHINDRA: "M&M" };
   const groupKey = (x) => String(x).toLowerCase().replace(/[^a-z0-9]/g, "");
   function symKey(x) {
@@ -622,13 +1003,20 @@
       validate(s.entry);
       if (s.exit) validate(s.exit);
       s.stop_loss_pct = numOrNull(s.stop_loss_pct) || null; s.take_profit_pct = numOrNull(s.take_profit_pct) || null;
-      if (!s.exit && !s.stop_loss_pct && !s.take_profit_pct) throw new RuleError("Give an exit rule or a stop-loss / take-profit.");
+      // optional extras are only written when given, so older specs keep exactly their old form
+      for (const k of ["trailing_stop_pct", "stop_atr_mult", "target_atr_mult"]) optNum(s, k, (v) => v > 0, `${k} must be positive`);
+      for (const k of ["max_hold_days", "atr_period", "max_positions"]) optNum(s, k, (v) => v >= 1, `${k} must be at least 1`, true);
+      if (s.rank_by != null) { if (!s.max_positions) delete s.rank_by; else validate(s.rank_by); }
+      if (!s.exit && !s.stop_loss_pct && !s.take_profit_pct && !s.trailing_stop_pct && !s.max_hold_days && !s.stop_atr_mult && !s.target_atr_mult)
+        throw new RuleError("Give an exit rule or a stop-loss / take-profit / trailing stop / time limit.");
+      normBenchmark(s);
       s.position_size_pct = Math.min(100, Math.max(1, numOr(s.position_size_pct, 100)));
       s.capital = numOr(s.capital, RULE_DEF.capital); s.cost_pct = numOr(s.cost_pct, RULE_DEF.cost_pct);
       return s;
     }
     if (type === "rotation") {
       const s = Object.assign({}, ROT_DEF, clean(spec, ROT_DEF), { type });
+      const rebRaw = String(s.rebalance).toLowerCase();
       if (Array.isArray(s.universe)) s.universe = expandSymbols(s.universe, universes);
       else if (universes[groupKey(s.universe)]) s.universe = groupKey(s.universe);
       else { const list = expandSymbols(String(s.universe), universes); if (list.length > 1) s.universe = list; else throw new RuleError(`Unknown universe '${s.universe}'. Use one of: ${Object.keys(universes).join(", ")}, or a list of symbols.`); }
@@ -637,11 +1025,65 @@
       else if (typeof s.trend_filter === "number") s.trend_filter = { symbol: "NIFTY", sma: s.trend_filter };
       else if (s.trend_filter) s.trend_filter = { symbol: symKey(s.trend_filter.symbol || "NIFTY"), sma: Math.trunc(numOr(s.trend_filter.sma, 200)) };
       s.lookback = Math.trunc(numOr(s.lookback, 126)); s.skip = Math.max(0, Math.trunc(numOr(s.skip, 21))); s.top_n = Math.trunc(numOr(s.top_n, 5));
-      s.rebalance = /week/i.test(String(s.rebalance)) ? "weekly" : "monthly";
-      s.score = /risk|sharpe|vol/i.test(String(s.score)) ? "risk_adj" : "momentum";
-      s.min_score = numOrNull(s.min_score); if (s.min_score != null && Math.abs(s.min_score) >= 1) s.min_score /= 100;
+      s.rebalance = /bi.?week|fortnight|2.?week/.test(rebRaw) ? "biweekly" : /week/.test(rebRaw) ? "weekly" : /dai|day/.test(rebRaw) ? "daily"
+        : /quarter|3.?month/.test(rebRaw) ? "quarterly" : /semi|half|6.?month/.test(rebRaw) ? "semiannual" : /annual|year|12.?month/.test(rebRaw) ? "annual" : "monthly";
+      if (s.rebalance_months != null) {
+        const MN = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const arr = (Array.isArray(s.rebalance_months) ? s.rebalance_months : String(s.rebalance_months).split(/[,;\s]+/)).map((x) => { const t = String(x).toLowerCase().slice(0, 3); return MN.includes(t) ? MN.indexOf(t) + 1 : Math.trunc(Number(x)); });
+        s.rebalance_months = [...new Set(arr.filter((m) => m >= 1 && m <= 12))].sort((a, b) => a - b);
+        if (!s.rebalance_months.length) delete s.rebalance_months;
+      }
+      const sc = String(s.score);
+      const exprScore = /[()<>*\/+]/.test(sc);
+      s.score = /nse/i.test(sc) ? "nse_momentum" : exprScore ? sc : /risk|sharpe|vol/i.test(sc) ? "risk_adj" : "momentum";
+      if (exprScore) validate(s.score);
+      if (s.factors != null) {
+        const FA = { mom: "momentum", momentum: "momentum", return: "momentum", risk_adj: "risk_adj", riskadj: "risk_adj", sharpe: "risk_adj", risk_adjusted_momentum: "risk_adj",
+          volatility: "volatility", vol: "volatility", low_vol: "volatility", lowvol: "volatility", low_volatility: "volatility", trend: "trend", high_52w: "high_52w", "52w_high": "high_52w",
+          near_high: "high_52w", reversal: "reversal", liquidity: "liquidity", turnover: "liquidity" };
+        const list = Array.isArray(s.factors) ? s.factors : [s.factors];
+        s.factors = list.map((f) => {
+          if (typeof f === "string") f = { name: f };
+          const nm = String(f.name ?? f.expr ?? f.factor ?? ""); const key = nm.toLowerCase().replace(/[\s-]+/g, "_");
+          const o = { name: FA[key] || nm };
+          if (!PRESETS.includes(o.name)) validate(o.name);
+          for (const k of ["lookback", "skip", "vol_lookback"]) if (f[k] != null) o[k] = Math.max(0, Math.trunc(numOr(f[k], 0)));
+          o.weight = numOr(f.weight, 1);
+          if (f.vol_adjust != null) o.vol_adjust = !!f.vol_adjust;
+          if (f.invert != null || /low_?vol/.test(key)) o.invert = f.invert != null ? !!f.invert : true;
+          return o;
+        }).filter((f) => f.name);
+        if (!s.factors.length) delete s.factors;
+      }
+      const zScored = (s.factors && s.factors.length > 1) || s.combine === "zscore" || s.score === "nse_momentum" || exprScore;
+      s.min_score = numOrNull(s.min_score); if (!zScored && s.min_score != null && Math.abs(s.min_score) >= 1) s.min_score /= 100;
+      if (s.combine != null) s.combine = /z/i.test(String(s.combine)) ? "zscore" : null;
+      if (!s.combine) delete s.combine;
+      if (s.filters != null) { s.filters = (Array.isArray(s.filters) ? s.filters : [s.filters]).map(String).filter((x) => x.trim()); s.filters.forEach(validate); if (!s.filters.length) delete s.filters; }
+      if (s.exclude != null) s.exclude = expandSymbols(s.exclude, universes);
+      for (const k of ["top_pct", "max_weight_pct", "regime_exposure_pct", "cash_yield_pct", "target_vol_pct", "max_leverage", "slippage_pct", "long_exposure_pct", "short_exposure_pct"])
+        optNum(s, k, (v) => v >= 0, `${k} can't be negative`);
+      for (const k of ["buffer_rank", "max_per_sector", "short_n", "min_history_days", "vol_lookback"]) optNum(s, k, (v) => v >= 1, `${k} must be at least 1`, true);
+      if (s.weighting != null) {
+        const w = String(s.weighting), k = w.toLowerCase().replace(/[\s-]+/g, "_");
+        const WA = { equal: "equal", equal_weight: "equal", score: "score", momentum: "score", score_weighted: "score", inverse_vol: "inverse_vol", inverse_volatility: "inverse_vol", risk_parity: "inverse_vol",
+          mcap: "mcap", market_cap: "mcap", marketcap: "mcap", free_float: "mcap", mcap_score: "mcap_score", market_cap_score: "mcap_score", nse: "mcap_score", rank: "rank" };
+        if (WA[k]) s.weighting = WA[k]; else { validate(w); s.weighting = w; }
+        if (s.weighting === "equal") delete s.weighting;
+      }
+      if (s.underfill != null) { if (/spread|fill|redistrib/i.test(String(s.underfill))) s.underfill = "spread"; else delete s.underfill; }
+      if (s.regime != null) {
+        if (typeof s.regime === "string") { validate(s.regime); s.regime = { symbol: "NIFTY", expr: s.regime }; }
+        else if (s.regime && s.regime.expr) { validate(s.regime.expr); s.regime = { symbol: symKey(s.regime.symbol || "NIFTY"), expr: String(s.regime.expr) }; }
+        else delete s.regime;
+      }
+      if (s.regime_action != null) s.regime_action = /def/i.test(String(s.regime_action)) ? "defensive" : /reduc|scale|half|partial/i.test(String(s.regime_action)) ? "reduce" : "cash";
+      for (const k of ["defensive", "cash_symbol"]) if (s[k] != null) s[k] = symKey(s[k]);
+      if (s.regime_action === "defensive" && !s.defensive) throw new RuleError('regime_action "defensive" needs a "defensive" symbol (e.g. GSEC or NIFTY_LOW_VOLATILITY_50).');
+      if (s.short_n) { for (const k of ["short_exposure_pct"]) if (s[k] == null) s[k] = 100; }
+      normBenchmark(s);
       s.rebalance_band_pct = numOr(s.rebalance_band_pct, 1); s.capital = numOr(s.capital, ROT_DEF.capital); s.cost_pct = numOr(s.cost_pct, ROT_DEF.cost_pct);
-      if (s.top_n < 1 || s.lookback < 5) throw new RuleError("Hold at least 1 name and rank over at least 5 days.");
+      if (s.top_n < 1 || (s.lookback < 5 && !s.factors && !exprScore)) throw new RuleError("Hold at least 1 name and rank over at least 5 days.");
       return s;
     }
     if (type === "option_selling") {
@@ -665,14 +1107,36 @@
       if (s.profit_target_pct != null && s.profit_target_pct > 0 && s.profit_target_pct <= 1) s.profit_target_pct *= 100;
       s.min_vix = numOrNull(s.min_vix); s.max_vix = numOrNull(s.max_vix); s.iv_mult = numOr(s.iv_mult, 1);
       s.capital = numOr(s.capital, OPT_DEF.capital); s.fee_per_order = numOr(s.fee_per_order, 20); s.cost_pct_premium = numOr(s.cost_pct_premium, 0.15);
+      normBenchmark(s);
       return s;
     }
     throw new RuleError(`Unknown strategy type '${spec.type}'. Use rule, rotation or option_selling.`);
   }
+  function optNum(s, k, ok, msg, int) {
+    if (s[k] == null || s[k] === false) { delete s[k]; return; }
+    let v = numOr(s[k], NaNv); if (int) v = Math.trunc(v);
+    if (!(v === v)) { delete s[k]; return; }
+    if (!ok(v)) throw new RuleError(msg);
+    if (v === 0 && !int) { delete s[k]; return; }
+    s[k] = v;
+  }
+  function normBenchmark(s) { if (s.benchmark == null || s.benchmark === "") { delete s.benchmark; return; } s.benchmark = symKey(s.benchmark); if (s.benchmark === "NIFTY") delete s.benchmark; }
   function symbolsNeeded(s, universes) {
-    if (s.type === "rule") return s.symbols;
-    if (s.type === "rotation") { const u = Array.isArray(s.universe) ? s.universe : (universes[s.universe] || []); return u.concat(s.trend_filter ? [s.trend_filter.symbol] : []); }
-    return [s.underlying, s.vix_symbol];
+    const extra = [s.benchmark].filter(Boolean);
+    if (s.type === "rule") return [...new Set(s.symbols.concat(refSymbols(s.entry), refSymbols(s.exit), refSymbols(s.rank_by), extra))];
+    if (s.type === "rotation") {
+      const u = Array.isArray(s.universe) ? s.universe : (universes[s.universe] || []);
+      const refs = exprsOf(s).flatMap(refSymbols);
+      return [...new Set(u.concat(s.trend_filter ? [s.trend_filter.symbol] : [], s.regime ? [s.regime.symbol] : [], [s.defensive, s.cash_symbol].filter(Boolean), refs, extra))];
+    }
+    return [s.underlying, s.vix_symbol, ...extra];
+  }
+  // does this spec need full OHLCV (open/high/low/volume/valuation) rather than closes only?
+  const OHLCV_RX = /\b(open|high|low|volume|hl2|hlc3|pe|pb|dy|atr|atr_pct|adx|plus_di|minus_di|stoch_k|stoch_d|cci|mfi|williams_r|obv|vwap|supertrend|keltner_upper|keltner_lower)\b/;
+  function needsFull(s) {
+    if (s.type === "rule") return true;
+    if (s.type === "rotation") return exprsOf(s).some((e) => OHLCV_RX.test(e)) || factorList(s).some((f) => f.name === "liquidity");
+    return false;
   }
   function run(spec, frames, universes, opt = {}) {
     const o = { rf: 0.065, startDay: opt.start ? dayOf(opt.start) : null, endDay: opt.end ? dayOf(opt.end) : null };
@@ -680,9 +1144,10 @@
     if (spec.type === "rule") res = runRule(spec, frames, o);
     else if (spec.type === "rotation") res = runRotation(spec, frames, o, Array.isArray(spec.universe) ? spec.universe : universes[spec.universe]);
     else res = runOptions(spec, frames, o);
-    // benchmark: NIFTY buy & hold on the same dates
-    if (frames.NIFTY && res.days.length > 1) {
-      const n = frames.NIFTY, bench = f64(res.days.length); let j = 0, last = NaNv;
+    // benchmark: NIFTY (or spec.benchmark) buy & hold on the same dates
+    const bsym = spec.benchmark || "NIFTY"; res.benchName = bsym;
+    if (frames[bsym] && res.days.length > 1) {
+      const n = frames[bsym], bench = f64(res.days.length); let j = 0, last = NaNv;
       for (let i = 0; i < res.days.length; i++) { while (j < n.d.length && n.d[j] <= res.days[i]) { last = n.c[j]; j++; } bench[i] = last; }
       let first = 0; while (first < bench.length && bench[first] !== bench[first]) first++;
       const scale = res.eq[0] / bench[first];
@@ -709,21 +1174,40 @@
         else if (st.exitedToday) { action = "EXITED"; note = `Position closed today (${st.exitedToday})`; }
         else if (st.inPosition) { action = "HOLD"; note = `In position since ${st.entryDate}`; }
         else { action = "WAIT"; note = "No position, entry rule not met"; }
+        if (st.pendingBuy && st.slotOk === false) { action = "WAIT"; note = `Entry rule met, but all ${spec.max_positions} portfolio slots are taken (ranked lower)`; }
         const ref = st.inPosition ? st.entryPrice : st.close;
+        let stop = (st.inPosition || st.pendingBuy) ? lv(ref, sl, long ? -1 : 1) : null, target = (st.inPosition || st.pendingBuy) ? lv(ref, tp, long ? 1 : -1) : null;
+        if (st.inPosition && st.stopLevel != null) stop = st.stopLevel;
+        if (st.inPosition && st.targetLevel != null) target = st.targetLevel;
+        if (st.pendingBuy && st.atrNow === st.atrNow && st.atrNow != null) {
+          if (spec.stop_atr_mult) { const x = ref + (long ? -1 : 1) * spec.stop_atr_mult * st.atrNow; stop = stop == null ? x : (long ? Math.max(stop, x) : Math.min(stop, x)); }
+          if (spec.target_atr_mult) { const x = ref + (long ? 1 : -1) * spec.target_atr_mult * st.atrNow; target = target == null ? x : (long ? Math.min(target, x) : Math.max(target, x)); }
+        }
         out.push({ symbol: st.symbol, action, price: r2(st.close), date: st.lastDate, note,
           entry: st.inPosition ? r2(st.entryPrice) : null,
-          stop: (st.inPosition || st.pendingBuy) ? r2(lv(ref, sl, long ? -1 : 1)) : null,
-          target: (st.inPosition || st.pendingBuy) ? r2(lv(ref, tp, long ? 1 : -1)) : null,
+          stop: r2(stop),
+          target: r2(target),
           pnl_pct: st.inPosition ? r2((long ? 1 : -1) * (st.close / st.entryPrice - 1) * 100) : null });
       }
     } else if (spec.type === "rotation") {
       const rs = res.rotState, held = new Set(rs.holdings.map((h) => h.symbol)), tgt = rs.nextTargets;
-      for (const h of rs.holdings) out.push({ symbol: h.symbol, action: tgt[h.symbol] ? "HOLD" : "SELL", price: r2(h.price), date: rs.lastDate,
-        note: tgt[h.symbol] ? "Still in the top ranks" : `Dropped out of the top ${spec.top_n} — sell at next rebalance (${rs.nextRebalance})`,
-        weight_pct: r2(h.value / rs.equity * 100) });
-      for (const s of Object.keys(tgt)) if (!held.has(s)) out.push({ symbol: s, action: "BUY", price: r2(rs.prices[s]), date: rs.lastDate,
-        note: `Entered the top ${spec.top_n} — buy at next rebalance (${rs.nextRebalance})`, weight_pct: r2(tgt[s] * 100) });
-      if (!out.length) out.push({ symbol: "-", action: "CASH", date: rs.lastDate, note: spec.trend_filter ? `Trend filter off (${spec.trend_filter.symbol} below its ${spec.trend_filter.sma}-day average) or nothing qualifies` : "Nothing qualifies" });
+      const top = spec.top_pct ? `top ${spec.top_pct}%` : `top ${spec.top_n}`, park = (s) => s === spec.cash_symbol || (s === spec.defensive && rs.regimeOn === false);
+      const rank = (s) => rs.ranks && rs.ranks[s] ? ` (rank ${rs.ranks[s]})` : "";
+      for (const h of rs.holdings) {
+        const t = tgt[h.symbol], shortPos = h.qty < 0;
+        let action, note;
+        if (!t) { action = shortPos ? "COVER" : "SELL"; note = park(h.symbol) ? `Leave the parking asset — redeploy at next rebalance (${rs.nextRebalance})` : shortPos ? `No longer among the weakest — cover at next rebalance (${rs.nextRebalance})` : `Dropped out of the ${top}${rank(h.symbol)} — sell at next rebalance (${rs.nextRebalance})`; }
+        else if ((t < 0) !== shortPos) { action = t < 0 ? "SHORT" : "BUY"; note = `Flip the position at next rebalance (${rs.nextRebalance})`; }
+        else { action = shortPos ? "HOLD SHORT" : "HOLD"; note = park(h.symbol) ? "Parking asset for idle cash" : shortPos ? "Still among the weakest (short leg)" : "Still in the top ranks"; }
+        out.push({ symbol: h.symbol, action, price: r2(h.price), date: rs.lastDate, note, weight_pct: r2(h.value / rs.equity * 100), target_weight_pct: t ? r2(t * 100) : 0 });
+      }
+      for (const s of Object.keys(tgt)) if (!held.has(s)) out.push({ symbol: s, action: tgt[s] < 0 ? "SHORT" : "BUY", price: r2(rs.prices[s]), date: rs.lastDate,
+        note: park(s) ? `Park idle cash here at next rebalance (${rs.nextRebalance})` : tgt[s] < 0 ? `Among the weakest ${spec.short_n} — short at next rebalance (${rs.nextRebalance})` : `Entered the ${top}${rank(s)} — buy at next rebalance (${rs.nextRebalance})`, weight_pct: r2(tgt[s] * 100) });
+      // a change is "due" only when the next session is the rebalance day; until then it is a preview (not an alert)
+      let nx = dayOf(rs.lastDate) + 1; while (((new Date(nx * 864e5).getUTCDay() + 6) % 7) > 4) nx++;
+      const due = isoOf(nx) === rs.nextRebalance;
+      for (const o of out) if (/BUY|SELL|SHORT|COVER/.test(o.action) && !/HOLD/.test(o.action)) o.due = due;
+      if (!out.length) out.push({ symbol: "-", action: "CASH", date: rs.lastDate, note: rs.regimeOn === false ? (spec.trend_filter ? `Trend filter off (${spec.trend_filter.symbol} below its ${spec.trend_filter.sma}-day average)` : `Regime filter off (${spec.regime ? spec.regime.expr : ""})`) : spec.trend_filter ? `Trend filter off (${spec.trend_filter.symbol} below its ${spec.trend_filter.sma}-day average) or nothing qualifies` : "Nothing qualifies" });
     } else if (spec.type === "option_selling") {
       const os = res.optState;
       if (os.legs.length) for (const l of os.legs) out.push({ symbol: l.symbol, action: l.qty < 0 ? "HOLD SHORT" : "HOLD LONG", price: r2(l.mark), date: os.lastDate,
@@ -826,6 +1310,7 @@
     switch (n.t) {
       case "num": return String(n.v);
       case "var": return n.v;
+      case "str": return JSON.stringify(n.v);
       case "neg": return `-(${unparse(n.a)})`;
       case "not": return `not (${unparse(n.a)})`;
       case "bool": return `(${unparse(n.a)}) ${n.op} (${unparse(n.b)})`;
@@ -834,7 +1319,8 @@
       case "call": return `${n.f}(${n.args.map(unparse).concat(Object.entries(n.kw).map(([k, v]) => `${k}=${unparse(v)}`)).join(", ")})`;
     }
   }
-  const WINDOW_FUNCS = new Set(["sma", "ema", "wma", "rsi", "atr", "atr_pct", "macd", "macd_signal", "bb_upper", "bb_lower", "highest", "lowest", "roc", "stdev", "zscore", "volatility", "count_true", "change"]);
+  const WINDOW_FUNCS = new Set(["sma", "ema", "wma", "rsi", "atr", "atr_pct", "macd", "macd_signal", "bb_upper", "bb_lower", "highest", "lowest", "roc", "stdev", "zscore", "volatility", "count_true", "change",
+    "ret", "sum", "median", "pct_rank", "slope", "corr", "beta", "adx", "plus_di", "minus_di", "stoch_k", "stoch_d", "cci", "mfi", "williams_r", "vwap", "supertrend", "keltner_upper", "keltner_lower"]);
   function scaleWindows(expr, f) {
     const walk = (n) => {
       if (!n || typeof n !== "object") return n;
@@ -848,8 +1334,19 @@
   }
   function variant(spec, f) {
     const s = JSON.parse(JSON.stringify(spec));
-    if (s.type === "rule") { s.entry = scaleWindows(s.entry, f); if (s.exit) s.exit = scaleWindows(s.exit, f); if (s.stop_loss_pct) s.stop_loss_pct = r2(s.stop_loss_pct * f); if (s.take_profit_pct) s.take_profit_pct = r2(s.take_profit_pct * f); }
-    else if (s.type === "rotation") { s.lookback = Math.max(5, Math.round(s.lookback * f)); s.skip = Math.round(s.skip * f); }
+    const sc = (x) => x ? r2(x * f) : x;
+    if (s.type === "rule") {
+      s.entry = scaleWindows(s.entry, f); if (s.exit) s.exit = scaleWindows(s.exit, f); if (s.stop_loss_pct) s.stop_loss_pct = r2(s.stop_loss_pct * f); if (s.take_profit_pct) s.take_profit_pct = r2(s.take_profit_pct * f);
+      for (const k of ["trailing_stop_pct", "stop_atr_mult", "target_atr_mult"]) if (s[k]) s[k] = sc(s[k]);
+      if (s.max_hold_days) s.max_hold_days = Math.max(1, Math.round(s.max_hold_days * f));
+    }
+    else if (s.type === "rotation") {
+      s.lookback = Math.max(5, Math.round(s.lookback * f)); s.skip = Math.round(s.skip * f);
+      if (s.factors) s.factors = s.factors.map((x) => PRESETS.includes(x.name) ? { ...x, ...(x.lookback ? { lookback: Math.max(5, Math.round(x.lookback * f)) } : {}), ...(x.skip ? { skip: Math.round(x.skip * f) } : {}) } : { ...x, name: scaleWindows(x.name, f) });
+      if (s.score && !PRESETS.includes(s.score) && s.score !== "nse_momentum") s.score = scaleWindows(s.score, f);
+      if (s.filters) s.filters = s.filters.map((x) => scaleWindows(x, f));
+      if (s.regime) s.regime = { ...s.regime, expr: scaleWindows(s.regime.expr, f) };
+    }
     else { if (s.strike_mode === "delta") s.delta = Math.min(0.45, r2(s.delta * f)); else s.otm_pct = r2(s.otm_pct / f); if (s.stop_loss_mult) s.stop_loss_mult = r2(1 + (s.stop_loss_mult - 1) * f); }
     return s;
   }
@@ -874,6 +1371,7 @@
   }
 
   const api = { parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice,
-    signals, splitMetrics, riskStats, crises, monteCarlo, sensitivity, costShock, stressAll, scaleWindows, unparse, CRISES };
+    signals, splitMetrics, riskStats, crises, monteCarlo, sensitivity, costShock, stressAll, scaleWindows, unparse, CRISES,
+    setData, needsFull, refSymbols, periodKey, nextRebalanceDay, factorList, exprsOf, PRESETS, WEIGHTINGS, symKey };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.TradeEngine = api;
 })(typeof window !== "undefined" ? window : globalThis);
