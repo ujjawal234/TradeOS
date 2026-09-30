@@ -51,7 +51,7 @@
   "inferred_splits": 5,
   "demergers": 67,
   "outside_data": 97,
-  "rights": 62,
+  "rights": 60,
   "ratio_rejected": 48
  },
  "big_moves_left": [
@@ -154,14 +154,6 @@
   ],
   [
    "IDEA",
-   "2019-03-29",
-   0.629,
-   [
-    "2019-03-29 RIGHTS 87:38@PRM RS 2.50"
-   ]
-  ],
-  [
-   "IDEA",
    "2020-03-18",
    0.649,
    []
@@ -207,14 +199,6 @@
    "2019-02-04",
    0.651,
    []
-  ],
-  [
-   "RELIANCE",
-   "2020-05-13",
-   2.016,
-   [
-    "2020-05-13 RIGHTS 1:15 PARTLY PAID"
-   ]
   ],
   [
    "RPOWER",
@@ -467,8 +451,8 @@
  ],
  "adjustments": {
   "tickers_adjusted": 391,
-  "events": 1601,
-  "small_events": 1034
+  "events": 1595,
+  "small_events": 1032
  },
  "adjustment_examples": {
   "20MICRONS": [
@@ -581,10 +565,6 @@
   ],
   "ABFRL": [
    [
-    "2020-06-30",
-    0.97749
-   ],
-   [
     "2025-05-22",
     0.36438
    ]
@@ -632,7 +612,7 @@
    ],
    [
     "2025-11-17",
-    0.96944
+    0.96987
    ]
   ],
   "ADANIPOWER": [
@@ -940,7 +920,7 @@
   "AURUM": [
    [
     "2022-04-12",
-    0.70717
+    0.74812
    ]
   ]
  },

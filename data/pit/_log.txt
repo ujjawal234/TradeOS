@@ -7,5 +7,5 @@ Corporate actions: 0 price-report files to fetch
 Corporate actions: 51,438 distinct records from 3897 files (new 0; not available {})
 Gap days ignored for adjustments: 0 []
 Reviews: 31 (2011-09-30 … 2026-09-29); stocks ever in the top 200: 590
-Corporate actions applied: {'dividends': 7917, 'ratio_applied': 323, 'inferred_splits': 5, 'demergers': 67, 'outside_data': 97, 'rights': 62, 'ratio_rejected': 48}; one-day moves beyond ±40% left: 32
-Wrote 590 price files; 88 of them stopped trading (delisted, merged or suspended). Adjustments: {'tickers_adjusted': 391, 'events': 1601, 'small_events': 1034}
+Corporate actions applied: {'dividends': 7917, 'ratio_applied': 323, 'inferred_splits': 5, 'demergers': 67, 'outside_data': 97, 'rights': 60, 'ratio_rejected': 48}; one-day moves beyond ±40% left: 30
+Wrote 590 price files; 88 of them stopped trading (delisted, merged or suspended). Adjustments: {'tickers_adjusted': 391, 'events': 1595, 'small_events': 1032}
