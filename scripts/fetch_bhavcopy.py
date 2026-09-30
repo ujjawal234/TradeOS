@@ -313,13 +313,7 @@ def adjust(g: pd.DataFrame, gaps: set = frozenset(), acts: list | None = None, s
     dividends; plus any PREVCLOSE adjustment NSE itself made."""
     close, prev, opn = g["close"].to_numpy(), g["prev"].to_numpy(), g["open"].to_numpy()
     dates = g["date"].to_numpy()
-    f = np.ones(len(g))
-    f[1:] = prev[1:] / close[:-1]
-    if gaps:
-        f[g["date"].isin(gaps).to_numpy()] = 1.0
-    f[~np.isfinite(f) | (f <= 0)] = 1.0
-    f[np.abs(f - 1) < 0.02] = 1.0  # only NSE's own large adjustments count; small ones are dividends handled below
-    f[(f < 0.001) | (f > 1000)] = 1.0
+    f = np.ones(len(g))  # NSE's PREVCLOSE turned out not to be adjusted for corporate actions, so it is not used
     st = stats if stats is not None else {}
     by_day: dict = {}
     for ex, kind, val in acts or []:
