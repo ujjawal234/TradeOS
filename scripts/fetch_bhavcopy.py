@@ -279,7 +279,7 @@ def parse_purpose(p: str) -> list[tuple[str, float]]:
             out.append(("ratio", y / (x + y)))
     if not bon and re.search(r"\bBON(?:US)?(?![A-Z])", P):
         out.append(("bonus?", 0.0))
-    if re.search(r"SPLI?T|\bFV\s*SPL|FVSPL|SUB\s*DIV|CONSOL", P):
+    if re.search(r"SPLI?T|\bFV\s*SPL|FVSPL|SUB\s*DIV|CONSOL|\bSPL\s*(?:FRM|FROM|RS|RE)", P):
         m = re.search(r"(?:FRM|FROM|FR|RS|RE|INR|SPLT|SPL|SPLIT)\.?\s*(\d+(?:\.\d+)?)[^0-9]{0,24}?\bTO\s*(?:RS|RE|INR)?\.?\s*(\d+(?:\.\d+)?)", P)
         if m and float(m.group(1)) > 0 and float(m.group(2)) > 0 and m.group(1) != m.group(2):
             out.append(("ratio", float(m.group(2)) / float(m.group(1))))
@@ -356,14 +356,32 @@ def adjust(g: pd.DataFrame, gaps: set = frozenset(), acts: list | None = None, s
             else:
                 st["ratio_rejected"] = st.get("ratio_rejected", 0) + 1
         if "demerger" in kinds and not applied and f[t] == 1.0 and moves:
-            gap = opn[t] / c if opn[t] > 0 else close[t] / c
-            if 0.05 < gap < 0.97:
+            gap = opn[t] / c if 0.02 < opn[t] / c < 0.97 else close[t] / c
+            if 0.02 < gap < 0.97:
                 f[t] *= gap
                 st["demergers"] = st.get("demergers", 0) + 1
         divs = sorted({round(v, 4) for k, v in a if k == "div" and v > 0})
-        if divs and sum(divs) < 0.25 * c:
-            f[t] *= (c - sum(divs)) / c
+        dsum = sum(divs)
+        # ordinary dividends as stated; a very large (special) one only when the ex-date move confirms it
+        if divs and (dsum < 0.25 * c or (dsum < 0.9 * c and err((c - dsum) / c) < 0.15)):
+            f[t] *= (c - dsum) / c
             st["dividends"] = st.get("dividends", 0) + 1
+    # splits NSE's records miss: a close-to-close AND open move within 6% of 1/2, 1/4, 1/5 or 1/10, without the
+    # turnover spike a crash brings (a split leaves traded value roughly unchanged)
+    val = g["val"].to_numpy()
+    for t in range(21, len(g)):
+        if f[t] != 1.0 or close[t - 1] <= 0:
+            continue
+        rc, ro = close[t] / close[t - 1], (opn[t] / close[t - 1] if opn[t] > 0 else close[t] / close[t - 1])
+        if abs(np.log(rc)) < 0.6:
+            continue
+        for k in (0.5, 0.25, 0.2, 0.1):
+            if abs(np.log(rc / k)) < 0.06 and abs(np.log(ro / k)) < 0.08:
+                base = np.nanmedian(val[t - 20:t])
+                if base > 0 and val[t] < 4 * base:
+                    f[t] = k
+                    st["inferred_splits"] = st.get("inferred_splits", 0) + 1
+                break
     events = [(str(g["date"].iloc[i])[:10], round(float(f[i]), 5)) for i in np.nonzero(np.abs(f - 1) >= 0.02)[0]]
     cum = np.ones(len(g))
     cum[:-1] = np.cumprod(f[::-1])[::-1][1:]  # product of factors strictly after each day
