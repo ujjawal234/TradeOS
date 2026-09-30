@@ -87,7 +87,7 @@
   [
    "BCG",
    "2025-07-14",
-   10.355,
+   2.02,
    []
   ],
   [
@@ -141,7 +141,7 @@
   [
    "GVKPIL",
    "2022-08-12",
-   5.7,
+   2.28,
    [
     "2022-08-18 ANNUAL GENERAL MEETING"
    ]
@@ -450,9 +450,9 @@
   "PUNJLLOYD"
  ],
  "adjustments": {
-  "tickers_adjusted": 391,
-  "events": 1595,
-  "small_events": 1032
+  "tickers_adjusted": 389,
+  "events": 1592,
+  "small_events": 1033
  },
  "adjustment_examples": {
   "20MICRONS": [
