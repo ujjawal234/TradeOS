@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-29",
+ "generated": "2026-09-30",
  "lists_fetched": {
   "nifty50": true,
   "nifty200": true,
@@ -71,11 +71,11 @@
    "nifty50": false
   },
   "ALKEM": {
-   "name": "Alkem Laboratories Ltd.",
-   "industry": "Healthcare",
-   "nifty200": true,
    "fno": true,
    "lot_size": 125,
+   "name": "ALKEM LABORATORIES LTD.",
+   "industry": "Healthcare",
+   "nifty200": true,
    "nifty50": false
   },
   "AMBER": {
@@ -106,6 +106,13 @@
    "name": "ANGEL ONE LIMITED",
    "nifty50": false,
    "nifty200": false
+  },
+  "APARINDS": {
+   "name": "Apar Industries Ltd.",
+   "industry": "Capital Goods",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
   },
   "APLAPOLLO": {
    "name": "APL Apollo Tubes Ltd.",
@@ -324,9 +331,9 @@
    "name": "BSE Ltd.",
    "industry": "Financial Services",
    "nifty200": true,
+   "nifty50": true,
    "fno": true,
-   "lot_size": 200,
-   "nifty50": false
+   "lot_size": 200
   },
   "CAMS": {
    "fno": true,
@@ -413,13 +420,6 @@
    "fno": true,
    "lot_size": 1250,
    "nifty50": false
-  },
-  "COROMANDEL": {
-   "name": "Coromandel International Ltd.",
-   "industry": "Chemicals",
-   "nifty200": true,
-   "nifty50": false,
-   "fno": false
   },
   "CROMPTON": {
    "fno": true,
@@ -680,6 +680,13 @@
    "fno": true,
    "lot_size": 700
   },
+  "HINDCOPPER": {
+   "name": "Hindustan Copper Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
   "HINDPETRO": {
    "name": "Hindustan Petroleum Corporation Ltd.",
    "industry": "Oil Gas & Consumable Fuels",
@@ -703,13 +710,6 @@
    "fno": true,
    "lot_size": 1225,
    "nifty50": false
-  },
-  "HUDCO": {
-   "name": "Housing & Urban Development Corporation Ltd.",
-   "industry": "Financial Services",
-   "nifty200": true,
-   "nifty50": false,
-   "fno": false
   },
   "HYUNDAI": {
    "name": "Hyundai Motor India Ltd.",
@@ -945,11 +945,11 @@
    "lot_size": 2000
   },
   "KPITTECH": {
-   "name": "KPIT Technologies Ltd.",
-   "industry": "Information Technology",
-   "nifty200": true,
    "fno": true,
    "lot_size": 775,
+   "name": "KPIT TECHNOLOGIES LIMITED",
+   "industry": "Information Technology",
+   "nifty200": true,
    "nifty50": false
   },
   "LAURUSLABS": {
@@ -983,11 +983,12 @@
    "nifty50": false
   },
   "LICI": {
+   "name": "Life Insurance Corporation of India",
+   "industry": "Financial Services",
+   "nifty200": true,
    "fno": true,
    "lot_size": 1400,
-   "name": "LIFE INSURA CORP OF INDIA",
-   "nifty50": false,
-   "nifty200": false
+   "nifty50": false
   },
   "LODHA": {
    "name": "Lodha Developers Ltd.",
@@ -1045,11 +1046,12 @@
    "fno": false
   },
   "MAHABANK": {
+   "name": "Bank of Maharashtra",
+   "industry": "Financial Services",
+   "nifty200": true,
    "fno": true,
    "lot_size": 6500,
-   "name": "BANK OF MAHARASHTRA",
-   "nifty50": false,
-   "nifty200": false
+   "nifty50": false
   },
   "MANAPPURAM": {
    "fno": true,
@@ -1105,6 +1107,13 @@
    "fno": true,
    "lot_size": 225,
    "nifty50": false
+  },
+  "MEESHO": {
+   "name": "Meesho Ltd.",
+   "industry": "Consumer Services",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
   },
   "MFSL": {
    "name": "Max Financial Services Ltd.",
@@ -1198,6 +1207,13 @@
    "fno": true,
    "lot_size": 6950,
    "nifty50": false
+  },
+  "NLCINDIA": {
+   "name": "NLC India Ltd.",
+   "industry": "Power",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
   },
   "NMDC": {
    "name": "NMDC Ltd.",
@@ -1475,11 +1491,11 @@
    "lot_size": 750
   },
   "SHREECEM": {
-   "name": "Shree Cement Ltd.",
-   "industry": "Construction Materials",
-   "nifty200": true,
    "fno": true,
    "lot_size": 25,
+   "name": "SHREE CEMENT LIMITED",
+   "industry": "Construction Materials",
+   "nifty200": true,
    "nifty50": false
   },
   "SHRIRAMFIN": {
@@ -1576,19 +1592,12 @@
    "lot_size": 550
   },
   "TATAELXSI": {
-   "name": "Tata Elxsi Ltd.",
-   "industry": "Information Technology",
-   "nifty200": true,
    "fno": true,
    "lot_size": 125,
-   "nifty50": false
-  },
-  "TATAINVEST": {
-   "name": "Tata Investment Corporation Ltd.",
-   "industry": "Financial Services",
+   "name": "TATA ELXSI LIMITED",
+   "industry": "Information Technology",
    "nifty200": true,
-   "nifty50": false,
-   "fno": false
+   "nifty50": false
   },
   "TATAPOWER": {
    "name": "Tata Power Co. Ltd.",
@@ -1723,6 +1732,13 @@
    "lot_size": 1355,
    "nifty50": false
   },
+  "VAML": {
+   "name": "Vedanta Aluminium Metal Ltd.",
+   "industry": "Metals & Mining",
+   "nifty200": true,
+   "nifty50": false,
+   "fno": false
+  },
   "VBL": {
    "name": "Varun Beverages Ltd.",
    "industry": "Fast Moving Consumer Goods",
@@ -1767,9 +1783,9 @@
    "name": "Wipro Ltd.",
    "industry": "Information Technology",
    "nifty200": true,
-   "nifty50": true,
    "fno": true,
-   "lot_size": 3000
+   "lot_size": 3000,
+   "nifty50": true
   },
   "YESBANK": {
    "name": "Yes Bank Ltd.",
