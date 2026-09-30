@@ -126,6 +126,52 @@ def enc_full(df: pd.DataFrame) -> dict:
             **{k: a for k in ("pe", "pb", "dy") if (a := val_arr(df, k)) is not None}}
 
 
+PIT_DIR = ROOT / "data" / "pit"
+
+
+def build_pit(dst: Path, universes: dict) -> dict | None:
+    """Survivorship-free universes (scripts/fetch_bhavcopy.py): data/pit/{closes.json, membership.json, p/<SYM>.json}.
+    Their prices come from NSE bhavcopy and live apart from the Yahoo series, so a point-in-time backtest uses one
+    consistent source for every stock in it (including ones that later fell out or were delisted)."""
+    mem_file, pdir = PIT_DIR / "membership.json", PIT_DIR / "prices"
+    if not mem_file.exists() or not pdir.exists():
+        return None
+    mem = json.loads(mem_file.read_text())
+    out = dst / "pit"
+    (out / "p").mkdir(parents=True, exist_ok=True)
+    frames = {}
+    for f in sorted(pdir.glob("*.csv")):
+        df = pd.read_csv(f, index_col=0, parse_dates=True).dropna(subset=["close"])
+        df = df[(df["close"] > 0) & ~df.index.duplicated(keep="last")].sort_index()
+        if len(df) < 20:
+            continue
+        for col in ("open", "high", "low"):
+            df[col] = df[col].fillna(df["close"])
+        df["volume"] = df["volume"].fillna(0)
+        frames[f.stem] = df
+        (out / "p" / f"{f.stem}.json").write_text(json.dumps(enc_full(df), separators=(",", ":")))
+    cal = pd.DatetimeIndex(sorted(set().union(*[set(df.index) for df in frames.values()])))
+    days = cal.values.astype("datetime64[D]").astype("int64")
+    pack = {"f": 2, "d0": int(days[0]), "dd": np.diff(days, prepend=days[0]).tolist(), "s": {}}
+    for sym, df in frames.items():
+        col = df["close"].reindex(cal)
+        i0, i1 = int(cal.get_loc(df.index[0])), int(cal.get_loc(df.index[-1]))
+        v = np.round(col.iloc[i0:i1 + 1].ffill().values * 100).astype("int64")
+        pack["s"][sym] = {"i0": i0, "c0": int(v[0]), "c": np.diff(v, prepend=v[0]).tolist()}
+    (out / "closes.json").write_text(json.dumps(pack, separators=(",", ":")))
+    unis = {k: [[d, [s for s in syms if s in frames]] for d, syms in v] for k, v in mem["universes"].items()}
+    (out / "membership.json").write_text(json.dumps({"asof": mem.get("asof"), "universes": unis}, separators=(",", ":")))
+    info = {"asof": mem.get("asof"), "method": mem.get("method", ""), "symbols": len(frames), "universes": {}}
+    for k, v in unis.items():
+        universes[k] = sorted({s for _, syms in v for s in syms})
+        info["universes"][k] = {"reviews": len(v), "first": v[0][0] if v else None, "size": len(v[-1][1]) if v else 0,
+                                "ever": len(universes[k]), "latest": v[-1][1] if v else []}
+    gone = sum(1 for df in frames.values() if df.index[-1] < cal[-1] - pd.Timedelta(days=10))
+    info["no_longer_trading"] = gone
+    print(f"pit: {len(frames)} stocks ({gone} no longer trading), universes {', '.join(f'{k}={len(universes[k])}' for k in unis)}")
+    return info
+
+
 def main(out: Path) -> None:
     src, dst = ROOT / "data" / "prices", out / "data"
     (dst / "p").mkdir(parents=True, exist_ok=True)
@@ -263,9 +309,10 @@ def main(out: Path) -> None:
         "banks": [s for s in ["HDFCBANK", "ICICIBANK", "SBIN", "AXISBANK", "KOTAKBANK", "INDUSINDBK", "BANKBARODA", "PNB", "CANBK", "FEDERALBNK", "IDFCFIRSTB", "AUBANK", "UNIONBANK", "BANKINDIA", "INDIANB"] if s in symbols],
         **industries,
     }
+    pit = build_pit(dst, universes)
     has_shares = (ROOT / "data" / "shares.json").exists()
     manifest = {"generated": fetched.get("generated"), "shares": has_shares, "source": "Stocks: Yahoo Finance (split & dividend adjusted). Indices: NSE daily index files (with P/E, P/B, dividend yield). Lists: NSE.",
-                "symbols": symbols, "universes": universes, "sectors": sectors}
+                "symbols": symbols, "universes": universes, "sectors": sectors, **({"pit": pit} if pit else {})}
     (dst / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":")))
     # share counts (for market-cap weights): {SYM: {"f": free-float ratio, "s": [[epoch_day, shares], ...]}}
     sh_file = ROOT / "data" / "shares.json"

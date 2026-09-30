@@ -75,6 +75,7 @@
     const [m, pack] = await Promise.all([fetch("data/manifest.json").then((r) => { if (!r.ok) throw new Error("Market data is missing from this page."); return r.json(); }),
       fetch("data/closes.json").then((r) => r.json())]);
     S.man = m; S.light = E.framesFromPack(pack);
+    S.pitSyms = new Set(Object.entries(m.universes || {}).filter(([k]) => /pit$/.test(k)).flatMap(([, v]) => v)); S.pitFull = {};
     let shares = null; if (m.shares) try { const r = await fetch("data/shares.json"); if (r.ok) shares = await r.json(); } catch (e) { /* optional */ }
     E.setData({ meta: m.symbols, shares }); S.sharesCount = shares ? Object.keys(shares).length : 0;
     const lasts = Object.values(m.symbols).map((s) => s.last).sort(); S.lastDay = lasts[lasts.length - 1];
@@ -87,12 +88,29 @@
     const one = async (s) => { const r = await fetch(`data/p/${encodeURIComponent(s)}.json`); if (!r.ok) throw new Error(`No price file for ${s}`); S.full[s] = E.frame(await r.json()); done++; if (onProgress && need.length > 4) onProgress(done, need.length); };
     for (let i = 0; i < need.length; i += 10) await Promise.all(need.slice(i, i + 10).map(one));
   }
+  // survivorship-free (point-in-time) data: NSE bhavcopy prices for every stock that was ever in the universe, loaded on first use
+  let pitReady = null;
+  function ensurePit() {
+    if (!S.man.pit) return Promise.reject(new Error("The point-in-time (survivorship-free) data hasn't been built yet."));
+    if (!pitReady) pitReady = (async () => {
+      const [mem, pack] = await Promise.all([fetch("data/pit/membership.json").then((r) => r.json()), fetch("data/pit/closes.json").then((r) => r.json())]);
+      E.setPit(mem); S.pitLight = E.framesFromPack(pack);
+    })().catch((e) => { pitReady = null; throw e; });
+    return pitReady;
+  }
+  async function ensurePitFull(symbols, onProgress) {
+    const need = symbols.filter((s) => !S.pitFull[s]); let done = 0;
+    const one = async (s) => { const r = await fetch(`data/pit/p/${encodeURIComponent(s)}.json`); if (!r.ok) throw new Error(`No point-in-time price file for ${s}`); S.pitFull[s] = E.frame(await r.json()); done++; if (onProgress && need.length > 4) onProgress(done, need.length); };
+    for (let i = 0; i < need.length; i += 10) await Promise.all(need.slice(i, i + 10).map(one));
+  }
   async function framesFor(spec, onProgress) {
+    const pk = E.usesPit(spec), inPit = (s) => !!pk && S.pitSyms.has(s);
     const need = [...new Set(E.symbolsNeeded(spec, S.man.universes).concat(["NIFTY"]))];
-    const missing = need.filter((s) => !S.man.symbols[s]);
+    const missing = need.filter((s) => !inPit(s) && !S.man.symbols[s]);
     if (missing.length) throw new Error(`No data for ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? "…" : ""}. Use NSE tickers from the Nifty 200 / F&O list.`);
-    if (E.needsFull(spec)) await ensureFull(need, onProgress);
-    const out = {}; for (const s of need) out[s] = S.full[s] || S.light[s];
+    if (pk) await ensurePit();
+    if (E.needsFull(spec)) { await ensureFull(need.filter((s) => !inPit(s)), onProgress); await ensurePitFull(need.filter(inPit), onProgress); }
+    const out = {}; for (const s of need) out[s] = inPit(s) ? (S.pitFull[s] || S.pitLight[s]) : (S.full[s] || S.light[s]);
     return out;
   }
   const specKey = (spec, test) => JSON.stringify([spec, test?.start || null, test?.end || null]);
@@ -116,9 +134,10 @@
     if (test?.split) { const sp = E.splitMetrics(res, test.split); h.train_cagr = sp.train.strategy.cagr_pct; h.test_cagr = sp.test.strategy.cagr_pct; h.test_nifty_cagr = sp.test.nifty?.cagr_pct; h.verdict = sp.verdict; h.flags = sp.flags; }
     return h;
   }
+  const PIT_LABEL = { top200pit: "Top 200 point-in-time", top100pit: "Top 100 point-in-time" };
   function universeLabel(spec) {
     if (spec.type === "rule") return spec.symbols.length > 3 ? `${spec.symbols.length} symbols` : spec.symbols.join(", ");
-    if (spec.type === "rotation") return Array.isArray(spec.universe) ? `${spec.universe.length} symbols` : spec.universe;
+    if (spec.type === "rotation") return Array.isArray(spec.universe) ? `${spec.universe.length} symbols` : (PIT_LABEL[spec.universe] || spec.universe);
     return `${spec.underlying} ${spec.structure.replace("_", " ")}`;
   }
   // an actionable signal for the next session (rotation changes before their rebalance day are previews)
@@ -332,6 +351,7 @@ Debt & cash (defensive / cash_symbol; NIFTY_1D_RATE_INDEX ≈ overnight money, a
 Derived (leveraged, inverse, futures, arbitrage, USD): ${byGroup("derived")}
 Equal-weight baskets of Nifty 200 members by industry (closes only): ${secs}.
 Named groups usable as "symbols" entries or "universe": ${groups}.
+${m.pit ? `SURVIVORSHIP-FREE universes (use these whenever the user wants no survivorship bias, point-in-time or realistic results): ${Object.entries(m.pit.universes).map(([k, v]) => `${k} = the ${v.size} most-traded NSE stocks at each March/September review since ${v.first} (${v.ever} different stocks over time)`).join("; ")}. Membership uses only what was known on each review date and includes stocks later delisted, merged or dropped (${m.pit.no_longer_trading} of them no longer trade); prices are NSE bhavcopy adjusted for splits/bonuses (price only). Use them as "universe" in rotation, or in "symbols" for rule strategies (entries only while a stock is a member). Data to ${m.pit.asof}.` : ""}
 Market-cap weights: ${nSh ? `share counts available for ${nSh} stocks (Yahoo; free float = today's ratio)` : "no share-count data loaded yet — mcap weights fall back to equal"}.
 Stocks (ticker=company): ${tick}`;
   }
@@ -361,7 +381,7 @@ RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime an
   adx(14) plus_di(14) minus_di(14) stoch_k(14) stoch_d(14,3) cci(20) mfi(14) williams_r(14) obv() vwap(20) corr(a,b,n) beta(a,b,n) cross_above(a,b) cross_below(a,b) abs max min log sqrt sign iff(cond,a,b) clip(x,lo,hi)
   ref("SYMBOL", expr): expr computed on another symbol, aligned by date — e.g. entry "close > sma(close,50) and ref(\\"NIFTY\\", close > sma(close,200))", or beta(ret(close,1), ref("NIFTY", ret(close,1)), 252).
  Operators + - * / % **, comparisons, and/or/not. No company fundamentals (only index P/E, P/B, DY), no intraday.
-SURVIVORSHIP: stock lists are today's index members over the whole history; the app already shows this note, so mention it only if the user asks.
+SURVIVORSHIP: nifty50/nifty200/fno are TODAY's members over the whole history (flattering). top200pit/top100pit (if listed in DATA) are survivorship-free — use them when the user asks to remove survivorship bias; don't say it can't be done.
 TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (train before, test from) or null}.`;
 
   // ================================================================ tools Claude can call from the page

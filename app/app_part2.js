@@ -141,16 +141,41 @@
     const split = test.split ? E.splitMetrics(res, test.split) : null;
     const signals = a.status === "paper" ? ((await paperResult(a).catch(() => null))?.signals || res.signals) : res.signals;
     if (seq !== roomRenderSeq) return;
-    const survivor = v.spec.type !== "option_selling" && E.symbolsNeeded(v.spec, S.man.universes).some((x) => S.man.symbols[x]?.kind === "stock")
-      ? `<p class="note">Backtest uses today's index members for the whole period; the paper record is the live test.</p>` : "";
+    const survivor = E.usesPit(v.spec) ? `<p class="note">Survivorship-free: the universe is rebuilt at every March/September review from what was known then, including stocks later delisted or dropped.</p>`
+      : v.spec.type !== "option_selling" && E.symbolsNeeded(v.spec, S.man.universes).some((x) => S.man.symbols[x]?.kind === "stock")
+      ? `<p class="note">Backtest uses today's index members for the whole period, which flatters results.${pitTarget(v.spec) ? ` <button class="linkbtn" type="button" id="pitCmpBtn">Compare without survivorship bias</button>` : ""}</p><div id="pitCmp"></div>` : "";
     body.innerHTML = `${paperHtml}
       <div class="stack"><div class="row"><h2>${a.status === "paper" ? "Today's signals" : "Signals if this ran today"}</h2><span class="grow"></span><span class="note">close of ${fmtDate(S.lastDay)} · act at next open</span></div>${sigGroups(signals.map((s) => ({ s, a })), false)}</div>
       <div class="card stack"><div class="row"><h2>Backtest v${v.n}</h2><span class="small muted">${fmtDate(h.start)} – ${fmtDate(h.end)}</span></div>${verdictLine(res)}${survivor}${kpiTiles(res)}
         ${split ? `<div class="grid2">${["train", "test"].map((k) => { const s = split[k].strategy, n = split[k].nifty || {}; return `<div class="mini" style="padding:12px"><span class="k">${k === "train" ? "Training" : "Test (unseen)"} · ${fmtDate(s.start)} – ${fmtDate(s.end)}</span><span class="v">${pct(s.cagr_pct)} <span class="small muted" style="font-family:var(--font-body);font-weight:400">vs ${esc(benchLabel(res))} ${pct(n.cagr_pct)}</span></span><span class="b">worst fall ${pct(s.max_drawdown_pct)} · Sharpe ${n2(s.sharpe)}${s.trades != null && v.spec.type !== "rotation" ? ` · ${s.trades} ${v.spec.type === "option_selling" ? "cycles" : "trades"}` : ""}</span></div>`; }).join("")}</div>
           ${split.flags.length ? `<p class="note">Train vs test: ${esc(split.flags.join("; ").toLowerCase())}.</p>` : `<p class="note">Test period results are in line with training.</p>`}` : ""}</div>
       ${runs.length ? `<div class="card"><h2>Earlier paper runs</h2><div class="tablewrap"><table><thead><tr><th>Version</th><th>From</th><th>Until</th></tr></thead><tbody>${runs.map((r) => `<tr><td>v${r.version}</td><td>${fmtDate(r.since)}</td><td>${fmtDate(r.until)}</td></tr>`).join("")}</tbody></table></div></div>` : ""}`;
+    $("pitCmpBtn")?.addEventListener("click", () => pitCompare(a, v, test, $("pitCmp")));
     const pc = document.getElementById("paperChart");
     if (pc) { const p = await paperResult(a); if (p && !p.pending) chart(pc, p.res.days, [{ short: benchLabel(p.res), color: "var(--series-b)", values: p.res.bench || [], width: 1.6 }, { short: "Paper", color: "var(--series-a)", values: p.res.eq, width: 2 }], { height: 200, endLabels: true, aria: "Paper equity", fmt: inrShort, fmtEnd: inrShort, fmtTip: inr }); }
+  }
+  // the same rules on the survivorship-free universe, side by side, with a one-tap switch
+  function pitTarget(spec) {
+    if (!S.man.pit || spec.type !== "rotation" || typeof spec.universe !== "string") return null;
+    return { nifty50: "top100pit", nifty200: "top200pit", fno: "top200pit", all: "top200pit" }[spec.universe] || null;
+  }
+  async function pitCompare(a, v, test, box) {
+    const key = pitTarget(v.spec); if (!key || !box) return;
+    const spec2 = E.normalize({ ...v.spec, universe: key }, S.man.universes);
+    box.innerHTML = '<p class="thinking">Loading the survivorship-free data and re-testing<span class="dots"></span></p>';
+    try {
+      const r1 = await runSpec(v.spec, test), r2 = await runSpec(spec2, test), m1 = r1.metrics, m2 = r2.metrics;
+      const row = (k, f, x, y) => `<tr><td>${k}</td><td class="r">${f(x)}</td><td class="r">${f(y)}</td></tr>`;
+      box.innerHTML = `<div class="card stack" style="padding:12px"><div class="tablewrap"><table><thead><tr><th></th><th class="r">Today's ${esc(v.spec.universe)} (biased)</th><th class="r">${esc(PIT_LABEL[key])}</th></tr></thead><tbody>
+        ${row("CAGR", (x) => `<span class="${cls(x)}">${pct(x)}</span>`, m1.cagr_pct, m2.cagr_pct)}${row("Final value", inrShort, m1.end_equity, m2.end_equity)}${row("Worst fall", pct, m1.max_drawdown_pct, m2.max_drawdown_pct)}${row("Sharpe", n2, m1.sharpe, m2.sharpe)}</tbody></table></div>
+        <p class="note">The bias-free universe is rebuilt at every March/September review from what was known then (${S.man.pit.universes[key]?.ever || "–"} different stocks since ${esc(S.man.pit.universes[key]?.first || "")}, including ${S.man.pit.no_longer_trading} that no longer trade). Same rules, costs and dates.</p>
+        ${S.readOnly ? "" : `<div class="row"><button class="btn small" type="button" id="pitSwitch">Switch this agent to it (v${(a.version || 1) + 1})</button></div>`}</div>`;
+      $("pitSwitch")?.addEventListener("click", async (e) => {
+        e.target.disabled = true;
+        try { const n = await saveVersion(a, { spec: spec2, meta: v.meta || {}, test, note: `Universe → ${PIT_LABEL[key]} (no survivorship bias)` }); if (a.status === "paper") await setStatus({ ...a, version: n }, "paper"); S.room.ver = n; toast(`Saved as v${n}`); renderRoomHead(); renderRoomBody(); }
+        catch (err) { e.target.disabled = false; toast(err.message || String(err)); }
+      });
+    } catch (e) { box.innerHTML = `<p class="flag">${esc(e.message || e)}</p>`; }
   }
   function yearly(days, eq) { const out = new Map(); let prev = eq[0];
     for (let i = 0; i < days.length; i++) { const y = new Date(days[i] * 864e5).getUTCFullYear(), nx = i + 1 < days.length ? new Date(days[i + 1] * 864e5).getUTCFullYear() : null; if (nx !== y) { out.set(y, (eq[i] / prev - 1) * 100); prev = eq[i]; } } return out; }

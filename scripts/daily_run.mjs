@@ -20,10 +20,21 @@ let shares = null; try { shares = JSON.parse(fs.readFileSync(path.join(data, "sh
 E.setData({ meta: man.symbols, shares });
 const full = {};
 const fullFrame = (s) => (full[s] ||= E.frame(JSON.parse(fs.readFileSync(path.join(data, "p", `${s}.json`), "utf8"))));
+// survivorship-free universes (data/pit): separate NSE-bhavcopy price series for every stock ever in them
+const pitDir = path.join(data, "pit");
+let pitLight = null; const pitFull = {};
+if (man.pit && fs.existsSync(path.join(pitDir, "membership.json"))) {
+  E.setPit(JSON.parse(fs.readFileSync(path.join(pitDir, "membership.json"), "utf8")));
+  pitLight = E.framesFromPack(JSON.parse(fs.readFileSync(path.join(pitDir, "closes.json"), "utf8")));
+}
+const pitSyms = new Set(Object.entries(man.universes).filter(([k]) => /pit$/.test(k)).flatMap(([, v]) => v));
+const pitFrame = (s) => (pitFull[s] ||= E.frame(JSON.parse(fs.readFileSync(path.join(pitDir, "p", `${s}.json`), "utf8"))));
 function framesFor(spec) {
+  const pk = E.usesPit(spec);
   const need = [...new Set(E.symbolsNeeded(spec, man.universes).concat(["NIFTY"]))];
   const out = {};
   for (const s of need) {
+    if (pk && pitSyms.has(s)) { if (!pitLight) throw new Error("point-in-time data missing"); out[s] = E.needsFull(spec) ? pitFrame(s) : pitLight[s]; continue; }
     if (!man.symbols[s]) throw new Error(`no data for ${s}`);
     out[s] = E.needsFull(spec) && man.symbols[s].kind !== "basket" ? fullFrame(s) : light[s];
   }

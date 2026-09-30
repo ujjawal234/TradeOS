@@ -160,6 +160,22 @@
   // and rotation can use industries (sector caps) and share counts (market-cap weights)
   const DATA = { frames: null, meta: null, shares: null };
   function setData(o) { Object.assign(DATA, o || {}); }
+  // ---- point-in-time (survivorship-free) universes: membership as known at each review, applied from the next day
+  const isPitKey = (k) => typeof k === "string" && /pit$/.test(k);
+  const EMPTY_SET = new Set();
+  function setPit(json) {
+    const out = {};
+    for (const [k, v] of Object.entries((json && json.universes) || {})) out[k] = { days: v.map(([d]) => dayOf(d)), sets: v.map(([, syms]) => new Set(syms)) };
+    DATA.pit = out;
+  }
+  function pitData(key) { const p = DATA.pit && DATA.pit[key]; if (!p) throw new RuleError(`Point-in-time membership for ${key} isn't loaded`); return p; }
+  function pitAt(key, day) { const p = pitData(key); let k = -1; for (let i = 0; i < p.days.length && p.days[i] < day; i++) k = i; return k < 0 ? EMPTY_SET : p.sets[k]; }
+  function pitMask(key, sym, days) { // 1 on days the symbol is a member (days ascending)
+    const p = pitData(key), o = new Uint8Array(days.length); let k = -1;
+    for (let i = 0; i < days.length; i++) { while (k + 1 < p.days.length && p.days[k + 1] < days[i]) k++; o[i] = k >= 0 && p.sets[k].has(sym) ? 1 : 0; }
+    return o;
+  }
+  function usesPit(spec) { if (!spec) return null; if (spec.type === "rotation" && isPitKey(spec.universe)) return spec.universe; if (spec.type === "rule" && isPitKey(spec.pit)) return spec.pit; return null; }
   function alignTo(days, src, vals) { // value of src series at or before each day (forward fill)
     const o = f64(days.length); let j = 0, last = NaNv;
     for (let i = 0; i < days.length; i++) { while (j < src.length && src[j] <= days[i]) { last = vals[j]; j++; } o[i] = last; }
@@ -517,6 +533,7 @@
       let df = sliceFrame(frames[s], null, opt.endDay);
       if (df.c.length < 60) { perSymbol[s] = { note: "not enough data" }; continue; }
       let en = toB(evaluate(en0, df, ctx), df.c.length), ex = ex0 ? toB(evaluate(ex0, df, ctx), df.c.length) : new Uint8Array(df.c.length);
+      if (spec.pit) { const mk = pitMask(spec.pit, s, df.d); for (let i = 0; i < en.length; i++) en[i] &= mk[i]; } // enter only while a member
       let atr = X.stopAtr || X.tgtAtr ? IND.atr(df, spec.atr_period || 14) : null;
       if (opt.startDay != null) {
         let a = 0; while (a < df.d.length && df.d[a] < opt.startDay) a++;
@@ -544,7 +561,8 @@
       const df = sliceFrame(frames[s], null, opt.endDay);
       if (df.c.length < 60) { perSymbol[s] = { note: "not enough data" }; continue; }
       const L = df.c.length, row = new Map(); for (let i = 0; i < L; i++) row.set(df.d[i], i);
-      S[s] = { df, row, en: toB(evaluate(en0, df, ctx), L), ex: ex0 ? toB(evaluate(ex0, df, ctx), L) : new Uint8Array(L), rank: toF(evaluate(rk0, df, ctx), L),
+      const enB = toB(evaluate(en0, df, ctx), L); if (spec.pit) { const mk = pitMask(spec.pit, s, df.d); for (let i = 0; i < L; i++) enB[i] &= mk[i]; }
+      S[s] = { df, row, en: enB, ex: ex0 ? toB(evaluate(ex0, df, ctx), L) : new Uint8Array(L), rank: toF(evaluate(rk0, df, ctx), L),
         atr: X.stopAtr || X.tgtAtr ? IND.atr(df, spec.atr_period || 14) : null, qty: 0, entryPx: 0, entryFee: 0, entryR: 0, entryAtr: NaNv, peak: 0, last: NaNv };
     }
     const syms = Object.keys(S), set = new Set();
@@ -674,7 +692,7 @@
     const cm = closeMatrix(sliced, syms);
     const { days, cols } = cm, N = days.length, uni = universe.filter((s) => cols[s]);
     const facs = factorList(spec), ctx = { frames };
-    const meta = DATA.meta || {}, notes = [];
+    const meta = DATA.meta || {}, notes = [], pitKey = isPitKey(spec.universe) ? spec.universe : null;
     // expression series aligned to the calendar (value known at each day's close)
     const exprCache = new Map();
     function exprSeries(expr, s) {
@@ -707,7 +725,8 @@
     const zs = (vals) => { const ok = vals.filter((v) => v === v); const mu = mean(ok), sd = std1(ok); return vals.map((v) => v !== v ? NaNv : sd > 0 ? Math.max(-3, Math.min(3, (v - mu) / sd)) : 0); };
     const combineZ = facs.length > 1 || spec.combine === "zscore";
     function ranking(i) { // [symbol, score] best first, using rows [0, i)
-      const elig = uni.filter((s) => (!spec.min_history_days || i - firstValid[s] >= spec.min_history_days)
+      const mem = pitKey ? pitAt(pitKey, days[i - 1]) : null;
+      const elig = uni.filter((s) => (!mem || mem.has(s)) && (!spec.min_history_days || i - firstValid[s] >= spec.min_history_days)
         && (spec.filters || []).every((x) => { const v = exprSeries(x, s)[i - 1]; return v === v && v !== 0; }));
       if (!combineZ) {
         const f = facs[0], sg = lowerBetter(f) ? -1 : 1, out = [];
@@ -807,7 +826,7 @@
           const p = marks[s]; if (!p || p <= 0) continue;
           let tq = equity * (w[s] || 0) * 0.995 / p; if (!isIndex(s)) tq = tq < 0 ? -Math.floor(-tq) : Math.floor(tq);
           const dq = tq - b.qty(s);
-          if (Math.abs(dq) < 1e-9 || (tq !== 0 && Math.abs(dq * p) < band)) continue;
+          if (Math.abs(dq) < 1e-9 || (tq !== 0 && b.qty(s) !== 0 && Math.abs(dq * p) < band)) continue; // the band only skips small top-ups of held positions; new entries always trade
           orders.push([s, dq, p]);
         }
         orders.sort((x, y) => x[1] - y[1]);
@@ -997,6 +1016,8 @@
     const type = t.startsWith("rot") || t.includes("momentum") ? "rotation" : t.includes("option") ? "option_selling" : t === "rule" || t === "" ? "rule" : spec.type;
     if (type === "rule") {
       const s = Object.assign({}, RULE_DEF, clean(spec, RULE_DEF), { type });
+      const pk = (Array.isArray(spec.symbols) ? spec.symbols : String(spec.symbols || "").split(/[,;\s]+/)).map(groupKey).find((k) => isPitKey(k) && universes[k]);
+      if (pk) s.pit = pk; else if (!isPitKey(s.pit)) delete s.pit;
       s.symbols = expandSymbols(s.symbols, universes).sort();
       if (!s.symbols.length) throw new RuleError("Add at least one symbol.");
       s.side = /short|sell/i.test(String(s.side)) ? "short" : "long";
@@ -1373,6 +1394,6 @@
 
   const api = { parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice,
     signals, splitMetrics, riskStats, crises, monteCarlo, sensitivity, costShock, stressAll, scaleWindows, unparse, CRISES,
-    setData, needsFull, refSymbols, periodKey, nextRebalanceDay, factorList, exprsOf, PRESETS, WEIGHTINGS, symKey };
+    setData, setPit, usesPit, pitAt, needsFull, refSymbols, periodKey, nextRebalanceDay, factorList, exprsOf, PRESETS, WEIGHTINGS, symKey };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.TradeEngine = api;
 })(typeof window !== "undefined" ? window : globalThis);

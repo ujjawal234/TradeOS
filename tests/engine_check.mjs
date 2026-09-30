@@ -13,14 +13,21 @@ const light = E.framesFromPack(JSON.parse(fs.readFileSync(path.join(dir, "data",
 const full = {}; const ff = (s) => (full[s] ||= E.frame(JSON.parse(fs.readFileSync(path.join(dir, "data", "p", `${s}.json`)))));
 let shares = null; try { shares = JSON.parse(fs.readFileSync(path.join(dir, "data", "shares.json"))); } catch (e) { /* optional */ }
 E.setData({ meta: man.symbols, shares });
+const pitDir = path.join(dir, "data", "pit"), hasPit = fs.existsSync(path.join(pitDir, "membership.json"));
+const pitLight = hasPit ? E.framesFromPack(JSON.parse(fs.readFileSync(path.join(pitDir, "closes.json")))) : {};
+if (hasPit) E.setPit(JSON.parse(fs.readFileSync(path.join(pitDir, "membership.json"))));
 function framesFor(Eng, spec) {
   const need = [...new Set(Eng.symbolsNeeded(spec, man.universes).concat(["NIFTY"]))], useFull = Eng.needsFull ? Eng.needsFull(spec) : spec.type === "rule", out = {};
-  for (const s of need) { if (!man.symbols[s]) throw new Error("no data for " + s); out[s] = useFull && man.symbols[s].kind !== "basket" ? ff(s) : light[s]; }
+  const pk = Eng.usesPit ? Eng.usesPit(spec) : null;
+  for (const s of need) {
+    if (pk && pitLight[s]) { out[s] = useFull ? E.frame(JSON.parse(fs.readFileSync(path.join(pitDir, "p", `${s}.json`)))) : pitLight[s]; continue; }
+    if (!man.symbols[s]) throw new Error("no data for " + s); out[s] = useFull && man.symbols[s].kind !== "basket" ? ff(s) : light[s]; }
   return out;
 }
 let fail = 0;
 const EXPECT_ERR = /^(bad expr|bad ref|no exit)$/;
 for (const [label, raw, opt] of JSON.parse(fs.readFileSync(path.join(here, "engine_cases.json")))) {
+  if (label.startsWith("pit ") && !hasPit) { console.log(`skip ${label} (no point-in-time data in this build)`); continue; }
   try {
     const spec = E.normalize(raw, man.universes), r = E.run(spec, framesFor(E, spec), man.universes, opt || { start: "2012-01-01" }), m = r.metrics, sig = E.signals(spec, r);
     const ok = r.days.length > 1 && Number.isFinite(m.end_equity) && sig.length > 0 && !EXPECT_ERR.test(label);

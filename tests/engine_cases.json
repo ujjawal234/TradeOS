@@ -385,5 +385,30 @@
    "start": "2015-01-01",
    "end": "2019-12-31"
   }
+ ],
+ [
+  "pit rotation 12-1 top200",
+  {
+   "type": "rotation",
+   "universe": "top200pit",
+   "lookback": 252,
+   "skip": 21,
+   "top_n": 10,
+   "rebalance": "monthly"
+  },
+  null
+ ],
+ [
+  "pit rule breakout top100",
+  {
+   "type": "rule",
+   "symbols": [
+    "top100pit"
+   ],
+   "entry": "close > shift(highest(close,55),1)",
+   "exit": "close < sma(close,50)",
+   "max_positions": 10
+  },
+  null
  ]
 ]

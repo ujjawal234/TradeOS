@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths: ["data/REQUEST_PIT", "scripts/fetch_bhavcopy.py", ".github/workflows/pit-data.yml"]
   schedule:
-    - cron: "50 10 * * 1-5"          # 16:20 IST on weekdays, after the day's bhavcopy is out
+    - cron: "30 13 * * 1-5"          # 19:00 IST on weekdays (NSE posts the bhavcopy in the evening; the job waits up to an hour)
 
 permissions:
   contents: write
@@ -36,7 +36,7 @@ jobs:
         run: |
           mkdir -p data/pit
           set -o pipefail
-          python scripts/fetch_bhavcopy.py --start 2011-01-01 --cache .bhav_cache 2>&1 | tee data/pit/_log.txt
+          python scripts/fetch_bhavcopy.py --start 2011-01-01 --cache .bhav_cache ${{ github.event_name == 'schedule' && '--wait-today 60' || '' }} 2>&1 | tee data/pit/_log.txt
       - name: Save bhavcopy cache
         if: always()
         uses: actions/cache/save@v4

@@ -441,10 +441,18 @@ def main() -> None:
     ap.add_argument("--start", default="2011-01-01")
     ap.add_argument("--cache", default=".bhav_cache")
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--wait-today", type=int, default=0, help="minutes to keep retrying for today's (IST) bhavcopy on a weekday")
     args = ap.parse_args()
     start = date.fromisoformat(args.start)
     cache = (ROOT / args.cache) if not Path(args.cache).is_absolute() else Path(args.cache)
     dl = download(start, cache, args.workers)
+    today_ist = (datetime.utcnow() + timedelta(hours=5, minutes=30)).date()
+    waited = 0
+    while args.wait_today and today_ist.weekday() < 5 and not (cache / f"{today_ist:%Y%m%d}.csv.gz").exists() and waited < args.wait_today:
+        print(f"Today's bhavcopy ({today_ist}) isn't out yet; retrying in 5 minutes ({waited}/{args.wait_today} min)", flush=True)
+        time.sleep(300); waited += 5
+        dl2 = download(start, cache, args.workers)
+        dl["new_files"] += dl2["new_files"]
     df = load_cache(cache, start)
     changes = symbol_changes()
     df, moved = apply_symbol_changes(df, changes)
