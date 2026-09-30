@@ -46,11 +46,12 @@
   "new": 0,
   "not_available": {},
   "records": 51438,
-  "dividends": 7915,
-  "ratio_applied": 322,
-  "demergers": 64,
+  "dividends": 7917,
+  "ratio_applied": 323,
+  "demergers": 67,
   "outside_data": 97,
-  "ratio_rejected": 17
+  "ratio_rejected": 48,
+  "inferred_splits": 4
  },
  "big_moves_left": [
   [
@@ -100,18 +101,6 @@
    "BCG",
    "2025-07-14",
    10.355,
-   []
-  ],
-  [
-   "BEML",
-   "2025-11-03",
-   0.497,
-   []
-  ],
-  [
-   "CAMS",
-   "2025-12-05",
-   0.196,
    []
   ],
   [
@@ -177,14 +166,6 @@
    []
   ],
   [
-   "HINDZINC",
-   "2011-03-07",
-   0.097,
-   [
-    "2011-03-07 BON 1:1/SPL RS10 TO RS2"
-   ]
-  ],
-  [
    "IDEA",
    "2019-03-29",
    0.629,
@@ -214,20 +195,6 @@
    "JETAIRWAYS",
    "2019-06-20",
    1.899,
-   []
-  ],
-  [
-   "KESORAMIND",
-   "2025-03-10",
-   0.047,
-   [
-    "2025-03-10 DEMERGER"
-   ]
-  ],
-  [
-   "MCX",
-   "2026-01-02",
-   0.202,
    []
   ],
   [
@@ -283,20 +250,6 @@
    0.663,
    [
     "2020-03-17 INTEREST PAYMENT"
-   ]
-  ],
-  [
-   "SHRIRAMFIN",
-   "2025-01-10",
-   0.189,
-   []
-  ],
-  [
-   "STAR",
-   "2013-12-19",
-   0.424,
-   [
-    "2013-12-19 SPL DIV RS 500 PER SHARE"
    ]
   ],
   [
@@ -404,9 +357,9 @@
   "PUNJLLOYD"
  ],
  "adjustments": {
-  "tickers_adjusted": 376,
-  "events": 1541,
-  "small_events": 1018
+  "tickers_adjusted": 378,
+  "events": 1551,
+  "small_events": 1019
  },
  "adjustment_examples": {
   "20MICRONS": [
