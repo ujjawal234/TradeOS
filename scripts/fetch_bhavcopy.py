@@ -285,6 +285,9 @@ def parse_purpose(p: str) -> list[tuple[str, float]]:
             out.append(("ratio", float(m.group(2)) / float(m.group(1))))
         else:
             out.append(("consol?" if "CONSOL" in P else "split?", 0.0))
+    for a_, b_, prem in re.findall(r"RIGHTS?\s*(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)\s*@?\s*(?:PRM|PREM(?:IUM)?|PREMIUM|PR)?\.?\s*(?:OF\s*)?(?:RS|RE)?\.?\s*(\d+(?:\.\d+)?)", P):
+        if float(a_) > 0 and float(b_) > 0:
+            out.append(("rights", (float(a_), float(b_), float(prem))))  # a new shares for b held at ~premium (+ small face value)
     if re.search(r"DEMERG|SCHEME OF ARR|ARRANGEMENT|CAP(?:ITAL)? RED|SPIN", P):
         out.append(("demerger", 0.0))
     for m in re.finditer(r"\bDIV(?:IDEND)?\b\s*[:]?\s*(?:RS|RE|INR)?\.?\s*(\d+(?:\.\d+)?)(?!\s*%|\d)", P):
@@ -360,6 +363,13 @@ def adjust(g: pd.DataFrame, gaps: set = frozenset(), acts: list | None = None, s
             if 0.02 < gap < 0.97:
                 f[t] *= gap
                 st["demergers"] = st.get("demergers", 0) + 1
+        for k, v in a:
+            if k == "rights" and f[t] == 1.0:
+                na, nb, price = v
+                terp = (nb * c + na * price) / (na + nb)  # theoretical ex-rights price
+                if price < c and 0.4 < terp / c < 0.995:
+                    f[t] *= terp / c
+                    st["rights"] = st.get("rights", 0) + 1
         divs = sorted({round(v, 4) for k, v in a if k == "div" and v > 0})
         dsum = sum(divs)
         # ordinary dividends as stated; a very large (special) one only when the ex-date move confirms it
@@ -499,9 +509,13 @@ def main() -> None:
     for j in jumps[:200]:
         near = ca[(ca["cur"] == j[0]) & ((ca["ex"] - pd.Timestamp(j[1])).abs() <= pd.Timedelta(days=20))]
         j.append([f"{str(r.ex)[:10]} {r.purpose}" for r in near.itertuples()][:4])
+    dbg = {}
+    for sym, day in (("ADANIENT", "2015-06-03"), ("360ONE", "2023-03-02")):
+        g = df[(df["sym"] == sym) & ((df["date"] - pd.Timestamp(day)).abs() <= pd.Timedelta(days=5))]
+        dbg[sym] = {"rows": g[["date", "series", "open", "close", "prev", "val"]].astype(str).values.tolist(), "acts": [[str(e)[:10], k, str(v)] for e, k, v in acts.get(sym, []) if abs((pd.Timestamp(e) - pd.Timestamp(day)).days) <= 30]}
     kw = ca[ca["purpose"].str.upper().str.contains("SPLIT|SUB|BONUS|CONSOL|FV|FACE", regex=True, na=False)]
     unread = sorted({p for p in kw["purpose"] if not any(k in ("ratio", "split?", "bonus?", "demerger") for k, _ in parse_purpose(p))})
-    (OUT / "_report.json").write_text(json.dumps({**info, "download": dl, "corporate_actions": {**ca_info, **ca_stats}, "big_moves_left": jumps[:200], "unread_split_texts": unread[:300], "gap_days": sorted(str(x)[:10] for x in gaps), "symbol_change_rows_moved": moved, "members": len(members),
+    (OUT / "_report.json").write_text(json.dumps({**info, "download": dl, "corporate_actions": {**ca_info, **ca_stats}, "big_moves_left": jumps[:200], "debug": dbg, "unread_split_texts": unread[:300], "gap_days": sorted(str(x)[:10] for x in gaps), "symbol_change_rows_moved": moved, "members": len(members),
         "members_no_longer_trading": len(stale), "examples_no_longer_trading": stale[:60], "adjustments": adj_stats,
         "adjustment_examples": examples, "sizes": {k: [len(x[1]) for x in v][-3:] for k, v in uni.items()}}, indent=1))
     print(f"Wrote {len(members)} price files; {len(stale)} of them stopped trading (delisted, merged or suspended). Adjustments: {adj_stats}", flush=True)
