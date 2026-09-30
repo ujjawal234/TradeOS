@@ -285,7 +285,7 @@ def parse_purpose(p: str) -> list[tuple[str, float]]:
             out.append(("ratio", float(m.group(2)) / float(m.group(1))))
         else:
             out.append(("consol?" if "CONSOL" in P else "split?", 0.0))
-    for a_, b_, prem in re.findall(r"RIGHTS?\s*(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)\s*@?\s*(?:PRM|PREM(?:IUM)?|PREMIUM|PR)?\.?\s*(?:OF\s*)?(?:RS|RE)?\.?\s*(\d+(?:\.\d+)?)", P):
+    for a_, b_, prem in re.findall(r"RIGHTS?\s*(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)(?![\d.])\s*(?:@|\bAT\b)\s*(?:PRM|PREM(?:IUM)?|PR)?\.?\s*(?:OF\s*)?(?:RS|RE)?\.?\s*(\d+(?:\.\d+)?)", P):
         if float(a_) > 0 and float(b_) > 0:
             out.append(("rights", (float(a_), float(b_), float(prem))))  # a new shares for b held at ~premium (+ small face value)
     if re.search(r"DEMERG|SCHEME OF ARR|ARRANGEMENT|CAP(?:ITAL)? RED|SPIN", P):
@@ -366,11 +366,17 @@ def adjust(g: pd.DataFrame, gaps: set = frozenset(), acts: list | None = None, s
                 f[t] *= gap
                 st["demergers"] = st.get("demergers", 0) + 1
         for k, v in a:
-            if k == "rights" and f[t] == 1.0:
-                na, nb, price = v
-                terp = (nb * c + na * price) / (na + nb)  # theoretical ex-rights price
-                if price < c and 0.4 < terp / c < 0.995:
-                    f[t] *= terp / c
+            if k == "rights" and f[t] == 1.0 and moves:
+                na, nb, prem = v
+                # issue price = premium + face value (not in the text): take the usual face value that fits the ex-date move
+                fits = []
+                for fv in (0, 1, 2, 5, 10):
+                    price = prem + fv
+                    terp = (nb * c + na * price) / (na + nb)  # theoretical ex-rights price
+                    if price < c and 0.3 < terp / c < 0.995:
+                        fits.append((err(terp / c), terp / c))
+                if fits and min(fits)[0] < 0.1:
+                    f[t] *= min(fits)[1]
                     st["rights"] = st.get("rights", 0) + 1
         divs = sorted({round(v, 4) for k, v in a if k == "div" and v > 0})
         dsum = sum(divs)
