@@ -50,8 +50,9 @@ INDEX_SPOT = {  # spot history from data/indices (NSE index files), newest name 
     "NIFTY": ["NIFTY_50", "CNX_NIFTY"], "BANKNIFTY": ["NIFTY_BANK", "CNX_BANK"], "FINNIFTY": ["NIFTY_FINANCIAL_SERVICES", "CNX_FINANCE"],
     "MIDCPNIFTY": ["NIFTY_MIDCAP_SELECT"], "NIFTYNXT50": ["NIFTY_NEXT_50", "CNX_NIFTY_JUNIOR"], "NIFTYIT": ["NIFTY_IT", "CNX_IT"]}
 # chain strike grids (% from the forward on the day an expiry is first used)
-GRID_INDEX = sorted(set([-10, -9, -8, -7, -6, -5, -4.5, -4, 4, 4.5, 5, 6, 7, 8, 9, 10] + [x / 4 for x in range(-14, 15)]))
-GRID_STOCK = [-15, -12.5, -10, -8.75, -7.5, -6.25, -5, -3.75, -2.5, -1.25, 0, 1.25, 2.5, 3.75, 5, 6.25, 7.5, 8.75, 10, 12.5, 15]
+GRID_INDEX = [-8, -7, -6, -5, -4.5, -4, -3.5, -3, -2.5, -2, -1.75, -1.5, -1.25, -1, -0.75, -0.5, -0.25, 0,
+              0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8]
+GRID_STOCK = [-15, -10, -7.5, -6.25, -5, -3.75, -2.5, -1.25, 0, 1.25, 2.5, 3.75, 5, 6.25, 7.5, 10, 15]
 KIND = {"FUTIDX": "IF", "FUTSTK": "SF", "OPTIDX": "IO", "OPTSTK": "SO", "IDF": "IF", "STF": "SF", "IDO": "IO", "STO": "SO"}
 COLS = ["sym", "kind", "exp", "k", "o", "c", "s", "v", "oi", "u", "lot"]
 
@@ -271,6 +272,10 @@ def analyse(sym, a, lo, hi, d_ord: int, spot: float, q: IVQueue) -> dict:
         ic, ip = np.searchsorted(ks, k[mc]), np.searchsorted(ks, k[mp_])
         cp[ic], cv[ic], coi[ic] = px_all[mc], v[mc], oi[mc]
         pp[ip], pv[ip], poi[ip] = px_all[mp_], v[mp_], oi[mp_]
+        if dte <= 0:  # expiry day: NSE's "settlement" column holds the final settlement price, not the option's value
+            fsp = out["S"] if out["S"] == out["S"] else Fref
+            if fsp == fsp and fsp > 0:
+                cp = np.where(cv > 0, cp, np.maximum(fsp - ks, 0)); pp = np.where(pv > 0, pp, np.maximum(ks - fsp, 0))
         Fe = Fref
         both = (cp > 0) & (pp > 0)
         for mask in (both & (cv > 0) & (pv > 0), both):
@@ -433,7 +438,7 @@ def build(days: list[date], cache: Path, eq_cache: Path, debug: bool) -> dict:
             exps = sorted(e for e, ch in chains.items() if ch["dte"] >= 0)
             mons = [e for e in exps if chains[e]["monthly"]]
             grid = GRID_INDEX if is_idx else GRID_STOCK
-            for e in sorted(set(exps[:2] + mons[:2])):
+            for e in sorted(set(exps[:2] + mons[:1] + (mons[1:2] if not is_idx else []))):  # indices: 2 nearest + nearest monthly
                 ch = chains[e]
                 if (sym, e) not in anchors:
                     Fe = ch["F"] if ch["F"] == ch["F"] else out.get("F")
@@ -441,7 +446,7 @@ def build(days: list[date], cache: Path, eq_cache: Path, debug: bool) -> dict:
                         continue
                     ks = ch["k"]
                     sel = sorted({float(ks[int(np.argmin(np.abs(ks - Fe * (1 + m / 100))))]) for m in grid})
-                    sel = [x for x in sel if abs(x / Fe - 1) <= (0.11 if is_idx else 0.16)]
+                    sel = [x for x in sel if abs(x / Fe - 1) <= (0.085 if is_idx else 0.16)]
                     anchors[(sym, e)] = True
                     u["ex"][e] = {"k": sel, "i0": i, "C": [], "P": []}
                 blk = u["ex"].get(e)
@@ -494,54 +499,59 @@ def raw_sample(cache: Path, days: list[date]) -> dict:
     return out
 
 
-def pack(sym: str, u: dict) -> dict:
-    """compact JSON for the app: day offsets, scaled integer series, per-expiry strike lists and price rows (price×20, negative = not traded)"""
+SCALE = {"iv30": 1000, "ivn": 1000, "ivx": 1000, "st": 1000, "dte": 1, "pcr": 1000, "pcrv": 1000, "mp": 100, "sk": 1000, "foi": 1, "coi": 1, "poi": 1}
+
+
+def ints(vals, mult):
+    return [None if v != v else int(round(v * mult)) for v in vals]
+
+
+def pack(u: dict) -> tuple[dict, dict]:
+    """compact JSON for the app. chains: day offsets, futures/spot (×100), per-expiry strike list + daily price rows
+    (price×20, negative = not traded that day, null = not listed). summary: scaled integer series (see SCALE)."""
     ep = [(date.fromisoformat(x) - date(1970, 1, 1)).days for x in u["days"]]
-    sc = {"F": 100, "S": 100, "iv30": 1000, "ivn": 1000, "ivx": 1000, "st": 1000, "dte": 1, "pcr": 1000, "pcrv": 1000, "mp": 100, "sk": 1000, "foi": 1, "coi": 1, "poi": 1, "lot": 1}
-    ser = {}
-    for k, mult in sc.items():
-        vals = u["sum"][k]
-        if all(v != v for v in vals):
-            continue
-        ser[k] = [None if v != v else int(round(v * mult)) for v in vals]
+    dd = np.diff(ep, prepend=ep[0]).tolist()
     ex = []
     for e, blk in sorted(u["ex"].items()):
         ed = (datetime.strptime(str(e), "%Y%m%d").date() - date(1970, 1, 1)).days
         ex.append([ed, [round(k, 2) for k in blk["k"]], blk["i0"], blk["C"], blk["P"]])
-    return {"kind": u["kind"], "d0": ep[0], "dd": np.diff(ep, prepend=ep[0]).tolist(), "scale": sc, "s": ser, "ex": ex}
+    chains = {"d0": ep[0], "dd": dd, "F": ints(u["sum"]["F"], 100), "S": ints(u["sum"]["S"], 100), "ex": ex}
+    summ = {"d0": ep[0], "dd": dd, "scale": SCALE, "s": {k: ints(u["sum"][k], m) for k, m in SCALE.items() if any(v == v for v in u["sum"][k])}}
+    return chains, summ
 
 
-def write_app(S: dict, out: Path, per_bundle_bytes: int = 6_000_000) -> dict:
-    """gzip JSON bundles of several underlyings each (an artifact holds ~500 files)"""
+def write_app(S: dict, out: Path, chain_bytes: int = 6_000_000, sum_bytes: int = 3_000_000) -> dict:
+    """gzip JSON bundles of several underlyings each (an artifact holds ~500 files): cNN = chains, sNN = summaries"""
     out.mkdir(parents=True, exist_ok=True)
     for f in out.glob("*.json.gz"):
         f.unlink()
     order = sorted(S, key=lambda s: (S[s]["kind"] != "index", s))
-    index, cur, cur_raw, b = {}, {}, 0, 0
+    index, sizes = {}, {}
+    bufs = {"c": [{}, 0, 0, chain_bytes], "s": [{}, 0, 0, sum_bytes]}
 
-    def flush():
-        nonlocal cur, cur_raw, b
+    def flush(kind):
+        cur, _, b, _ = bufs[kind]
         if not cur:
             return
-        key = f"o{b:02d}"
-        data = json.dumps(cur, separators=(",", ":")).encode()
-        (out / f"{key}.json.gz").write_bytes(gzip.compress(data, 9))
-        for s in cur:
-            index[s]["b"] = key
-        b += 1; cur = {}; cur_raw = 0
+        key = f"{kind}{b:02d}"
+        (out / f"{key}.json.gz").write_bytes(gzip.compress(json.dumps(cur, separators=(",", ":")).encode(), 9))
+        for sym in cur:
+            index[sym][kind] = key
+        bufs[kind] = [{}, 0, b + 1, bufs[kind][3]]
 
-    sizes = {}
-    for s in order:
-        p = pack(s, S[s])
-        raw = json.dumps(p, separators=(",", ":"))
-        z = len(gzip.compress(raw.encode(), 6))
-        sizes[s] = z
-        if cur and cur_raw + z > per_bundle_bytes:
-            flush()
-        cur[s] = p; cur_raw += z
-        lot = next((v for v in reversed(S[s]["sum"]["lot"]) if v == v), None)
-        index[s] = {"kind": S[s]["kind"], "first": S[s]["days"][0], "last": S[s]["days"][-1], "days": len(S[s]["days"]), "lot": lot, "expiries": len(S[s]["ex"])}
-    flush()
+    for sym in order:
+        u = S[sym]
+        lot = next((v for v in reversed(u["sum"]["lot"]) if v == v), None)
+        index[sym] = {"kind": u["kind"], "first": u["days"][0], "last": u["days"][-1], "days": len(u["days"]), "lot": lot, "expiries": len(u["ex"])}
+        ch, sm = pack(u)
+        for kind, obj in (("c", ch), ("s", sm)):
+            z = len(gzip.compress(json.dumps(obj, separators=(",", ":")).encode(), 6))
+            sizes[f"{sym}.{kind}"] = z
+            if bufs[kind][0] and bufs[kind][1] + z > bufs[kind][3]:
+                flush(kind)
+            bufs[kind][0][sym] = obj
+            bufs[kind][1] += z
+    flush("c"); flush("s")
     return {"index": index, "sizes": sizes}
 
 

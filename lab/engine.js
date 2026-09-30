@@ -87,7 +87,11 @@
     "ret", "sum", "median", "pct_rank", "slope", "drawdown", "days_since", "corr", "beta",
     "adx", "plus_di", "minus_di", "stoch_k", "stoch_d", "cci", "mfi", "williams_r", "obv", "vwap", "supertrend", "keltner_upper", "keltner_lower",
     "log", "sqrt", "sign", "iff", "clip", "ref"];
-  const VARS = ["open", "high", "low", "close", "volume", "hl2", "hlc3", "dow", "dom", "month", "year", "pe", "pb", "dy", "vix"];
+  const VARS = ["open", "high", "low", "close", "volume", "hl2", "hlc3", "dow", "dom", "month", "year", "pe", "pb", "dy", "vix",
+    "iv", "iv_near", "iv_next", "pcr", "pcr_vol", "skew", "straddle", "max_pain", "oi_calls", "oi_puts", "fut_oi", "dte"];
+  // option-market variables (NSE F&O data): name -> [summary key, divisor]
+  const OPTVARS = { iv: ["iv30", 10], iv_near: ["ivn", 10], iv_next: ["ivx", 10], pcr: ["pcr", 1000], pcr_vol: ["pcrv", 1000], skew: ["sk", 10],
+    straddle: ["st", 1000], max_pain: ["mp", 100], oi_calls: ["coi", 1], oi_puts: ["poi", 1], fut_oi: ["foi", 1], dte: ["dte", 1] };
 
   function tokenize(src) {
     const t = []; let i = 0;
@@ -308,6 +312,19 @@
           if (n.v === "dom") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCDate());
           if (n.v === "month") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCMonth() + 1);
           if (n.v === "year") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCFullYear());
+          if (OPTVARS[n.v]) { // this symbol's option-market series (NSE F&O), NaN where it had no options
+            if (ctx.validating) return df.c;
+            if (!DATA.optSum) throw new RuleError(`Option data isn't loaded here (needed for '${n.v}')`);
+            const os = DATA.optSum[df.sym];
+            if (!os) return nanArr();
+            const [key, div] = OPTVARS[n.v], raw = os.s[key];
+            if (!raw) return nanArr();
+            let v = os._c && os._c[key];
+            if (!v) { v = Float64Array.from(raw, (x) => x == null ? NaNv : x / div); (os._c ||= {})[key] = v; }
+            const o = f64(L); let j = 0, last = NaNv; // same day only (no carry-forward across days without options)
+            for (let i = 0; i < L; i++) { while (j < os.d.length && os.d[j] < df.d[i]) j++; o[i] = j < os.d.length && os.d[j] === df.d[i] ? v[j] : NaNv; }
+            return o;
+          }
           if (n.v === "vix") { // India VIX close on the same dates
             if (ctx.validating) return df.c;
             const vf = (ctx.frames || DATA.frames || {}).INDIAVIX;
@@ -339,6 +356,7 @@
             if (ctx.validating) return evaluate(en, df, ctx);
             const other = frames && frames[sym];
             if (!other) throw new RuleError(`ref: no data loaded for ${sym}`);
+            if (!other.sym) other.sym = sym;
             const key = sym + "|" + unparse(en), cache = ctx.refCache || (ctx.refCache = new Map());
             let v = cache.get(key);
             if (!v) { v = toF(evaluate(en, other, ctx), other.c.length); cache.set(key, v); }
@@ -382,7 +400,7 @@
     for (const [s, x] of Object.entries(pack.s)) {
       const n = x.c.length, d = cal.slice(x.i0, x.i0 + n), c = new Float64Array(n); let cc = x.c0;
       for (let i = 0; i < n; i++) { if (i) cc += x.c[i]; c[i] = cc / 100; }
-      out[s] = { d, o: c, h: c, l: c, c, v: new Float64Array(n), light: true };
+      out[s] = { d, o: c, h: c, l: c, c, v: new Float64Array(n), light: true, sym: s };
     }
     return out;
   }
@@ -393,6 +411,7 @@
     const s = (x) => x.slice(a, b);
     const out = { d: s(df.d), o: s(df.o), h: s(df.h), l: s(df.l), c: s(df.c), v: s(df.v) };
     for (const k of ["pe", "pb", "dy"]) if (df[k]) out[k] = s(df[k]);  // index valuation series travel with the slice
+    if (df.sym) out.sym = df.sym;
     return out;
   }
   const dayOf = (iso) => Math.floor(Date.parse(iso + "T00:00:00Z") / 864e5);
@@ -536,7 +555,7 @@
     const curves = [], caps = [], trades = [], perSymbol = {}, states = [];
     const en0 = parse(spec.entry), ex0 = spec.exit ? parse(spec.exit) : null, X = ruleExtras(spec), ctx = { frames };
     for (const s of syms) {
-      let df = sliceFrame(frames[s], null, opt.endDay);
+      let df = sliceFrame(frames[s], null, opt.endDay); df.sym = s;
       if (df.c.length < 60) { perSymbol[s] = { note: "not enough data" }; continue; }
       let en = toB(evaluate(en0, df, ctx), df.c.length), ex = ex0 ? toB(evaluate(ex0, df, ctx), df.c.length) : new Uint8Array(df.c.length);
       if (spec.pit) { const mk = pitMask(spec.pit, s, df.d); for (let i = 0; i < en.length; i++) en[i] &= mk[i]; } // enter only while a member
@@ -564,7 +583,7 @@
     const S = {}, perSymbol = {};
     for (const s of spec.symbols) {
       if (!frames[s]) continue;
-      const df = sliceFrame(frames[s], null, opt.endDay);
+      const df = sliceFrame(frames[s], null, opt.endDay); df.sym = s;
       if (df.c.length < 60) { perSymbol[s] = { note: "not enough data" }; continue; }
       const L = df.c.length, row = new Map(); for (let i = 0; i < L; i++) row.set(df.d[i], i);
       const enB = toB(evaluate(en0, df, ctx), L); if (spec.pit) { const mk = pitMask(spec.pit, s, df.d); for (let i = 0; i < L; i++) enB[i] &= mk[i]; }
@@ -694,7 +713,7 @@
     const tf = spec.trend_filter, reg = spec.regime ? (typeof spec.regime === "string" ? { symbol: "NIFTY", expr: spec.regime } : { symbol: spec.regime.symbol || "NIFTY", expr: spec.regime.expr }) : null;
     const extra = [tf && tf.symbol, reg && reg.symbol, spec.defensive, spec.cash_symbol].filter(Boolean);
     const syms = [...new Set(universe.concat(extra))];
-    const sliced = Object.fromEntries(syms.filter((s) => frames[s]).map((s) => [s, sliceFrame(frames[s], null, opt.endDay)]));
+    const sliced = Object.fromEntries(syms.filter((s) => frames[s]).map((s) => [s, Object.assign(sliceFrame(frames[s], null, opt.endDay), { sym: s })]));
     const cm = closeMatrix(sliced, syms);
     const { days, cols } = cm, N = days.length, uni = universe.filter((s) => cols[s]);
     const facs = factorList(spec), ctx = { frames };
@@ -946,7 +965,31 @@
   // Market option prices (NSE daily F&O files), loaded per underlying by the app / runner: setOptions(sym, data) where data is
   // {d:[days], F:[forward], ex:{day:[[expiry, strikes[], calls[], puts[]], ...]}} — see decodeOptions for the stored form.
   const OPTS = {};
-  function setOptions(sym, data) { if (data) OPTS[sym] = data; else delete OPTS[sym]; }
+  function setOptions(sym, data) { if (data) OPTS[sym] = data.ch ? data : decodeOptions(data); else delete OPTS[sym]; }
+  // stored form (scripts/fetch_fo.py): {d0, dd, F, S (×100), ex: [[expiryDay, strikes[], firstDayIndex, callRows[][], putRows[][]], ...]}
+  // with prices ×20, negative = not traded that day, null = not listed
+  function decodeOptions(p) {
+    const n = p.dd.length, d = new Float64Array(n); let acc = p.d0;
+    for (let i = 0; i < n; i++) { acc += p.dd[i]; d[i] = acc; }
+    const num = (a, k) => Float64Array.from(a || [], (x) => x == null ? NaNv : x / k);
+    const F = num(p.F, 100), S = p.S ? num(p.S, 100) : F, ch = new Array(n);
+    const px = (row) => row.map((v) => v == null ? null : v / 20);
+    for (const [ed, ks, i0, C, P] of p.ex || []) {
+      for (let j = 0; j < C.length; j++) {
+        const i = i0 + j; if (i >= n || !C[j] || !P[j]) continue;
+        (ch[i] ||= []).push([ed, ks, px(C[j]), px(P[j])]);
+      }
+    }
+    return { d, F, S, ch };
+  }
+  // daily option-market summary per underlying (iv, pcr, skew...), used by the rule-language variables in OPTVARS
+  function setOptionSummary(sym, p) {
+    if (!p) { if (DATA.optSum) delete DATA.optSum[sym]; return; }
+    const n = p.dd.length, d = new Float64Array(n); let acc = p.d0;
+    for (let i = 0; i < n; i++) { acc += p.dd[i]; d[i] = acc; }
+    (DATA.optSum ||= {})[sym] = { d, s: p.s };
+  }
+  const usesOptionVars = (expr) => !!expr && Object.keys(OPTVARS).some((k) => new RegExp(`\\b${k}\\b`).test(String(expr).replace(/["'][^"']*["']/g, "")));
   function optionData(sym) { return OPTS[sym] || null; }
   function marketPricer(sym) {
     const od = OPTS[sym]; if (!od) return null;
@@ -959,7 +1002,11 @@
       chain,
       px: (day, exp, K, kind) => { const c = chain(day, exp); if (!c) return NaNv; const j = c[1].indexOf(K); if (j < 0) return NaNv; const v = (kind === "CE" ? c[2] : c[3])[j]; return v == null ? NaNv : Math.abs(v); },
       traded: (day, exp, K, kind) => { const c = chain(day, exp); if (!c) return false; const j = c[1].indexOf(K); if (j < 0) return false; const v = (kind === "CE" ? c[2] : c[3])[j]; return v != null && v > 0; },
-      expiryPx: (exp) => { const i = idx.get(exp); return i == null ? NaNv : (od.S && od.S[i] === od.S[i] ? od.S[i] : od.F[i]); },
+      expiryPx: (exp) => { // spot on the expiry day (or the last day with data before it)
+        let lo = 0, hi = od.d.length - 1, i = -1;
+        while (lo <= hi) { const m = (lo + hi) >> 1; if (od.d[m] <= exp) { i = m; lo = m + 1; } else hi = m - 1; }
+        if (i < 0 || exp - od.d[i] > 5) return NaNv;
+        return od.S && od.S[i] === od.S[i] ? od.S[i] : od.F[i]; },
     };
   }
 
@@ -969,11 +1016,12 @@
     const { days, cols } = cm, Sx = cols[und], Vx = cols[vsym] || f64(days.length);
     const mk = sp.pricing === "model" ? null : marketPricer(und);
     const useMk = (i) => !!(mk && mk.has(days[i]));
+    const modelOK = !!UNDERLYINGS[und] && sp.pricing !== "market"; // VIX-based model only for index options
     const T = (d, e) => ((e - d) + 0.25) / 365;
     const sigma = (i) => Vx[i] / 100 * sp.iv_mult;
     const side = optSide(sp), tmpl = legTemplates(sp);
     // entry / exit rules on the underlying (rule language; vix and ref() available); a rule true at a close acts at the next close
-    const fu = sliceFrame(frames[und], opt.startDay, opt.endDay);
+    const fu = Object.assign(sliceFrame(frames[und], opt.startDay, opt.endDay), { sym: und });
     const condOn = (expr) => expr ? alignTo(days, fu.d, condition(expr, fu, { frames })) : null;
     const entryC = condOn(sp.entry), exitC = condOn(sp.exit);
     const modelExpiry = (d) => { let cand = d; for (let k = 0; k < 60; k++) { const e = nextExpiry(cand, sp.expiry_weekday, sp.expiry === "monthly"); if (e - d >= sp.min_dte) return e; cand = e + 1; } throw new Error("no expiry"); };
@@ -1026,13 +1074,20 @@
     for (let i = 0; i < days.length; i++) {
       const d = days[i], S = Sx[i], vix = Vx[i];
       const market = useMk(i);
-      if (S !== S || (!market && vix !== vix)) continue;
+      if (S !== S || (!market && modelOK && vix !== vix)) continue;
       let marks = {}, done = false;
       if (b.pos.size) {
         const meta = b.pos.values().next().value.meta, exp = meta.expiry, prem = meta.prem, base = Math.abs(prem); let reason = null;
         const pm = meta.market && (market || d >= exp);
-        for (const [s, p] of b.pos) { const v = priceAt(i, exp, p.meta.strike, p.meta.kind, pm); marks[s] = v === v ? v : (lastMarks[s] ?? p.avg); }
+        let missing = false;
+        for (const [s, p] of b.pos) {
+          const v = meta.market && !pm ? NaNv : priceAt(i, exp, p.meta.strike, p.meta.kind, pm);
+          if (v !== v) missing = true;
+          marks[s] = v === v ? v : (lastMarks[s] ?? p.avg);
+        }
+        st.missing = missing && d < exp ? (st.missing || 0) + 1 : 0;
         if (d >= exp) reason = "expiry settlement";
+        else if (st.missing >= 3) reason = "no price (contract adjusted or not quoted)";
         else {
           let V = 0; for (const [s, p] of b.pos) V += p.qty * marks[s];
           const pnl = prem + V;
@@ -1052,7 +1107,7 @@
       }
       if (!done) {
         const blocked = (st.cooldown != null && d <= st.cooldown) || (sp.min_vix && !(vix >= sp.min_vix)) || (sp.max_vix && vix > sp.max_vix)
-          || (entryC && !(i > 0 && entryC[i - 1]));
+          || (entryC && !(i > 0 && entryC[i - 1])) || (!market && !modelOK);
         if (!blocked) {
           const exp = market ? marketExpiry(d) : modelExpiry(d);
           const legs = exp != null ? chooseStrikes(i, exp, market) : null;
@@ -1243,9 +1298,9 @@
     if (type === "option_selling") {
       const s = Object.assign({}, OPT_DEF, clean(spec, OPT_DEF), { type });
       s.underlying = symKey(s.underlying);
-      const hasMkt = !!OPTS[s.underlying];
-      if (!UNDERLYINGS[s.underlying] && !hasMkt) throw new RuleError(`Options on '${s.underlying}' need NSE option-price data${Object.keys(OPTS).length ? "" : " (not loaded here)"}; model pricing works on NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY and NIFTYNXT50.`);
-      const base = UNDERLYINGS[s.underlying] || { lot_size: 1, strike_step: 1, expiry: "monthly" };
+      const oi = DATA.optIndex && DATA.optIndex[s.underlying], hasMkt = !!(OPTS[s.underlying] || oi);
+      if (!UNDERLYINGS[s.underlying] && !hasMkt) throw new RuleError(`No NSE option prices for '${s.underlying}'${DATA.optIndex ? "" : " in this view"}. ${DATA.optIndex ? `Option data covers: ${Object.keys(DATA.optIndex).slice(0, 12).join(", ")}… (${Object.keys(DATA.optIndex).length} underlyings).` : "Model pricing works on NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY and NIFTYNXT50."}`);
+      const base = UNDERLYINGS[s.underlying] || { lot_size: Math.round((oi && oi.lot) || (DATA.meta && DATA.meta[s.underlying] && DATA.meta[s.underlying].lot) || 1), strike_step: 1, expiry: "monthly" };
       for (const k of ["lot_size", "strike_step"]) s[k] = Math.trunc(numOr(s[k], base[k]));
       const exRaw = String(spec.expiry ?? "");
       s.expiry = /next/i.test(exRaw) ? "next" : /week/i.test(exRaw) ? "weekly" : /month/i.test(exRaw) ? "monthly" : base.expiry;
@@ -1308,7 +1363,9 @@
       optNum(s, "max_hold_days", (v) => v >= 1, "max_hold_days must be at least 1", true);
       for (const k of ["entry", "exit"]) { if (s[k] == null || s[k] === "" || s[k] === false) delete s[k]; else { s[k] = String(s[k]); validate(s[k]); } }
       s.min_vix = numOrNull(s.min_vix); s.max_vix = numOrNull(s.max_vix); s.iv_mult = numOr(s.iv_mult, 1);
-      if (spec.pricing != null && /model|bs|black/i.test(String(spec.pricing))) s.pricing = "model"; else delete s.pricing;
+      if (spec.pricing != null && /model|bs|black/i.test(String(spec.pricing))) s.pricing = "model";
+      else if (spec.pricing != null && /market|real|nse|actual/i.test(String(spec.pricing))) s.pricing = "market"; else delete s.pricing;
+      if (s.pricing === "model" && !UNDERLYINGS[s.underlying]) throw new RuleError(`Model pricing uses India VIX, so it only works on index options; ${s.underlying} options use NSE market prices.`);
       s.capital = numOr(s.capital, OPT_DEF.capital); s.fee_per_order = numOr(s.fee_per_order, 20); s.cost_pct_premium = numOr(s.cost_pct_premium, 0.15);
       normBenchmark(s);
       return s;
@@ -1582,7 +1639,7 @@
     return { risk: riskStats(res), crises: crises(res), monteCarlo: monteCarlo(res), sensitivity: sensitivity(spec, frames, universes, opt), costs: costShock(spec, frames, universes, opt) };
   }
 
-  const api = { parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, OPT_BUY, OPT_SELL,
+  const api = { parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, decodeOptions, setOptionSummary, usesOptionVars, OPTVARS, OPT_BUY, OPT_SELL,
     signals, splitMetrics, riskStats, crises, monteCarlo, sensitivity, costShock, stressAll, scaleWindows, unparse, CRISES,
     setData, setPit, usesPit, pitAt, needsFull, refSymbols, periodKey, nextRebalanceDay, factorList, exprsOf, PRESETS, WEIGHTINGS, symKey };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.TradeEngine = api;
