@@ -1,0 +1,83 @@
+name: Option prices (NSE F&O bhavcopy)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["data/REQUEST_OPTIONS", "scripts/fetch_fo.py", ".github/workflows/options-data.yml"]
+  schedule:
+    - cron: "40 13 * * 1-5"          # 19:10 IST on weekdays (the job waits for the day's F&O file)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: options-data
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install pandas numpy scipy requests
+      - name: Restore cash-market bhavcopy cache (trading days, stock spot prices)
+        uses: actions/cache/restore@v4
+        with:
+          path: .bhav_cache
+          key: bhav-${{ github.run_id }}
+          restore-keys: bhav-
+      - name: Restore F&O cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .fo_cache
+          key: fo-${{ github.run_id }}
+          restore-keys: fo-
+      - name: Cash-market days up to today (so today's F&O file has a trading day to belong to)
+        run: |
+          python - <<'PY'
+          import sys; sys.path.insert(0, "scripts")
+          from datetime import date, timedelta
+          from pathlib import Path
+          import fetch_bhavcopy as B
+          cache = Path(".bhav_cache"); cache.mkdir(exist_ok=True)
+          have = sorted(f.name[:8] for f in cache.glob("*.csv.gz"))
+          start = date.fromisoformat(f"{have[-1][:4]}-{have[-1][4:6]}-{have[-1][6:8]}") if have else date(2011, 1, 1)
+          B.download(start - timedelta(days=3), cache, 8)
+          PY
+      - name: Download F&O bhavcopies and build option data
+        run: |
+          mkdir -p data/options
+          set -o pipefail
+          ARGS="$(cat data/REQUEST_OPTIONS 2>/dev/null | grep -v '^#' | tr '\n' ' ')"
+          if [ "${{ github.event_name }}" = "schedule" ]; then ARGS="--wait-today 50"; fi
+          python scripts/fetch_fo.py $ARGS 2>&1 | tee data/options/_log.txt
+      - name: Save F&O cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .fo_cache
+          key: fo-${{ github.run_id }}
+      - name: Publish app bundles as a release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -f build_opt/app/opt/index.json || { echo "no output"; exit 0; }
+          tar -C build_opt/app -cf options_app.tar opt
+          ls -la options_app.tar
+          gh release view options-data >/dev/null 2>&1 || gh release create options-data --title "Option data (daily)" --notes "NSE option prices for the TradeOS app, rebuilt every trading day by .github/workflows/options-data.yml."
+          gh release upload options-data options_app.tar --clobber
+      - name: Commit reports
+        if: always()
+        run: |
+          git config user.name "tradeos-bot"
+          git config user.email "tradeos-bot@users.noreply.github.com"
+          git add data/options/
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "data: option prices $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 5; done
