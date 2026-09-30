@@ -277,7 +277,7 @@ VERSION HISTORY: ${JSON.stringify(S.room.versions.map((x) => ({ n: x.n, note: x.
 
 ${dataBrief()}
 
-REPLY with ONE JSON object: {"reply":"markdown","proposal":null or {"note":"...","spec":{...},"explanation":"...","test":{"start":"...","end":null,"split":"..."}}}
+REPLY with ONE JSON object only (no text before or after it, no code fences; keep "reply" under 200 words; escape quotes and newlines inside strings): {"reply":"markdown","proposal":null or {"note":"...","spec":{...},"explanation":"...","test":{"start":"...","end":null,"split":"..."}}}
 
 CONVERSATION:
 ${hist || "(new)"}
@@ -294,7 +294,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
       const test = v.test || { start: "2012-01-01" }, res = await runSpec(v.spec, test);
       const risk = E.riskStats(res), cr = E.crises(res).map((c) => ({ name: c.name, s: c.strategy_pct, n: c.nifty_pct }));
       const out = await callClaude(agentPrompt(a, v, res, { risk, crises: cr }, text || "Please look at the attachment.", atts), imagesOf(atts), (msg) => { st.innerHTML = `<span class="thinking">${esc(msg)}<span class="dots"></span></span>`; }, new AbortController().signal);
-      const msg = { role: "agent", text: typeof out?.reply === "string" ? out.reply : "…" };
+      const msg = { role: "agent", text: (typeof out?.reply === "string" && out.reply.trim() ? out.reply : "…") + (out?._unstructured ? "\n\n_(Answer came back without structure, so any proposed change couldn't be attached. Ask me to “propose that as a change”.)_" : "") };
       if (out?.proposal && out.proposal.spec) { try { E.normalize(out.proposal.spec, S.man.universes); msg.proposal = { note: String(out.proposal.note || "Change"), spec: out.proposal.spec, explanation: String(out.proposal.explanation || ""), test: out.proposal.test || v.test || null, status: null }; }
         catch (e) { msg.text += `\n\n_(My proposed rules didn't validate: ${e.message})_`; } }
       await addAgentMsg(a.id, msg); st.textContent = "";

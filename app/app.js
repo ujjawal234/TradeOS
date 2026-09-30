@@ -360,12 +360,70 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
       { name: "list_agents", description: "The team's existing agents with status and headline results.", execute: async () => [...S.agents.values()].map(agentBrief) },
     ];
   }
+  // ---- tolerant reply parsing: a malformed or chatty answer should never be thrown away
+  function balancedObjects(text) {
+    const out = []; let depth = 0, start = -1, inStr = false, esc = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
+      if (c === '"') { if (depth > 0) inStr = true; continue; }
+      if (c === "{") { if (depth === 0) start = i; depth++; }
+      else if (c === "}" && depth > 0) { depth--; if (depth === 0 && start >= 0) { out.push(text.slice(start, i + 1)); start = -1; } }
+    }
+    if (depth > 0 && start >= 0) out.push(text.slice(start)); // cut short: try to close it below
+    return out;
+  }
+  function repairJson(t) {
+    let s = t.trim().replace(/^﻿/, "").replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+    // escape raw control characters inside strings, drop trailing commas
+    let out = "", inStr = false, esc = false;
+    for (const c of s) {
+      if (inStr) {
+        if (esc) { esc = false; out += c; continue; }
+        if (c === "\\") { esc = true; out += c; continue; }
+        if (c === '"') { inStr = false; out += c; continue; }
+        if (c === "\n") { out += "\\n"; continue; } if (c === "\r") continue; if (c === "\t") { out += "\\t"; continue; }
+        out += c; continue;
+      }
+      if (c === '"') inStr = true;
+      out += c;
+    }
+    if (inStr) out += '"';
+    out = out.replace(/,\s*([}\]])/g, "$1");
+    // close brackets left open by a truncated reply
+    const stack = []; inStr = false; esc = false;
+    for (const c of out) { if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
+      if (c === '"') inStr = true; else if (c === "{" || c === "[") stack.push(c === "{" ? "}" : "]"); else if (c === "}" || c === "]") stack.pop(); }
+    return out.replace(/,\s*$/, "") + stack.reverse().join("");
+  }
+  function parseLoose(text) {
+    if (!text || typeof text !== "string") return null;
+    const cands = [];
+    for (const m of text.matchAll(/```(?:json)?\s*([\s\S]*?)(?:```|$)/g)) cands.push(m[1]);
+    cands.push(...balancedObjects(text));
+    cands.sort((a, b) => (/"reply"\s*:/.test(b) ? 1 : 0) - (/"reply"\s*:/.test(a) ? 1 : 0) || b.length - a.length);
+    for (const c of cands) {
+      for (const t of [c, repairJson(c)]) { try { const v = JSON.parse(t); if (v && typeof v === "object" && !Array.isArray(v)) return v; } catch (e) { /* next */ } }
+    }
+    return null;
+  }
+  function proseOf(text) { // what to show when no structure could be recovered
+    return String(text || "").replace(/```[\s\S]*?(```|$)/g, "").replace(/^\s*\{[\s\S]*$/m, "").trim();
+  }
   async function callClaude(prompt, images, onProgress, signal) {
     if (!S.sample) throw { code: "unavailable_here" };
     const opts = { modelTier: "default", signal };
     if (S.tools) opts.tools = makeTools(onProgress); else opts.cache = false;
     if (images.length) opts.images = images;
-    return await S.sample.json(prompt, opts);
+    try { return await S.sample.json(prompt, opts); }
+    catch (e) {
+      if (!e || e.code !== "invalid_json" || !e.text) throw e;
+      const v = parseLoose(e.text);
+      if (v) return { ...v, _repaired: true };
+      const prose = proseOf(e.text);
+      if (prose) return { reply: prose, _unstructured: true };
+      throw e;
+    }
   }
   function claudeError(e) {
     const m = { unavailable_here: "Claude isn't available in this view, so the agents can't talk. Open the page in claude.ai while signed in.",
@@ -397,7 +455,7 @@ ${dataBrief()}
 
 ${SCHEMAS}
 
-REPLY with ONE JSON object only:
+REPLY with ONE JSON object only — no text before or after it, no code fences. Keep "reply" under 250 words (details belong in proposals). Escape quotes and newlines inside strings:
 {"reply":"markdown for the user",
  "questions":[{"id":"short_id","label":"Question","type":"number"|"date"|"select"|"multiselect"|"text","options":["for select types"],"default":value,"unit":"₹ or %","help":"one line"}],
  "proposals":[{"name":"Short name","spec":{...},"test":{"start":"2012-01-01","end":null,"split":"2021-01-01"},"explanation":"what the rules do","rationale":"why it may work and when it fails","assumptions":["..."]}],
@@ -423,10 +481,11 @@ USER NOW: ${userText || "(answered the questions)"}${answers ? "\nANSWERS: " + J
       await addMainMsg({ role: "user", text: text || "Here are my answers.", answers: answers || null, attachments: atts.map((a) => a.name) });
       mainCtl = new AbortController();
       const out = await callClaude(mainPrompt(text, answers, atts), imagesOf(atts), (msg) => setMainBusy(true, msg), mainCtl.signal);
-      const reply = typeof out?.reply === "string" ? out.reply : "Here's what I found.";
+      const reply = (typeof out?.reply === "string" && out.reply.trim() ? out.reply : "Here's what I found.")
+        + (out?._unstructured ? "\n\n_(This answer came back without the usual structure, so no question cards or proposals could be shown. Reply “please put that in proposals” to get them.)_" : "");
       const questions = Array.isArray(out?.questions) ? out.questions.filter((q) => q && q.label).slice(0, 6) : [];
       const proposals = [];
-      for (const p of (Array.isArray(out?.proposals) ? out.proposals : []).slice(0, 3)) {
+      for (const p of (Array.isArray(out?.proposals) ? out.proposals : []).filter((x) => x && typeof x === "object").slice(0, 3)) {
         const prop = { id: newId("p"), name: String(p.name || "Strategy"), explanation: String(p.explanation || ""), rationale: String(p.rationale || ""), assumptions: Array.isArray(p.assumptions) ? p.assumptions.map(String) : [],
           test: { start: p.test?.start || "2012-01-01", end: p.test?.end || null, split: p.test?.split || null }, raw: p.spec || {} };
         try { prop.spec = E.normalize(p.spec || {}, S.man.universes); } catch (e) { prop.error = e.message; }
