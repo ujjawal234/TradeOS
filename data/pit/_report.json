@@ -30,27 +30,27 @@
   "2025-03-28",
   "2025-09-30",
   "2026-03-30",
-  "2026-09-29"
+  "2026-09-30"
  ],
- "trading_days": 3902,
+ "trading_days": 3903,
  "first": "2011-01-03",
- "last": "2026-09-29",
+ "last": "2026-09-30",
  "download": {
-  "new_files": 0,
+  "new_files": 1,
   "not_available": {
-   "http 404": 3
+   "http 404": 2
   }
  },
  "corporate_actions": {
-  "files": 3897,
-  "new": 0,
+  "files": 3898,
+  "new": 1,
   "not_available": {},
-  "records": 51438,
-  "dividends": 7917,
+  "records": 51471,
+  "dividends": 7918,
   "ratio_applied": 323,
   "inferred_splits": 5,
   "demergers": 67,
-  "outside_data": 97,
+  "outside_data": 96,
   "rights": 60,
   "ratio_rejected": 48
  },
@@ -385,7 +385,7 @@
  ],
  "gap_days": [],
  "symbol_change_rows_moved": 522944,
- "members": 590,
+ "members": 591,
  "members_no_longer_trading": 88,
  "examples_no_longer_trading": [
   "ABGSHIP",
