@@ -12,6 +12,7 @@ Usage:  python scripts/build_app_data.py <out_dir>
 from __future__ import annotations
 
 import json
+import shutil
 import re
 import sys
 from pathlib import Path
@@ -229,6 +230,23 @@ def build_pit(dst: Path, universes: dict) -> dict | None:
     return info
 
 
+def copy_options(dst: Path, symbols: dict) -> dict | None:
+    """NSE option prices (scripts/fetch_fo.py via scripts/get_options.py) -> data/opt, and their index for the manifest"""
+    src = ROOT / ".options" / "opt"
+    if not (src / "index.json").exists():
+        return None
+    out = dst / "opt"
+    if out.exists():
+        shutil.rmtree(out)
+    shutil.copytree(src, out)
+    (out / "index.json").unlink()
+    idx = json.loads((src / "index.json").read_text())
+    unders = {s: {k: v for k, v in u.items() if k in ("kind", "first", "last", "lot", "c", "s")} for s, u in idx.get("underlyings", {}).items()}
+    size = sum(f.stat().st_size for f in out.glob("*"))
+    print(f"options: {len(unders)} underlyings to {idx.get('asof')}, {len(list(out.glob('*')))} files, {size / 1e6:.1f} MB")
+    return {"asof": idx.get("asof"), "method": idx.get("method", ""), "underlyings": unders}
+
+
 def main(out: Path) -> None:
     src, dst = ROOT / "data" / "prices", out / "data"
     nse_stocks, _ = load_pit_frames()
@@ -298,7 +316,8 @@ def main(out: Path) -> None:
         if len(df) < (MIN_ROWS_INDEX if is_idx else MIN_ROWS):
             continue
         frames[s] = df
-        (dst / "p" / f"{s}.json").write_text(json.dumps(enc_full(df), separators=(",", ":")))
+        if src_name != "NSE":  # NSE-sourced stocks are served from the pit bundles (same series), saving ~230 files
+            (dst / "p" / f"{s}.json").write_text(json.dumps(enc_full(df), separators=(",", ":")))
         meta = uni.get(s, {})
         symbols[s] = {"first": str(df.index[0].date()), "last": str(df.index[-1].date()), "rows": len(df),
                       "name": meta.get("name") or INDEX_NAMES.get(s, s), "industry": meta.get("industry") or ("Index" if s in INDEX_NAMES else ""),
@@ -371,9 +390,18 @@ def main(out: Path) -> None:
         **industries,
     }
     pit = build_pit(dst, universes)
+    if pit:  # where each NSE-sourced stock's full OHLCV lives (data/pit/full/<bundle>.json)
+        pb = json.loads((dst / "pit" / "membership.json").read_text()).get("bundles", {})
+        for s_, m_ in symbols.items():
+            if m_.get("src") == "NSE":
+                if s_ in pb:
+                    m_["pb"] = pb[s_]
+                else:  # not in a bundle for some reason: fall back to its own file
+                    (dst / "p" / f"{s_}.json").write_text(json.dumps(enc_full(frames[s_]), separators=(",", ":")))
+    opt_info = copy_options(dst, symbols)
     has_shares = (ROOT / "data" / "shares.json").exists()
     manifest = {"generated": fetched.get("generated"), "shares": has_shares, "source": "Stocks: NSE daily bhavcopy, adjusted with NSE's corporate-action records (splits, bonuses, dividends, demergers, rights) and cross-checked against Yahoo; Yahoo only where NSE history is missing. Indices: NSE daily index files (with P/E, P/B, dividend yield). Lists: NSE.",
-                "symbols": symbols, "universes": universes, "sectors": sectors, **({"pit": pit} if pit else {})}
+                "symbols": symbols, "universes": universes, "sectors": sectors, **({"pit": pit} if pit else {}), **({"options": opt_info} if opt_info else {})}
     (dst / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":")))
     # share counts (for market-cap weights): {SYM: {"f": free-float ratio, "s": [[epoch_day, shares], ...]}}
     sh_file = ROOT / "data" / "shares.json"

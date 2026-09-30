@@ -75,9 +75,9 @@
     const [m, pack] = await Promise.all([fetch("data/manifest.json").then((r) => { if (!r.ok) throw new Error("Market data is missing from this page."); return r.json(); }),
       fetch("data/closes.json").then((r) => r.json())]);
     S.man = m; S.light = E.framesFromPack(pack);
-    S.pitSyms = new Set(Object.entries(m.universes || {}).filter(([k]) => /pit$/.test(k)).flatMap(([, v]) => v)); S.pitFull = {};
+    S.pitSyms = new Set(Object.entries(m.universes || {}).filter(([k]) => /pit$/.test(k)).flatMap(([, v]) => v)); S.pitFull = {}; S.bundleP = {};
     let shares = null; if (m.shares) try { const r = await fetch("data/shares.json"); if (r.ok) shares = await r.json(); } catch (e) { /* optional */ }
-    E.setData({ meta: m.symbols, shares }); S.sharesCount = shares ? Object.keys(shares).length : 0;
+    E.setData({ meta: m.symbols, shares, ...(m.options ? { optIndex: m.options.underlyings } : {}) }); S.sharesCount = shares ? Object.keys(shares).length : 0;
     const lasts = Object.values(m.symbols).map((s) => s.last).sort(); S.lastDay = lasts[lasts.length - 1];
     const stocks = Object.values(m.symbols).filter((s) => s.kind === "stock").length;
     $("dataChip").textContent = `${stocks} stocks · data to ${fmtDate(S.lastDay)}`;
@@ -85,8 +85,14 @@
   async function ensureFull(symbols, onProgress) {
     const need = symbols.filter((s) => !S.full[s] && S.man.symbols[s] && S.man.symbols[s].kind !== "basket");
     let done = 0;
-    const one = async (s) => { const r = await fetch(`data/p/${encodeURIComponent(s)}.json`); if (!r.ok) throw new Error(`No price file for ${s}`); S.full[s] = E.frame(await r.json()); done++; if (onProgress && need.length > 4) onProgress(done, need.length); };
-    for (let i = 0; i < need.length; i += 10) await Promise.all(need.slice(i, i + 10).map(one));
+    const one = async (s) => { const r = await fetch(`data/p/${encodeURIComponent(s)}.json`); if (!r.ok) throw new Error(`No price file for ${s}`); S.full[s] = E.frame(await r.json()); S.full[s].sym = s; done++; if (onProgress && need.length > 4) onProgress(done, need.length); };
+    // NSE-sourced stocks live in the shared bundles of 25 (data/pit/full/<b>.json)
+    const byBundle = need.filter((s) => S.man.symbols[s].pb), own = need.filter((s) => !S.man.symbols[s].pb);
+    const keys = [...new Set(byBundle.map((s) => S.man.symbols[s].pb))];
+    const oneB = async (k) => { if (!S.bundleP[k]) S.bundleP[k] = fetch(`data/pit/full/${k}.json`).then((r) => { if (!r.ok) throw new Error(`Price bundle ${k} is missing`); return r.json(); }).catch((e) => { delete S.bundleP[k]; throw e; });
+      const js = await S.bundleP[k]; for (const [s, raw] of Object.entries(js)) { if (!S.full[s]) { S.full[s] = E.frame(raw); S.full[s].sym = s; } if (!S.pitFull[s]) S.pitFull[s] = S.full[s]; } done += byBundle.filter((s) => S.man.symbols[s].pb === k).length; if (onProgress && need.length > 4) onProgress(done, need.length); };
+    for (let i = 0; i < keys.length; i += 6) await Promise.all(keys.slice(i, i + 6).map(oneB));
+    for (let i = 0; i < own.length; i += 10) await Promise.all(own.slice(i, i + 10).map(one));
   }
   // survivorship-free (point-in-time) data: NSE bhavcopy prices for every stock that was ever in the universe, loaded on first use
   let pitReady = null;
@@ -100,8 +106,36 @@
   }
   async function ensurePitFull(symbols, onProgress) {
     const keys = [...new Set(symbols.filter((s) => !S.pitFull[s] && S.pitBundles[s]).map((s) => S.pitBundles[s]))]; let done = 0;
-    const one = async (k) => { const r = await fetch(`data/pit/full/${k}.json`); if (!r.ok) throw new Error(`Point-in-time price file ${k} is missing`); for (const [s, raw] of Object.entries(await r.json())) S.pitFull[s] = E.frame(raw); done++; if (onProgress && keys.length > 2) onProgress(done, keys.length); };
+    const one = async (k) => { if (!S.bundleP[k]) S.bundleP[k] = fetch(`data/pit/full/${k}.json`).then((r) => { if (!r.ok) throw new Error(`Point-in-time price file ${k} is missing`); return r.json(); }).catch((e) => { delete S.bundleP[k]; throw e; });
+      for (const [s, raw] of Object.entries(await S.bundleP[k])) if (!S.pitFull[s]) { S.pitFull[s] = E.frame(raw); S.pitFull[s].sym = s; } done++; if (onProgress && keys.length > 2) onProgress(done, keys.length); };
     for (let i = 0; i < keys.length; i += 6) await Promise.all(keys.slice(i, i + 6).map(one));
+  }
+  // ---- NSE option prices (data/opt): chains for option backtests, daily summaries for iv / pcr / skew... in rules
+  async function fetchJsonGz(url) {
+    const r = await fetch(url); if (!r.ok) throw new Error(`Option data file ${url.split("/").pop()} is missing`);
+    const buf = new Uint8Array(await r.arrayBuffer());
+    if (buf[0] === 0x1f && buf[1] === 0x8b) {
+      if (!window.DecompressionStream) throw new Error("This browser can't unpack the option data — update it or use Chrome/Safari/Firefox.");
+      return JSON.parse(await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
+    }
+    return JSON.parse(new TextDecoder().decode(buf));
+  }
+  S.optFiles = {}; S.optLoaded = { c: new Set(), s: new Set() };
+  async function ensureOptions(syms, kind, onProgress) { // kind "c" = chains, "s" = summaries
+    const U = S.man.options?.underlyings || {};
+    const want = [...new Set(syms)].filter((x) => U[x] && U[x][kind] && !S.optLoaded[kind].has(x));
+    const keys = [...new Set(want.map((x) => U[x][kind]))]; let done = 0;
+    await Promise.all(keys.map(async (k) => {
+      if (!S.optFiles[k]) S.optFiles[k] = fetchJsonGz(`data/opt/${k}.json.gz`).catch((e) => { delete S.optFiles[k]; throw e; });
+      const js = await S.optFiles[k];
+      for (const [x, p] of Object.entries(js)) { if (kind === "c") E.setOptions(x, p); else E.setOptionSummary(x, p); S.optLoaded[kind].add(x); }
+      delete S.optFiles[k]; done++; if (onProgress && keys.length > 1) onProgress(done, keys.length);
+    }));
+  }
+  function specExprs(spec) {
+    if (spec.type === "rule") return [spec.entry, spec.exit, spec.rank_by];
+    if (spec.type === "rotation") return E.exprsOf(spec);
+    return [spec.entry, spec.exit];
   }
   async function framesFor(spec, onProgress) {
     const pk = E.usesPit(spec), inPit = (s) => !!pk && S.pitSyms.has(s);
@@ -110,6 +144,10 @@
     if (missing.length) throw new Error(`No data for ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? "…" : ""}. Use NSE tickers from the Nifty 200 / F&O list.`);
     if (pk) await ensurePit();
     if (E.needsFull(spec)) { await ensureFull(need.filter((s) => !inPit(s)), onProgress); await ensurePitFull(need.filter(inPit), onProgress); }
+    if (S.man.options) {
+      if (spec.type === "option_selling") await ensureOptions([spec.underlying], "c", onProgress);
+      if (specExprs(spec).some(E.usesOptionVars)) { E.initOptionSummaries(); await ensureOptions(need.concat(specExprs(spec).flatMap((x) => E.refSymbols(x))), "s", onProgress); }
+    }
     const out = {}; for (const s of need) out[s] = inPit(s) ? (S.pitFull[s] || S.pitLight[s]) : (S.full[s] || S.light[s]);
     return out;
   }
@@ -369,8 +407,14 @@ Derived (leveraged, inverse, futures, arbitrage, USD): ${byGroup("derived")}
 Equal-weight baskets of Nifty 200 members by industry (closes only): ${secs}.
 Named groups usable as "symbols" entries or "universe": ${groups}.
 ${m.pit ? `SURVIVORSHIP-FREE universes (use these whenever the user wants no survivorship bias, point-in-time or realistic results): ${Object.entries(m.pit.universes).map(([k, v]) => `${k} = the ${v.size} most-traded NSE stocks at each March/September review since ${v.first} (${v.ever} different stocks over time)`).join("; ")}. Membership uses only what was known on each review date and includes stocks later delisted, merged or dropped (${m.pit.no_longer_trading} of them no longer trade); prices are NSE bhavcopy adjusted for splits/bonuses (price only). Use them as "universe" in rotation, or in "symbols" for rule strategies (entries only while a stock is a member). Data to ${m.pit.asof}.` : ""}
+${m.options ? optionsBrief(m.options) : "OPTION PRICES: not loaded in this build — option strategies use the Black-Scholes model on India VIX (index options only)."}
 Market-cap weights: ${nSh ? `share counts available for ${nSh} stocks (Yahoo; free float = today's ratio)` : "no share-count data loaded yet — mcap weights fall back to equal"}.
 Stocks (ticker=company): ${tick}`;
+  }
+  function optionsBrief(o) {
+    const U = Object.entries(o.underlyings || {}), idx = U.filter(([, u]) => u.kind === "index").map(([k, u]) => `${k} (from ${u.first})`), st = U.filter(([, u]) => u.kind === "stock");
+    const live = st.filter(([, u]) => u.last >= o.asof).map(([k]) => k);
+    return `OPTION PRICES (NSE F&O bhavcopy, real daily closes/settlement prices to ${o.asof}): index options ${idx.join(", ")}; stock options on ${st.length} stocks (${live.length} still in F&O today, the rest delisted or dropped from F&O — kept, no survivorship bias). Option strategies on these use market prices; any F&O stock can be an "underlying". Rule-language variables from the same data on any of these symbols: iv (30-day at-the-money implied volatility, %), iv_near, iv_next, straddle (nearest ATM straddle, % of price), pcr (put/call open interest), pcr_vol, skew (put IV at 95% minus call IV at 105%, vol points), max_pain, oi_calls, oi_puts, fut_oi, dte (days to nearest expiry) — NaN on days a symbol had no options.`;
   }
   const SCHEMAS = `STRATEGY SPEC — choose ONE "type". Every field beyond the basics is optional; omit what you don't need.
 1) "rule": entry/exit rules per symbol. {"type":"rule","symbols":[tickers or group names],"entry":expr,"exit":expr or "","side":"long"|"short","stop_loss_pct":num|null,"take_profit_pct":num|null,"position_size_pct":num (default 100),"capital":₹,"cost_pct":0.12,
@@ -401,7 +445,7 @@ Stocks (ticker=company): ${tick}`;
     "min_vix":num|null,"max_vix":num|null,"lots":int,"capital":₹,"benchmark":symbol}
    Omitted exits = held to expiry (sold structures keep their long-standing 2× stop / 50% target defaults unless set to null). Bought options default to ATM strikes, sold to 15 delta.
 RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime and expression weights; evaluated each day on that symbol; rules signal at the close and fill at the next open):
- variables: open high low close volume hl2 hlc3 dow(0=Mon) dom(day of month) month(1-12) year; vix (India VIX close); pe pb dy for NSE indices marked (P/E,P/B,DY) (NaN elsewhere).
+ variables: open high low close volume hl2 hlc3 dow(0=Mon) dom(day of month) month(1-12) year; vix (India VIX close); option-market series where DATA lists option prices: iv iv_near iv_next straddle pcr pcr_vol skew max_pain oi_calls oi_puts fut_oi dte; pe pb dy for NSE indices marked (P/E,P/B,DY) (NaN elsewhere).
  functions: sma ema wma(x,n) rsi(x,14) atr(14) atr_pct(14) macd(x,12,26) macd_signal(x,12,26,9) bb_upper/bb_lower(x,20,2) keltner_upper/keltner_lower(20,2) supertrend(10,3) highest/lowest(x,n) (include today: breakouts use shift(highest(high,55),1))
   shift(x,n) prev(x) change(x,n) roc(x,n)(%) ret(x,n)(fraction) sum(x,n) median(x,n) stdev(x,n) zscore(x,n) volatility(x,n)(ann.%) pct_rank(x,n)(0-100) slope(x,n) drawdown(x)(% from peak) days_since(cond) count_true(cond,n)
   adx(14) plus_di(14) minus_di(14) stoch_k(14) stoch_d(14,3) cci(20) mfi(14) williams_r(14) obv() vwap(20) corr(a,b,n) beta(a,b,n) cross_above(a,b) cross_below(a,b) abs max min log sqrt sign iff(cond,a,b) clip(x,lo,hi)

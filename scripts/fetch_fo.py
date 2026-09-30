@@ -46,6 +46,7 @@ R = 0.065                      # discount rate for Black-76
 KEEP_EXPIRIES = 4
 BAND = 0.30                    # cache strikes within ±30% of the futures price
 INDEX_UNDERLYINGS = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50", "NIFTYIT", "NIFTYMID50", "NIFTYINFRA", "NIFTYPSE", "NIFTYCPSE", "NIFTYMIDCAP", "BANKEX", "SENSEX", "NIFTYDIV", "NIFTYSMALLCAP"}
+KEEP_INDICES = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50"}
 INDEX_SPOT = {  # spot history from data/indices (NSE index files), newest name first
     "NIFTY": ["NIFTY_50", "CNX_NIFTY"], "BANKNIFTY": ["NIFTY_BANK", "CNX_BANK"], "FINNIFTY": ["NIFTY_FINANCIAL_SERVICES", "CNX_FINANCE"],
     "MIDCPNIFTY": ["NIFTY_MIDCAP_SELECT"], "NIFTYNXT50": ["NIFTY_NEXT_50", "CNX_NIFTY_JUNIOR"], "NIFTYIT": ["NIFTY_IT", "CNX_IT"]}
@@ -416,6 +417,8 @@ def build(days: list[date], cache: Path, eq_cache: Path, debug: bool) -> dict:
         todo = []
         for sym, lo, hi in zip(syms, starts, ends):
             is_idx = kinds[lo] in ("IF", "IO")
+            if is_idx and sym not in KEEP_INDICES:  # mini/foreign/sector index options (DJIA, S&P500, MINIFTY, CNXIT...): tiny, skipped
+                continue
             spot = idx_spot.get(sym, {}).get(iso, np.nan) if is_idx else eqc.get(sym, np.nan)
             todo.append((sym, is_idx, analyse(sym, a, lo, hi, d_ord, spot, q)))
         q.solve()

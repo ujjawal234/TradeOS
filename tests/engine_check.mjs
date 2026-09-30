@@ -10,7 +10,9 @@ if (!dir) { console.error("usage: node tests/engine_check.mjs <app_build_dir> [o
 const E = require(path.join(here, "..", "lab", "engine.js"));
 const man = JSON.parse(fs.readFileSync(path.join(dir, "data", "manifest.json")));
 const light = E.framesFromPack(JSON.parse(fs.readFileSync(path.join(dir, "data", "closes.json"))));
-const full = {}; const ff = (s) => (full[s] ||= E.frame(JSON.parse(fs.readFileSync(path.join(dir, "data", "p", `${s}.json`)))));
+const full = {}, bcache = {};
+const ff = (s) => { if (full[s]) return full[s]; const pb = man.symbols[s] && man.symbols[s].pb;
+  full[s] = pb ? E.frame((bcache[pb] ||= JSON.parse(fs.readFileSync(path.join(dir, "data", "pit", "full", `${pb}.json`))))[s]) : E.frame(JSON.parse(fs.readFileSync(path.join(dir, "data", "p", `${s}.json`)))); full[s].sym = s; return full[s]; };
 let shares = null; try { shares = JSON.parse(fs.readFileSync(path.join(dir, "data", "shares.json"))); } catch (e) { /* optional */ }
 E.setData({ meta: man.symbols, shares });
 const pitDir = path.join(dir, "data", "pit"), hasPit = fs.existsSync(path.join(pitDir, "membership.json"));

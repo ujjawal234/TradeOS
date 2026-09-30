@@ -3,6 +3,7 @@
 // agents.json: [{ id, name, status, paper: {version, since}, version: {spec, test} }]  (the paper version's spec)
 // Writes out.json with each paper agent's returns since it started, today's signals, and alert text.
 import fs from "node:fs";
+import zlib from "node:zlib";
 import path from "node:path";
 import { createRequire } from "node:module";
 
@@ -17,9 +18,28 @@ const man = JSON.parse(fs.readFileSync(path.join(data, "manifest.json"), "utf8")
 const light = E.framesFromPack(JSON.parse(fs.readFileSync(path.join(data, "closes.json"), "utf8")));
 const lastDay = Object.values(man.symbols).map((s) => s.last).sort().pop();
 let shares = null; try { shares = JSON.parse(fs.readFileSync(path.join(data, "shares.json"), "utf8")); } catch (e) { /* optional */ }
-E.setData({ meta: man.symbols, shares });
+E.setData({ meta: man.symbols, shares, ...(man.options ? { optIndex: man.options.underlyings } : {}) });
+// NSE option prices (data/opt/*.json.gz): chains for option agents, summaries for iv/pcr/skew... in rules
+const optLoaded = { c: new Set(), s: new Set() }, optFiles = {};
+function ensureOptions(syms, kind) {
+  const U = (man.options && man.options.underlyings) || {};
+  for (const x of new Set(syms)) {
+    if (!U[x] || !U[x][kind] || optLoaded[kind].has(x)) continue;
+    const k = U[x][kind];
+    const js = (optFiles[k] ||= JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(data, "opt", `${k}.json.gz`))).toString("utf8")));
+    for (const [y, p] of Object.entries(js)) { if (kind === "c") E.setOptions(y, p); else E.setOptionSummary(y, p); optLoaded[kind].add(y); }
+  }
+}
+const specExprs = (spec) => spec.type === "rule" ? [spec.entry, spec.exit, spec.rank_by] : spec.type === "rotation" ? E.exprsOf(spec) : [spec.entry, spec.exit];
 const full = {};
-const fullFrame = (s) => (full[s] ||= E.frame(JSON.parse(fs.readFileSync(path.join(data, "p", `${s}.json`), "utf8"))));
+const bundleCache = {};
+const fullFrame = (s) => {
+  if (full[s]) return full[s];
+  const pb = man.symbols[s] && man.symbols[s].pb; // NSE-sourced stocks live in the shared bundles (data/pit/full/<b>.json)
+  if (pb) { const js = (bundleCache[pb] ||= JSON.parse(fs.readFileSync(path.join(data, "pit", "full", `${pb}.json`), "utf8"))); full[s] = E.frame(js[s]); }
+  else full[s] = E.frame(JSON.parse(fs.readFileSync(path.join(data, "p", `${s}.json`), "utf8")));
+  full[s].sym = s; return full[s];
+};
 // survivorship-free universes (data/pit): separate NSE-bhavcopy price series for every stock ever in them
 const pitDir = path.join(data, "pit");
 let pitLight = null, pitBundles = {}; const pitFull = {};
@@ -36,6 +56,10 @@ function pitFrame(s) {
 function framesFor(spec) {
   const pk = E.usesPit(spec);
   const need = [...new Set(E.symbolsNeeded(spec, man.universes).concat(["NIFTY"]))];
+  if (man.options) {
+    if (spec.type === "option_selling") ensureOptions([spec.underlying], "c");
+    if (specExprs(spec).some(E.usesOptionVars)) { E.initOptionSummaries(); ensureOptions(need.concat(specExprs(spec).flatMap((x) => E.refSymbols(x))), "s"); }
+  }
   const out = {};
   for (const s of need) {
     if (pk && pitSyms.has(s)) { if (!pitLight) throw new Error("point-in-time data missing"); out[s] = E.needsFull(spec) ? pitFrame(s) : pitLight[s]; continue; }

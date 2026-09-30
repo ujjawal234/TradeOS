@@ -989,6 +989,7 @@
     for (let i = 0; i < n; i++) { acc += p.dd[i]; d[i] = acc; }
     (DATA.optSum ||= {})[sym] = { d, s: p.s };
   }
+  function initOptionSummaries() { DATA.optSum ||= {}; }
   const usesOptionVars = (expr) => !!expr && Object.keys(OPTVARS).some((k) => new RegExp(`\\b${k}\\b`).test(String(expr).replace(/["'][^"']*["']/g, "")));
   function optionData(sym) { return OPTS[sym] || null; }
   function marketPricer(sym) {
@@ -1639,7 +1640,7 @@
     return { risk: riskStats(res), crises: crises(res), monteCarlo: monteCarlo(res), sensitivity: sensitivity(spec, frames, universes, opt), costs: costShock(spec, frames, universes, opt) };
   }
 
-  const api = { parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, decodeOptions, setOptionSummary, usesOptionVars, OPTVARS, OPT_BUY, OPT_SELL,
+  const api = { parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, decodeOptions, setOptionSummary, initOptionSummaries, usesOptionVars, OPTVARS, OPT_BUY, OPT_SELL,
     signals, splitMetrics, riskStats, crises, monteCarlo, sensitivity, costShock, stressAll, scaleWindows, unparse, CRISES,
     setData, setPit, usesPit, pitAt, needsFull, refSymbols, periodKey, nextRebalanceDay, factorList, exprsOf, PRESETS, WEIGHTINGS, symKey };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.TradeEngine = api;
