@@ -43,11 +43,8 @@
  },
  "corporate_actions": {
   "files": 3897,
-  "new": 3897,
-  "not_available": {
-   "bad file ParserError": 4,
-   "bad file EmptyDataError": 1
-  },
+  "new": 0,
+  "not_available": {},
   "records": 51438,
   "dividends": 7911,
   "ratio_applied": 208,
@@ -58,908 +55,1509 @@
   [
    "20MICRONS",
    "2013-01-28",
-   0.526
+   0.526,
+   [
+    "2013-01-28 FV SPLT FRM RS 10 TO RS 5"
+   ]
   ],
   [
    "360ONE",
    "2023-03-02",
-   0.249
+   0.249,
+   []
   ],
   [
    "63MOONS",
    "2013-08-01",
-   0.355
+   0.355,
+   [
+    "2013-08-07 1ST INT DIV-RS.2/- PR SH"
+   ]
   ],
   [
    "ABFRL",
    "2025-05-22",
-   0.334
+   0.334,
+   [
+    "2025-05-22 DEMERGER"
+   ]
   ],
   [
    "ABIRLANUVO",
    "2016-01-20",
-   0.427
+   0.427,
+   [
+    "2016-01-20 SCHEME OF ARRANGEMENT"
+   ]
   ],
   [
    "ABREL",
    "2019-10-11",
-   0.446
+   0.446,
+   [
+    "2019-10-11 DEMERGER"
+   ]
   ],
   [
    "ADANIENT",
    "2015-06-03",
-   0.172
+   0.172,
+   [
+    "2015-06-03 SCHEME OF ARRANGEMENT"
+   ]
   ],
   [
    "ADANIPOWER",
    "2025-09-22",
-   0.24
+   0.24,
+   [
+    "2025-09-22 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "ADVENZYMES",
    "2017-05-25",
-   0.217
+   0.217,
+   [
+    "2017-05-25 FV SPLT FRM RS 10 TO Rs 2"
+   ]
   ],
   [
    "AEGISLOG",
    "2015-09-16",
-   0.099
+   0.099,
+   [
+    "2015-09-16 FV SPLT FRM RS 10 TO RS 1"
+   ]
   ],
   [
    "AFFLE",
    "2021-10-07",
-   0.21
+   0.21,
+   [
+    "2021-10-07 FVSPLT FRM RS 10TO RS 2"
+   ]
   ],
   [
    "AJANTPHARM",
    "2015-03-20",
-   0.369
+   0.369,
+   [
+    "2015-03-20 FV SPLT FRM RS 5 TO RS 2"
+   ]
   ],
   [
    "AMRUTANJAN",
    "2012-10-25",
-   0.191
+   0.191,
+   [
+    "2012-10-25 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "AMRUTANJAN",
    "2018-04-13",
-   0.522
+   0.522,
+   [
+    "2018-04-13 FV SPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "AMTEKAUTO",
    "2015-09-03",
-   0.65
+   0.65,
+   []
   ],
   [
    "AMTEKAUTO",
    "2015-09-11",
-   1.539
+   1.539,
+   []
   ],
   [
    "ANANTRAJ",
    "2020-10-06",
-   0.561
+   0.561,
+   [
+    "2020-10-06 DEMERGER"
+   ]
   ],
   [
    "ANDHRAPAP",
    "2024-09-11",
-   0.188
+   0.188,
+   [
+    "2024-09-11 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "ANGELONE",
    "2026-02-26",
-   0.099
+   0.099,
+   [
+    "2026-02-26 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "APLAPOLLO",
    "2020-12-15",
-   0.205
+   0.205,
+   [
+    "2020-12-15 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "APOLLO",
    "2023-05-04",
-   0.105
+   0.105,
+   [
+    "2023-05-04 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "ARVIND",
    "2018-11-28",
-   0.349
+   0.349,
+   [
+    "2018-11-28 DEMERGER"
+   ]
   ],
   [
    "ASTRAL",
    "2014-09-25",
-   0.476
+   0.476,
+   [
+    "2014-09-25 FV SPLT FROM RS 2 TO RE 1"
+   ]
   ],
   [
    "AURUM",
    "2020-12-23",
-   0.012
+   0.012,
+   [
+    "2020-12-23 INTERIM DIVIDEND",
+    "2020-12-23 INTDIV-RS 974 PER SH"
+   ]
   ],
   [
    "AVANTIFEED",
    "2015-11-26",
-   0.198
+   0.198,
+   [
+    "2015-11-26 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "AVANTIFEED",
    "2018-06-26",
-   0.383
+   0.383,
+   [
+    "2018-06-26 BON 1:2/SPLIT RS2 TO RE1"
+   ]
   ],
   [
    "BAJAJFINSV",
    "2022-09-13",
-   0.104
+   0.104,
+   [
+    "2022-09-13 BONUS 1:1",
+    "2022-09-13 FV SPLT FRM RS 5 TO RE 1"
+   ]
   ],
   [
    "BAJFINANCE",
    "2016-09-08",
-   0.102
+   0.102,
+   [
+    "2016-09-08 BON 1:1/SPLIT RS.10TORS.2"
+   ]
   ],
   [
    "BAJFINANCE",
    "2025-06-16",
-   0.101
+   0.101,
+   [
+    "2025-05-30 DIV - RS 44 PER SH",
+    "2025-06-16 FV SPLT FRM RS 2 TO RE 1",
+    "2025-06-16 BONUS 4:1"
+   ]
   ],
   [
    "BANKBARODA",
    "2015-01-22",
-   0.198
+   0.198,
+   [
+    "2015-01-22 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "BATAINDIA",
    "2015-10-07",
-   0.5
+   0.5,
+   [
+    "2015-10-07 FV SPLT FRM RS 10 TO RS 5"
+   ]
   ],
   [
    "BCG",
    "2025-07-14",
-   10.355
+   10.355,
+   []
   ],
   [
    "BDL",
    "2024-05-24",
-   0.542
+   0.542,
+   [
+    "2024-05-24 FVSPLT FRM RS 10 TO RS 5"
+   ]
   ],
   [
    "BEL",
    "2017-03-16",
-   0.105
+   0.105,
+   [
+    "2017-03-16 FV SPLT FRM RS 10 TO Re 1",
+    "2017-03-29 INT DIV RE 0.90 PER SHARE"
+   ]
   ],
   [
    "BEML",
    "2025-11-03",
-   0.497
+   0.497,
+   []
   ],
   [
    "BERGEPAINT",
    "2015-01-08",
-   0.551
+   0.551,
+   [
+    "2015-01-08 FV SPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "BLS",
    "2017-04-26",
-   0.102
+   0.102,
+   [
+    "2017-04-26 FV SPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "BPCL",
    "2012-07-13",
-   0.499
+   0.499,
+   [
+    "2012-07-13 AGM/DIV-RS11PR SH/BON 1:1"
+   ]
   ],
   [
    "BRITANNIA",
    "2018-11-29",
-   0.509
+   0.509,
+   [
+    "2018-11-29 FVSPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "BSOFT",
    "2019-01-24",
-   0.595
+   0.595,
+   [
+    "2019-01-24 SCHEME OF ARRANGEMENT"
+   ]
   ],
   [
    "CAMS",
    "2025-12-05",
-   0.196
+   0.196,
+   []
   ],
   [
    "CANBK",
    "2024-05-15",
-   0.21
+   0.21,
+   [
+    "2024-05-15 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "CANFINHOME",
    "2017-10-12",
-   0.206
+   0.206,
+   [
+    "2017-10-12 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "CCAVENUE",
    "2017-08-31",
-   0.102
+   0.102,
+   [
+    "2017-08-31 AGM/FV SPLT FRM 10 TO 1"
+   ]
   ],
   [
    "CCAVENUE",
    "2018-09-28",
-   0.292
+   0.292,
+   [
+    "2018-09-19 AGM/DIV-RE 0.10 PER SH"
+   ]
   ],
   [
    "CESC",
    "2021-09-17",
-   0.105
+   0.105,
+   [
+    "2021-09-17 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "CGPOWER",
    "2016-03-15",
-   0.283
+   0.283,
+   [
+    "2016-03-15 SCHEME OF ARRANGEMENT"
+   ]
   ],
   [
    "CHOLAFIN",
    "2019-06-14",
-   0.198
+   0.198,
+   [
+    "2019-06-14 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "COCHINSHIP",
    "2024-01-10",
-   0.6
+   0.6,
+   [
+    "2024-01-10 FVSPLT FRM RS 10 TO RS 5"
+   ]
   ],
   [
    "COFORGE",
    "2025-06-04",
-   0.203
+   0.203,
+   [
+    "2025-06-04 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "CONCOR",
    "2018-06-26",
-   0.501
+   0.501,
+   [
+    "2018-06-26 FV SPLT FRM RS 10/- TO RS"
+   ]
   ],
   [
    "COREEDUTEC",
    "2013-02-25",
-   0.376
+   0.376,
+   []
   ],
   [
    "COREEDUTEC",
    "2013-02-27",
-   0.542
+   0.542,
+   []
   ],
   [
    "CUPID",
    "2024-04-04",
-   0.052
+   0.052,
+   [
+    "2024-04-04 FVSPLT FRM RS 10 TO RE 1",
+    "2024-04-04 BONUS 1:1"
+   ]
   ],
   [
    "CUPID",
    "2026-03-09",
-   0.228
+   0.228,
+   []
   ],
   [
    "DEEPAKNTR",
    "2014-06-20",
-   0.106
+   0.106,
+   [
+    "2014-06-20 BONUS 1:1/SPLIT RS10 TO 2"
+   ]
   ],
   [
    "DHFL",
    "2018-09-21",
-   0.574
+   0.574,
+   [
+    "2018-09-11 INTEREST PAYMENT",
+    "2018-09-28 INTEREST PAYMENT",
+    "2018-09-18 INTEREST PAYMENT"
+   ]
   ],
   [
    "DISHTV",
    "2019-01-25",
-   0.668
+   0.668,
+   []
   ],
   [
    "DIXON",
    "2021-03-18",
-   0.211
+   0.211,
+   [
+    "2021-03-18 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "DRREDDY",
    "2024-10-28",
-   0.201
+   0.201,
+   [
+    "2024-10-28 FV SPLT FRM RS 5 TO RE 1"
+   ]
   ],
   [
    "EASEMYTRIP",
    "2022-11-21",
-   0.15
+   0.15,
+   [
+    "2022-11-21 BONUS 3:1",
+    "2022-11-21 FV SPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "EDELWEISS",
    "2023-06-02",
-   0.553
+   0.553,
+   [
+    "2023-06-02 DEMERGER"
+   ]
   ],
   [
    "EICHERMOT",
    "2020-08-24",
-   0.1
+   0.1,
+   [
+    "2020-08-24 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "FEL",
    "2016-05-11",
-   0.126
+   0.126,
+   [
+    "2016-05-11 SCHEME OF ARRANGEMENT"
+   ]
   ],
   [
    "GODFRYPHLP",
    "2014-11-28",
-   0.202
+   0.202,
+   [
+    "2014-11-28 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "GRANULES",
    "2015-03-23",
-   0.104
+   0.104,
+   [
+    "2015-03-23 FV SPLT FRM RS 10 TO RS 1"
+   ]
   ],
   [
    "GRASIM",
    "2016-10-06",
-   0.205
+   0.205,
+   [
+    "2016-10-06 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "GSFC",
    "2012-09-20",
-   0.207
+   0.207,
+   [
+    "2012-09-20 FV SPLT FRM RS 10 TO RS2"
+   ]
   ],
   [
    "GTL",
    "2011-06-20",
-   0.378
+   0.378,
+   []
   ],
   [
    "GUJENERGY",
    "2019-01-15",
-   0.214
+   0.214,
+   [
+    "2019-01-15 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "GVKPIL",
    "2022-08-12",
-   5.7
+   5.7,
+   [
+    "2022-08-18 ANNUAL GENERAL MEETING"
+   ]
   ],
   [
    "HAL",
    "2023-09-28",
-   0.492
+   0.492,
+   [
+    "2023-09-29 FV SPLT FRM RS 10 TO RS 5",
+    "2023-09-28 FV SPLT FRM RS 10 TO RS 5"
+   ]
   ],
   [
    "HATHWAY",
    "2015-01-06",
-   0.191
+   0.191,
+   [
+    "2015-01-06 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "HDFCBANK",
    "2019-09-19",
-   0.503
+   0.503,
+   [
+    "2019-09-19 FV SPLT FRM RS 2 TO RS 1"
+   ]
   ],
   [
    "HEGAM",
    "2024-10-18",
-   0.193
+   0.193,
+   [
+    "2024-10-18 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "HEGAM",
    "2026-09-07",
-   0.374
+   0.374,
+   []
   ],
   [
    "HINDPETRO",
    "2017-07-11",
-   0.665
+   0.665,
+   [
+    "2017-07-11 BON 1:2/DIV-RS 1.10 PS"
+   ]
   ],
   [
    "HINDZINC",
    "2011-03-07",
-   0.097
+   0.097,
+   [
+    "2011-03-07 BON 1:1/SPL RS10 TO RS2"
+   ]
   ],
   [
    "ICICIBANK",
    "2014-12-04",
-   0.202
+   0.202,
+   [
+    "2014-12-04 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "IDEA",
    "2019-03-29",
-   0.629
+   0.629,
+   [
+    "2019-03-29 RIGHTS 87:38@PRM RS 2.50"
+   ]
   ],
   [
    "IDEA",
    "2020-03-18",
-   0.649
+   0.649,
+   []
   ],
   [
    "IDFC",
    "2015-10-01",
-   0.428
+   0.428,
+   [
+    "2015-10-01 DEMERGER",
+    "2015-09-29 DEMERGER",
+    "2015-09-23 DEMERGER"
+   ]
   ],
   [
    "IEX",
    "2018-10-19",
-   0.099
+   0.099,
+   [
+    "2018-10-19 FV SPLT FRM RS 10 TO RE1"
+   ]
   ],
   [
    "IGL",
    "2012-04-10",
-   0.661
+   0.661,
+   []
   ],
   [
    "IGL",
    "2017-11-09",
-   0.198
+   0.198,
+   [
+    "2017-11-09 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "IIFL",
    "2019-05-30",
-   0.478
+   0.478,
+   [
+    "2019-05-30 SCHEME OF ARRANGEMENT"
+   ]
   ],
   [
    "INFY",
    "2015-06-15",
-   0.509
+   0.509,
+   [
+    "2015-06-15 AGM/DIV-RS 29.50 PER SH",
+    "2015-06-15 AGM/DIV-RS 29.50/BONUS"
+   ]
   ],
   [
    "IOLCP",
    "2025-03-11",
-   0.189
+   0.189,
+   [
+    "2025-03-11 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "IPCALAB",
    "2022-01-10",
-   0.482
+   0.482,
+   [
+    "2022-01-10 FVSPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "IRB",
    "2023-02-22",
-   0.114
+   0.114,
+   [
+    "2023-02-22 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "IRCON",
    "2020-04-03",
-   0.231
+   0.231,
+   [
+    "2020-04-03 FV SPLT FRM RS10TO RS2"
+   ]
   ],
   [
    "IRCTC",
    "2021-10-28",
-   0.221
+   0.221,
+   [
+    "2021-10-28 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "JBCHEPHARM",
    "2023-09-18",
-   0.502
+   0.502,
+   [
+    "2023-09-18 FV SPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "JETAIRWAYS",
    "2019-06-18",
-   0.592
+   0.592,
+   []
   ],
   [
    "JETAIRWAYS",
    "2019-06-20",
-   1.899
+   1.899,
+   []
   ],
   [
    "JINDALSAW",
    "2024-10-09",
-   0.494
+   0.494,
+   [
+    "2024-10-09 FV SPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "JKTYRE",
    "2014-12-18",
-   0.235
+   0.235,
+   [
+    "2014-12-18 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "JSL",
    "2015-11-19",
-   0.391
+   0.391,
+   [
+    "2015-11-19 SCHEME OF ARRANGEMENT"
+   ]
   ],
   [
    "JSWSTEEL",
    "2017-01-04",
-   0.099
+   0.099,
+   [
+    "2017-01-04 FV SPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "JUBLFOOD",
    "2022-04-19",
-   0.192
+   0.192,
+   [
+    "2022-04-19 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "KAJARIACER",
    "2016-10-04",
-   0.5
+   0.5,
+   [
+    "2016-10-04 FV SPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "KARURVYSYA",
    "2016-11-17",
-   0.2
+   0.2,
+   [
+    "2016-11-17 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "KESORAMIND",
    "2025-03-10",
-   0.047
+   0.047,
+   [
+    "2025-03-10 DEMERGER"
+   ]
   ],
   [
    "KOTAKBANK",
    "2026-01-14",
-   0.197
+   0.197,
+   [
+    "2026-01-14 FV SPLT FRM RS 5 TO RE 1"
+   ]
   ],
   [
    "KSCL",
    "2014-01-27",
-   0.21
+   0.21,
+   [
+    "2014-01-27 FV SPLIT FROM RS10 TO RS"
+   ]
   ],
   [
    "LAURUSLABS",
    "2020-09-29",
-   0.198
+   0.198,
+   [
+    "2020-09-29 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "MASTEK",
    "2015-06-12",
-   0.34
+   0.34,
+   [
+    "2015-06-12 SCHEME OF ARRANGEMENT"
+   ]
   ],
   [
    "MAZDOCK",
    "2024-12-27",
-   0.49
+   0.49,
+   [
+    "2024-12-27 FVSPLT FRM RS 10 TO RS 5"
+   ]
   ],
   [
    "MCX",
    "2026-01-02",
-   0.202
+   0.202,
+   []
   ],
   [
    "NATCOPHARM",
    "2015-11-26",
-   0.211
+   0.211,
+   [
+    "2015-11-26 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "NATIONALUM",
    "2011-03-15",
-   0.227
+   0.227,
+   [
+    "2011-03-15 BON1:1/FV SPLT RS10TO RS5"
+   ]
   ],
   [
    "NAUKRI",
    "2012-06-22",
-   0.507
+   0.507,
+   [
+    "2012-06-22 AGM/DIV-RE.1/BON 1:1"
+   ]
   ],
   [
    "NAUKRI",
    "2025-05-07",
-   0.198
+   0.198,
+   [
+    "2025-05-07 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "NAVINFLUOR",
    "2017-07-19",
-   0.204
+   0.204,
+   [
+    "2017-07-19 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "NAZARA",
    "2025-09-26",
-   0.251
+   0.251,
+   [
+    "2025-09-26 BONUS 1:1",
+    "2025-09-26 FV SPLT FRM RS 4 TO RS 2"
+   ]
   ],
   [
    "NBCC",
    "2016-06-02",
-   0.203
+   0.203,
+   [
+    "2016-06-02 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "NBCC",
    "2018-04-25",
-   0.515
+   0.515,
+   [
+    "2018-04-25 FV SPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "NCC",
    "2014-09-18",
-   0.655
+   0.655,
+   [
+    "2014-09-18 RIGHTS 7:6@PREMIUM RS 18"
+   ]
   ],
   [
    "NESCO",
    "2017-09-15",
-   0.201
+   0.201,
+   [
+    "2017-09-15 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "NESTLEIND",
    "2024-01-05",
-   0.098
+   0.098,
+   [
+    "2024-01-05 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "NIITLTD",
    "2023-06-08",
-   0.239
+   0.239,
+   [
+    "2023-06-08 DEMERGER"
+   ]
   ],
   [
    "ONGC",
    "2011-02-08",
-   0.236
+   0.236,
+   [
+    "2011-02-08 BON 1:1/SPLIT RS.10TORS.5"
+   ]
   ],
   [
    "OPTOCIRCUI",
    "2013-05-31",
-   0.623
+   0.623,
+   []
   ],
   [
    "ORISSAMINE",
    "2012-10-29",
-   0.096
+   0.096,
+   [
+    "2012-10-29 FV SPLT RS.10/- TO RE.1/-"
+   ]
   ],
   [
    "PARAS",
    "2025-07-04",
-   0.55
+   0.55,
+   [
+    "2025-07-04 FVSPLT FRM RS 10 TO RS 5"
+   ]
   ],
   [
    "PCBL",
    "2022-04-11",
-   0.541
+   0.541,
+   [
+    "2022-04-11 FV SPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "PCJEWELLER",
    "2024-12-16",
-   0.105
+   0.105,
+   [
+    "2024-12-16 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "PEL",
    "2022-08-30",
-   0.552
+   0.552,
+   [
+    "2022-08-30 DEMERGER"
+   ]
   ],
   [
    "PERSISTENT",
    "2024-03-28",
-   0.492
+   0.492,
+   [
+    "2024-03-28 FV SPLT FRM RS10 TO RS 5"
+   ]
   ],
   [
    "PGEL",
    "2024-07-10",
-   0.099
+   0.099,
+   [
+    "2024-07-10 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "PHILIPCARB",
    "2018-04-19",
-   0.21
+   0.21,
+   [
+    "2018-04-19 FV SPLT FRM RS10 TO RS2"
+   ]
   ],
   [
    "PNB",
    "2014-12-18",
-   0.208
+   0.208,
+   [
+    "2014-12-18 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "POLICYBZR",
    "2026-09-24",
-   0.64
+   0.64,
+   []
   ],
   [
    "RAYMOND",
    "2024-07-11",
-   0.634
+   0.634,
+   [
+    "2024-07-11 DEMERGER"
+   ]
   ],
   [
    "RAYMOND",
    "2025-05-14",
-   0.352
+   0.352,
+   [
+    "2025-05-14 DEMERGER"
+   ]
   ],
   [
    "RCOM",
    "2018-05-17",
-   1.562
+   1.562,
+   []
   ],
   [
    "RCOM",
    "2019-02-04",
-   0.651
+   0.651,
+   []
   ],
   [
    "RPOWER",
    "2019-02-04",
-   0.652
+   0.652,
+   []
   ],
   [
    "RSSOFTWARE",
    "2015-01-21",
-   0.485
+   0.485,
+   [
+    "2015-01-21 DIV/FV SPLT RS 10 TO RS 5",
+    "2015-01-21 DIV-RS1.5/FVSPL RS10TORS5"
+   ]
   ],
   [
    "RUSHIL",
    "2024-08-09",
-   0.113
+   0.113,
+   [
+    "2024-08-09 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "SAMMAANCAP",
    "2019-09-30",
-   0.656
+   0.656,
+   [
+    "2019-09-17 INTEREST PAYMENT",
+    "2019-10-17 INTEREST PAYMENT"
+   ]
   ],
   [
    "SAMMAANCAP",
    "2020-03-19",
-   0.663
+   0.663,
+   [
+    "2020-03-17 INTEREST PAYMENT"
+   ]
   ],
   [
    "SHANKARA",
    "2025-09-24",
-   0.245
+   0.245,
+   [
+    "2025-09-24 DEMERGER"
+   ]
   ],
   [
    "SHRIRAMFIN",
    "2025-01-10",
-   0.189
+   0.189,
+   []
   ],
   [
    "SIEMENS",
    "2025-04-07",
-   0.571
+   0.571,
+   [
+    "2025-04-07 DEMERGER"
+   ]
   ],
   [
    "SINTEX",
    "2017-05-25",
-   0.248
+   0.248,
+   [
+    "2017-05-25 SCHEME OF ARRANGEMENT"
+   ]
   ],
   [
    "SOLARINDS",
    "2016-07-13",
-   0.2
+   0.2,
+   [
+    "2016-07-13 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "STAR",
    "2013-12-19",
-   0.424
+   0.424,
+   [
+    "2013-12-19 SPL DIV RS 500 PER SHARE"
+   ]
   ],
   [
    "STAR",
    "2024-12-06",
-   0.46
+   0.46,
+   [
+    "2024-12-06 DEMERGER"
+   ]
   ],
   [
    "SUVEN",
    "2020-01-21",
-   0.053
+   0.053,
+   [
+    "2020-01-21 DEMERGER"
+   ]
   ],
   [
    "SUZLON",
    "2013-02-28",
-   0.66
+   0.66,
+   []
   ],
   [
    "SWANCORP",
    "2014-02-03",
-   0.531
+   0.531,
+   [
+    "2014-02-03 FV SPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "TARIL",
    "2017-09-28",
-   0.104
+   0.104,
+   [
+    "2017-09-28 FV SPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "TATACHEM",
    "2020-03-04",
-   0.435
+   0.435,
+   [
+    "2020-03-04 DEMERGER"
+   ]
   ],
   [
    "TATACOFFEE",
    "2015-01-23",
-   0.102
+   0.102,
+   [
+    "2015-01-23 FV SPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "TATACOMM",
    "2019-09-17",
-   0.652
+   0.652,
+   [
+    "2019-09-17 DEMERGER"
+   ]
   ],
   [
    "TATAINVEST",
    "2025-10-14",
-   0.104
+   0.104,
+   [
+    "2025-10-14 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "TATASTEEL",
    "2022-07-28",
-   0.105
+   0.105,
+   [
+    "2022-07-28 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "TDPOWERSYS",
    "2022-10-31",
-   0.203
+   0.203,
+   [
+    "2022-10-31 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "TDPOWERSYS",
    "2026-08-24",
-   0.508
+   0.508,
+   [
+    "2026-08-24 FVSPLT FRM RS 2 TO RE 1"
+   ]
   ],
   [
    "TECHM",
    "2015-03-19",
-   0.245
+   0.245,
+   [
+    "2015-03-19 BONUS1:1/FV SPL-RS10TORS5"
+   ]
   ],
   [
    "TITAGARH",
    "2015-04-23",
-   0.194
+   0.194,
+   [
+    "2015-04-23 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "TITAN",
    "2011-06-23",
-   0.053
+   0.053,
+   [
+    "2011-06-23 BON1:1/FV SPLT RS10TO RE1"
+   ]
   ],
   [
    "TMPV",
    "2025-10-14",
-   0.598
+   0.598,
+   [
+    "2025-10-14 DEMERGER"
+   ]
   ],
   [
    "TRENT",
    "2016-09-12",
-   0.103
+   0.103,
+   [
+    "2016-09-12 FV SPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "TRENT",
    "2026-06-04",
-   0.666
+   0.666,
+   []
   ],
   [
    "TTKPRESTIG",
    "2021-12-14",
-   0.098
+   0.098,
+   [
+    "2021-12-14 FVSPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "UNITDSPR",
    "2018-06-15",
-   0.196
+   0.196,
+   [
+    "2018-06-15 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "UNITECH",
    "2015-06-03",
-   0.643
+   0.643,
+   []
   ],
   [
    "VAKRANGEE",
    "2012-04-12",
-   0.057
+   0.057,
+   [
+    "2012-04-12 BON 1:1/FV SPLT RS10TORE1"
+   ]
   ],
   [
    "VBL",
    "2023-06-15",
-   0.512
+   0.512,
+   [
+    "2023-06-15 FVSPLT FRM RS 10 TO RS 5"
+   ]
   ],
   [
    "VBL",
    "2024-09-12",
-   0.411
+   0.411,
+   [
+    "2024-09-12 FV SPLT FRM RS 5 TO RS 2"
+   ]
   ],
   [
    "VEDL",
    "2026-04-30",
-   0.351
+   0.351,
+   [
+    "2026-04-30 DEMERGER"
+   ]
   ],
   [
    "VGUARD",
    "2016-08-30",
-   0.106
+   0.106,
+   [
+    "2016-08-30 FV SPLT FRM RS 10 TO RE 1"
+   ]
   ],
   [
    "WELSPUNLIV",
    "2016-03-21",
-   0.105
+   0.105,
+   [
+    "2016-03-21 DIV-RS6/SPLIT RS 10TORE 1"
+   ]
   ],
   [
    "YESBANK",
    "2017-09-21",
-   0.201
+   0.201,
+   [
+    "2017-09-21 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "YESBANK",
    "2020-03-06",
-   0.439
+   0.439,
+   []
   ],
   [
    "YESBANK",
    "2020-03-17",
-   1.581
+   1.581,
+   []
   ],
   [
    "ZENSARTECH",
    "2018-09-07",
-   0.195
+   0.195,
+   [
+    "2018-09-07 FV SPLT FRM RS 10 TO RS 2"
+   ]
   ],
   [
    "ZYDUSLIFE",
    "2015-10-06",
-   0.205
+   0.205,
+   [
+    "2015-10-06 FV SPLT FRM RS 5 TO RE 1"
+   ]
   ],
   [
    "ZYDUSWELL",
    "2025-09-18",
-   0.202
+   0.202,
+   [
+    "2025-09-18 FVSPLT FRM RS 10 TO RS 2"
+   ]
   ]
+ ],
+ "unread_split_texts": [
+  "AGM/DIV-RS 29.50/BONUS",
+  "AGM/FV SPLT FRM 10 TO 1",
+  "AGM/FV SPLT RS.10 TO RE.1",
+  "AGM/FV SPLT RS.10 TO RS.5",
+  "BON 1:1/FV SPLT RS10TORE1",
+  "BON1:1/FV SPLT RS10TO RE1",
+  "BON1:1/FV SPLT RS10TO RS5",
+  "BON1:1/FVSPLTFRMRS5TORS2",
+  "BONUS 1.5:1",
+  "CAP RED/ CONSOLIDATION",
+  "CAP REDN/CONSOLIDATION",
+  "DEMERGER/FV SPL/CAP REDTN",
+  "DIV 1.35+FV SPL RS10TORS2",
+  "DIV-RS1.5/FVSPL RS10TORS5",
+  "DIV/FV SPLT RS 10 TO RS 5",
+  "FV SPL FRM RS 10 TO RE 1",
+  "FV SPLIT FROM RS10 TO RS",
+  "FV SPLT FR RS100 TO RS10",
+  "FV SPLT FRM RS 10 TO 1",
+  "FV SPLT FRM RS 10 TO 2",
+  "FV SPLT FRM RS 10 TO RE 1",
+  "FV SPLT FRM RS 10 TO RE1",
+  "FV SPLT FRM RS 10 TO RS 1",
+  "FV SPLT FRM RS 10 TO RS 2",
+  "FV SPLT FRM RS 10 TO RS 5",
+  "FV SPLT FRM RS 10 TO RS1",
+  "FV SPLT FRM RS 10 TO RS2",
+  "FV SPLT FRM RS 10 TO Re 1",
+  "FV SPLT FRM RS 10 TO Rs 2",
+  "FV SPLT FRM RS 10/- TO RS",
+  "FV SPLT FRM RS 10TO RS 2",
+  "FV SPLT FRM RS 115.95 TO",
+  "FV SPLT FRM RS 126.18 TO",
+  "FV SPLT FRM RS 177.27 TO",
+  "FV SPLT FRM RS 190.61 TO",
+  "FV SPLT FRM RS 2 TO RE 1",
+  "FV SPLT FRM RS 2 TO RS 1",
+  "FV SPLT FRM RS 216.75 TO",
+  "FV SPLT FRM RS 299.92 TO",
+  "FV SPLT FRM RS 4 TO RE 1",
+  "FV SPLT FRM RS 4 TO RS 2",
+  "FV SPLT FRM RS 418.18 TO",
+  "FV SPLT FRM RS 5 TO RE 1",
+  "FV SPLT FRM RS 5 TO RE1",
+  "FV SPLT FRM RS 5 TO RS 2",
+  "FV SPLT FRM RS 6 TO RE 1",
+  "FV SPLT FRM RS10 TO RE 1",
+  "FV SPLT FRM RS10 TO RS 2",
+  "FV SPLT FRM RS10 TO RS 5",
+  "FV SPLT FRM RS10 TO RS2",
+  "FV SPLT FRM RS10 TO RS5",
+  "FV SPLT FRM RS100 TO RS1",
+  "FV SPLT FRM RS100 TO RS10",
+  "FV SPLT FRM RS10TO RS2",
+  "FV SPLT FRM761.25TO76.125",
+  "FV SPLT FROM RS 2 TO RE 1",
+  "FV SPLT RS.10/- TO RE.1/-",
+  "FV SPLT-FRM-RS 10 TO RS 5",
+  "FV SPLT2503.61TO250.361",
+  "FVSPLT FRM RS 10 TO RE 1",
+  "FVSPLT FRM RS 10 TO RE1",
+  "FVSPLT FRM RS 10 TO RS 1",
+  "FVSPLT FRM RS 10 TO RS 2",
+  "FVSPLT FRM RS 10 TO RS 5",
+  "FVSPLT FRM RS 10 TO Re 1",
+  "FVSPLT FRM RS 10TO RS 2",
+  "FVSPLT FRM RS 10TO RS 5",
+  "FVSPLT FRM RS 2 TO RE  1",
+  "FVSPLT FRM RS 2 TO RE 1",
+  "FVSPLT FRM RS 3 TO RE 1",
+  "FVSPLT FRM RS 5 TO RE 1",
+  "FVSPLT FRM RS 5 TO RE 2",
+  "FVSPLT FRM RS 5 TO RS 2",
+  "FVSPLT FRM RS 5TO RE 1",
+  "FVSPLT FRM RS.10 TO RE.1",
+  "FVSPLT FRM RS10 TO RE 1",
+  "FVSPLT FRM RS10 TO RE1",
+  "FVSPLT FRM RS10 TO RS 5",
+  "FVSPLT FRM RS10 TO RS2",
+  "FVSPLT FRM RS100 TO RS 1",
+  "FVSPLT FRMRS 100 TO RE 1",
+  "FVSPLT RS100 TO RS2PERSH",
+  "FVSPLTFRM 761.25TO76.125",
+  "FVSPLTFRM RS 100 TO RE 1",
+  "FVSPLTFRM RS 100 TO RS 10",
+  "FVSPLTFRM RS10 TO RE0.10",
+  "FVSPLTFRM100TO1",
+  "FVSPLTFRM10TO1",
+  "FVSPLTFRM2503.61TO250.361",
+  "INT/ PT RED FV 600 TO 200",
+  "INT/PT RED FV 600 TO 200",
+  "PART REDM 40% FV RS 1000",
+  "PART REDM 40% FV RS.1000",
+  "PART REDM FV 600 TO 200",
+  "SCH OF AGMT- BONUS DEBT1:",
+  "SUB DIV FRM RS 10 TO RS 2"
  ],
  "gap_days": [],
  "symbol_change_rows_moved": 522944,
