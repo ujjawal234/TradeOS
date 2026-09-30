@@ -94,14 +94,14 @@
     if (!S.man.pit) return Promise.reject(new Error("The point-in-time (survivorship-free) data hasn't been built yet."));
     if (!pitReady) pitReady = (async () => {
       const [mem, pack] = await Promise.all([fetch("data/pit/membership.json").then((r) => r.json()), fetch("data/pit/closes.json").then((r) => r.json())]);
-      E.setPit(mem); S.pitLight = E.framesFromPack(pack);
+      E.setPit(mem); S.pitLight = E.framesFromPack(pack); S.pitBundles = mem.bundles || {};
     })().catch((e) => { pitReady = null; throw e; });
     return pitReady;
   }
   async function ensurePitFull(symbols, onProgress) {
-    const need = symbols.filter((s) => !S.pitFull[s]); let done = 0;
-    const one = async (s) => { const r = await fetch(`data/pit/p/${encodeURIComponent(s)}.json`); if (!r.ok) throw new Error(`No point-in-time price file for ${s}`); S.pitFull[s] = E.frame(await r.json()); done++; if (onProgress && need.length > 4) onProgress(done, need.length); };
-    for (let i = 0; i < need.length; i += 10) await Promise.all(need.slice(i, i + 10).map(one));
+    const keys = [...new Set(symbols.filter((s) => !S.pitFull[s] && S.pitBundles[s]).map((s) => S.pitBundles[s]))]; let done = 0;
+    const one = async (k) => { const r = await fetch(`data/pit/full/${k}.json`); if (!r.ok) throw new Error(`Point-in-time price file ${k} is missing`); for (const [s, raw] of Object.entries(await r.json())) S.pitFull[s] = E.frame(raw); done++; if (onProgress && keys.length > 2) onProgress(done, keys.length); };
+    for (let i = 0; i < keys.length; i += 6) await Promise.all(keys.slice(i, i + 6).map(one));
   }
   async function framesFor(spec, onProgress) {
     const pk = E.usesPit(spec), inPit = (s) => !!pk && S.pitSyms.has(s);

@@ -22,13 +22,17 @@ const full = {};
 const fullFrame = (s) => (full[s] ||= E.frame(JSON.parse(fs.readFileSync(path.join(data, "p", `${s}.json`), "utf8"))));
 // survivorship-free universes (data/pit): separate NSE-bhavcopy price series for every stock ever in them
 const pitDir = path.join(data, "pit");
-let pitLight = null; const pitFull = {};
+let pitLight = null, pitBundles = {}; const pitFull = {};
 if (man.pit && fs.existsSync(path.join(pitDir, "membership.json"))) {
-  E.setPit(JSON.parse(fs.readFileSync(path.join(pitDir, "membership.json"), "utf8")));
+  const mem = JSON.parse(fs.readFileSync(path.join(pitDir, "membership.json"), "utf8"));
+  E.setPit(mem); pitBundles = mem.bundles || {};
   pitLight = E.framesFromPack(JSON.parse(fs.readFileSync(path.join(pitDir, "closes.json"), "utf8")));
 }
 const pitSyms = new Set(Object.entries(man.universes).filter(([k]) => /pit$/.test(k)).flatMap(([, v]) => v));
-const pitFrame = (s) => (pitFull[s] ||= E.frame(JSON.parse(fs.readFileSync(path.join(pitDir, "p", `${s}.json`), "utf8"))));
+function pitFrame(s) {
+  if (!pitFull[s]) for (const [k, raw] of Object.entries(JSON.parse(fs.readFileSync(path.join(pitDir, "full", `${pitBundles[s]}.json`), "utf8")))) pitFull[k] = E.frame(raw);
+  return pitFull[s];
+}
 function framesFor(spec) {
   const pk = E.usesPit(spec);
   const need = [...new Set(E.symbolsNeeded(spec, man.universes).concat(["NIFTY"]))];

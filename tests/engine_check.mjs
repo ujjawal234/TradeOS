@@ -15,12 +15,13 @@ let shares = null; try { shares = JSON.parse(fs.readFileSync(path.join(dir, "dat
 E.setData({ meta: man.symbols, shares });
 const pitDir = path.join(dir, "data", "pit"), hasPit = fs.existsSync(path.join(pitDir, "membership.json"));
 const pitLight = hasPit ? E.framesFromPack(JSON.parse(fs.readFileSync(path.join(pitDir, "closes.json")))) : {};
-if (hasPit) E.setPit(JSON.parse(fs.readFileSync(path.join(pitDir, "membership.json"))));
+const pitMem = hasPit ? JSON.parse(fs.readFileSync(path.join(pitDir, "membership.json"))) : {}; if (hasPit) E.setPit(pitMem);
+const pitFull = {}; const pitFrame = (s) => { if (!pitFull[s]) for (const [k, raw] of Object.entries(JSON.parse(fs.readFileSync(path.join(pitDir, "full", `${pitMem.bundles[s]}.json`))))) pitFull[k] = E.frame(raw); return pitFull[s]; };
 function framesFor(Eng, spec) {
   const need = [...new Set(Eng.symbolsNeeded(spec, man.universes).concat(["NIFTY"]))], useFull = Eng.needsFull ? Eng.needsFull(spec) : spec.type === "rule", out = {};
   const pk = Eng.usesPit ? Eng.usesPit(spec) : null;
   for (const s of need) {
-    if (pk && pitLight[s]) { out[s] = useFull ? E.frame(JSON.parse(fs.readFileSync(path.join(pitDir, "p", `${s}.json`)))) : pitLight[s]; continue; }
+    if (pk && pitLight[s]) { out[s] = useFull ? pitFrame(s) : pitLight[s]; continue; }
     if (!man.symbols[s]) throw new Error("no data for " + s); out[s] = useFull && man.symbols[s].kind !== "basket" ? ff(s) : light[s]; }
   return out;
 }

@@ -138,7 +138,7 @@ def build_pit(dst: Path, universes: dict) -> dict | None:
         return None
     mem = json.loads(mem_file.read_text())
     out = dst / "pit"
-    (out / "p").mkdir(parents=True, exist_ok=True)
+    (out / "full").mkdir(parents=True, exist_ok=True)
     frames = {}
     for f in sorted(pdir.glob("*.csv")):
         df = pd.read_csv(f, index_col=0, parse_dates=True).dropna(subset=["close"])
@@ -149,7 +149,6 @@ def build_pit(dst: Path, universes: dict) -> dict | None:
             df[col] = df[col].fillna(df["close"])
         df["volume"] = df["volume"].fillna(0)
         frames[f.stem] = df
-        (out / "p" / f"{f.stem}.json").write_text(json.dumps(enc_full(df), separators=(",", ":")))
     cal = pd.DatetimeIndex(sorted(set().union(*[set(df.index) for df in frames.values()])))
     days = cal.values.astype("datetime64[D]").astype("int64")
     pack = {"f": 2, "d0": int(days[0]), "dd": np.diff(days, prepend=days[0]).tolist(), "s": {}}
@@ -159,8 +158,14 @@ def build_pit(dst: Path, universes: dict) -> dict | None:
         v = np.round(col.iloc[i0:i1 + 1].ffill().values * 100).astype("int64")
         pack["s"][sym] = {"i0": i0, "c0": int(v[0]), "c": np.diff(v, prepend=v[0]).tolist()}
     (out / "closes.json").write_text(json.dumps(pack, separators=(",", ":")))
+    # full OHLCV in bundles of 25 stocks (an artifact version holds at most ~500 files)
+    bundles, names = {}, sorted(frames)
+    for i in range(0, len(names), 25):
+        key = f"b{i // 25:02d}"
+        (out / "full" / f"{key}.json").write_text(json.dumps({s: enc_full(frames[s]) for s in names[i:i + 25]}, separators=(",", ":")))
+        bundles.update({s: key for s in names[i:i + 25]})
     unis = {k: [[d, [s for s in syms if s in frames]] for d, syms in v] for k, v in mem["universes"].items()}
-    (out / "membership.json").write_text(json.dumps({"asof": mem.get("asof"), "universes": unis}, separators=(",", ":")))
+    (out / "membership.json").write_text(json.dumps({"asof": mem.get("asof"), "universes": unis, "bundles": bundles}, separators=(",", ":")))
     info = {"asof": mem.get("asof"), "method": mem.get("method", ""), "symbols": len(frames), "universes": {}}
     for k, v in unis.items():
         universes[k] = sorted({s for _, syms in v for s in syms})
