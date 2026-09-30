@@ -1,23 +1,14 @@
-Bhavcopy: 4108 weekdays to fetch (5752 calendar days since 2011-01-01)
-  0/4108 scanned, 1 files
-  250/4108 scanned, 238 files
-  500/4108 scanned, 475 files
-  750/4108 scanned, 712 files
-  1000/4108 scanned, 946 files
-  1250/4108 scanned, 1183 files
-  1500/4108 scanned, 1418 files
-  1750/4108 scanned, 1655 files
-  2000/4108 scanned, 1894 files
-  2250/4108 scanned, 2128 files
-  2500/4108 scanned, 2362 files
-  2750/4108 scanned, 2601 files
-  3000/4108 scanned, 2839 files
-  3250/4108 scanned, 3076 files
-  3500/4108 scanned, 3309 files
-  3750/4108 scanned, 3545 files
-  4000/4108 scanned, 3781 files
-Downloaded 3884 new files; not available: {'http 404': 224}
-Loaded 3884 trading days, 6,504,398 rows, 3,822 tickers
+Bhavcopy: 1645 weekdays to fetch (5752 calendar days since 2011-01-01)
+  0/1645 scanned, 0 files
+  250/1645 scanned, 5 files
+  500/1645 scanned, 8 files
+  750/1645 scanned, 9 files
+  1000/1645 scanned, 11 files
+  1250/1645 scanned, 12 files
+  1500/1645 scanned, 17 files
+Downloaded 18 new files; not available: {'http 404': 739, 'ok': 1, 'http 403': 887}
+Loaded 3902 trading days, 6,533,245 rows, 3,822 tickers
 Symbol changes: 1056
+Gap days ignored for adjustments: 0 []
 Reviews: 31 (2011-09-30 … 2026-09-29); stocks ever in the top 200: 590
-Wrote 590 price files; 87 of them stopped trading (delisted, merged or suspended). Adjustments: {'tickers_adjusted': 590, 'events': 7956, 'small_events': 7563}
+Wrote 590 price files; 88 of them stopped trading (delisted, merged or suspended). Adjustments: {'tickers_adjusted': 6, 'events': 6, 'small_events': 3}
