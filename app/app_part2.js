@@ -3,43 +3,57 @@
   async function renderFleet() {
     const all = [...S.agents.values()];
     const paper = all.filter((a) => a.status === "paper"), testing = all.filter((a) => a.status === "testing");
-    $("agentCount").textContent = all.filter((a) => a.status !== "retired").length;
+    setCount("agents", all.filter((a) => a.status !== "retired").length);
     const papers = await Promise.all(paper.map(async (a) => { try { return [a.id, await paperResult(a)]; } catch (e) { return [a.id, null]; } }));
     const P = Object.fromEntries(papers);
     const live = papers.map(([, p]) => p).filter((p) => p && !p.pending);
     const avg = live.length ? live.reduce((s, p) => s + p.ret, 0) / live.length : null, avgN = live.length ? live.reduce((s, p) => s + (p.nifty ?? 0), 0) / live.length : null;
     const actions = paper.reduce((n, a) => n + ((P[a.id]?.signals || []).filter((s) => isAction(s)).length), 0);
-    $("fleetStats").innerHTML = [["Agents", String(all.length), `${paper.length} paper · ${testing.length} testing`], ["Paper return (avg)", pct(avg), avg == null ? "starts after the next daily update" : `Nifty ${pct(avgN)} over the same days`],
-      ["Signals today", String(actions), "buy / sell actions for next session"], ["Data", fmtDate(S.lastDay), "latest daily close"]]
+    $("fleetStats").innerHTML = [["Paper trading", String(paper.length), `${testing.length} in testing`], ["Paper return (avg)", `<span class="${cls(avg)}">${pct(avg)}</span>`, avg == null ? "after the next daily update" : `Nifty ${pct(avgN)} same days`],
+      ["Signals for next open", String(actions), "buy / sell"], ["Data", fmtDate(S.lastDay), "latest close"]]
       .map(([k, v, b]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${esc(b)}</span></div>`).join("");
     const show = all.filter((a) => fleetFilter === "all" ? true : fleetFilter === "active" ? a.status !== "retired" : a.status === fleetFilter)
       .sort((a, b) => ({ paper: 0, testing: 1, paused: 2, retired: 3 }[a.status] - { paper: 0, testing: 1, paused: 2, retired: 3 }[b.status]) || (b.updated_at || "").localeCompare(a.updated_at || ""));
     await names(show.map((a) => a.updated_by || a.created_by));
-    if (!show.length) { $("fleetTable").innerHTML = `<div class="empty"><h2>No agents here yet</h2><p class="muted">Ask the Main Agent for an idea. Proposals you accept become agents.</p><button class="btn" type="button" data-go="main">Talk to the Main Agent</button></div>`; wireGo($("fleetTable")); return; }
-    $("fleetTable").innerHTML = `<table><thead><tr><th>Agent</th><th>Status</th><th>Trades in</th><th class="r">Backtest CAGR</th><th class="r">vs benchmark</th><th class="r">Worst fall</th><th class="r">Out-of-sample</th><th class="r">Paper return</th><th>Today</th><th>Version</th><th>Updated</th></tr></thead><tbody>${show.map((a) => {
+    if (!show.length) { $("fleetTable").innerHTML = `<div class="empty card" style="grid-column:1/-1"><h2>No agents here yet</h2><p class="muted">Ask the Main Agent for an idea. Proposals you accept become agents.</p><button class="btn" type="button" data-go="main">Talk to the Main Agent</button></div>`; wireGo($("fleetTable")); return; }
+    $("fleetTable").innerHTML = show.map((a) => {
       const h = a.headline || {}, p = P[a.id], sig = (p?.signals || []).filter((s) => isAction(s, true));
-      const today = a.status !== "paper" ? '<span class="muted">—</span>' : sig.length ? sig.slice(0, 3).map((s) => `<span class="act ${s.action.replace(/ /g, "-")}">${esc(s.action)} ${esc(s.symbol)}</span>`).join(" ") + (sig.length > 3 ? ` +${sig.length - 3}` : "") : '<span class="muted">No action</span>';
-      return `<tr class="link" data-open="${esc(a.id)}" tabindex="0"><td><b>${esc(a.name)}</b><div class="small muted">${esc(TYPE_LABEL[a.type] || a.type)}</div></td><td><span class="pill ${esc(a.status)}">${esc(a.status)}</span></td><td>${esc(a.universe || "")}</td>
-        <td class="r ${cls(h.cagr)}">${pct(h.cagr)}</td><td class="r ${cls((h.cagr ?? 0) - (h.nifty_cagr ?? 0))}">${h.cagr == null ? "–" : pct(h.cagr - (h.nifty_cagr ?? 0)) + " pts"}</td><td class="r">${pct(h.mdd)}</td>
-        <td class="r">${h.verdict ? `<span class="pill ${h.verdict === "consistent" ? "paper" : "paused"}">${h.verdict === "consistent" ? "holds up" : "caution"}</span>` : '<span class="muted">no split</span>'}</td>
-        <td class="r">${a.status === "paper" && p ? (p.pending ? '<span class="muted">starts next session</span>' : `<span class="${cls(p.ret)}">${pct(p.ret)}</span> <span class="small muted">/ Nifty ${pct(p.nifty)}</span>`) : '<span class="muted">—</span>'}</td>
-        <td>${today}</td><td>v${a.version}</td><td class="small muted">${esc(fmtWhen(a.updated_at))} by ${esc(nameOf(a.updated_by || a.created_by))}</td></tr>`; }).join("")}</tbody></table>`;
+      const paperCell = a.status === "paper" && p ? (p.pending ? `<b class="muted" style="font-size:var(--step-0)">Starts</b><span class="s">next session</span>` : `<b class="${cls(p.ret)}">${pct(p.ret)}</b><span class="s">Nifty ${pct(p.nifty)}</span>`) : `<b class="muted">—</b><span class="s">${a.status === "paper" ? "" : "not on paper"}</span>`;
+      const today = a.status !== "paper" ? "" : sig.length ? sig.slice(0, 4).map((s) => `<span class="act ${s.action.replace(/ /g, "-")}">${esc(s.action)} ${esc(s.symbol)}</span>`).join("") + (sig.length > 4 ? `<span class="muted">+${sig.length - 4}</span>` : "") : '<span class="muted">No trades for next open</span>';
+      return `<article class="agent-card" data-open="${esc(a.id)}" tabindex="0" role="link" aria-label="Open ${esc(a.name)}">
+        <div class="top"><h3>${esc(a.name)}</h3><span class="pill ${esc(a.status)}">${esc(a.status)}</span></div>
+        <p class="small muted" style="margin-top:-6px">${esc(TYPE_LABEL[a.type] || a.type)} · ${esc(a.universe || "")} · v${a.version}</p>
+        <div class="nums"><div><span class="k">Backtest CAGR</span><b class="${cls(h.cagr)}">${pct(h.cagr)}</b><span class="s">${esc(benchLabel(h.bench))} ${pct(h.nifty_cagr)}</span></div><div><span class="k">Worst fall</span><b>${pct(h.mdd)}</b><span class="s">${esc(benchLabel(h.bench))} ${pct(h.nifty_mdd)}</span></div><div><span class="k">Paper</span>${paperCell}</div></div>
+        ${today ? `<div class="today-acts">${today}</div>` : ""}
+        <p class="note">Updated ${esc(fmtWhen(a.updated_at))} by ${esc(nameOf(a.updated_by || a.created_by))}</p></article>`; }).join("");
     $("fleetTable").querySelectorAll("[data-open]").forEach((r) => { const f = () => go("agent-" + r.dataset.open); r.addEventListener("click", f); r.addEventListener("keydown", (e) => { if (e.key === "Enter") f(); }); });
+  }
+  // one signal as a list row (Signals page and agent overview)
+  function sigRow(s, agent) {
+    const lv = [s.entry != null ? `entry ${px(s.entry)}` : "", s.stop != null ? `stop ${px(s.stop)}` : "", s.target != null ? `target ${px(s.target)}` : "", s.weight_pct != null ? `${pct(s.weight_pct, 0, false)} of book` : ""].filter(Boolean).join(" · ");
+    return `<li class="sig"${agent ? ` data-open="${esc(agent.id)}"` : ""}><span class="act ${s.action.replace(/ /g, "-")}">${esc(s.action)}</span>
+      <div style="min-width:0"><b>${esc(s.symbol)}</b>${s.due === false ? ' <span class="note" title="Takes effect on the next rebalance day">· preview</span>' : ""}${agent ? `<span class="by">${esc(agent.name)}</span>` : ""}</div>
+      <div class="px"><b>${px(s.price)}</b>${s.pnl_pct != null ? `<span class="${cls(s.pnl_pct)}">${pct(s.pnl_pct)}</span>` : ""}</div>
+      ${lv || s.note ? `<div class="why">${lv ? esc(lv) + (s.note ? " — " : "") : ""}${esc(s.note || "")}</div>` : ""}</li>`;
+  }
+  function sigGroups(rows, withAgent) { // rows: [{s, a}] -> actions first, holdings, then waiting (collapsed)
+    const act = rows.filter((r) => isAction(r.s, true)), hold = rows.filter((r) => /HOLD/.test(r.s.action)), rest = rows.filter((r) => !isAction(r.s, true) && !/HOLD/.test(r.s.action));
+    const ord = { BUY: 0, SHORT: 0, "SELL NEW": 0, SELL: 1, COVER: 1, EXITED: 2 };
+    act.sort((x, y) => (ord[x.s.action] ?? 5) - (ord[y.s.action] ?? 5));
+    const list = (rs) => `<ul class="sig-list">${rs.map((r) => sigRow(r.s, withAgent ? r.a : null)).join("")}</ul>`;
+    return `${act.length ? `<div class="card"><div class="row" style="margin-bottom:4px"><h2>Act at next open</h2><span class="count hot">${act.length}</span></div>${list(act)}</div>` : `<div class="card"><h2>Act at next open</h2><p class="muted" style="margin-top:4px">No buys or sells for the next session.</p></div>`}
+      ${hold.length ? `<div class="card"><div class="row" style="margin-bottom:4px"><h2>Holding</h2><span class="count">${hold.length}</span></div>${list(hold)}</div>` : ""}
+      ${rest.length ? `<details class="card fold"><summary>Waiting or in cash (${rest.length})</summary>${list(rest.slice(0, 200))}</details>` : ""}`;
   }
   async function renderSignals() {
     const paper = [...S.agents.values()].filter((a) => a.status === "paper");
-    $("sigAsOf").textContent = `Latest close ${fmtDate(S.lastDay)}`;
-    if (!paper.length) { $("sigTable").innerHTML = `<div class="empty"><h2>No agents are paper trading</h2><p class="muted">Open an agent and press “Start paper trading”. Its daily buy, sell and hold signals appear here.</p><button class="btn" type="button" data-go="agents">Open agents</button></div>`; wireGo($("sigTable")); $("sigCount").textContent = "0"; return; }
+    $("sigAsOf").textContent = `From the close of ${fmtDate(S.lastDay)} · act at the next session's open`;
+    if (!paper.length) { $("sigTable").innerHTML = `<div class="empty card"><h2>No agents are paper trading</h2><p class="muted">Open an agent and press “Start paper trading”. Its daily buy, sell and hold signals appear here.</p><button class="btn" type="button" data-go="agents">Open agents</button></div>`; wireGo($("sigTable")); setCount("signals", 0); return; }
     $("sigTable").innerHTML = '<p class="small muted">Working out today’s signals…</p>';
     const rows = [];
-    for (const a of paper) { try { const p = await paperResult(a); for (const s of p?.signals || []) rows.push({ a, s, pending: p.pending }); } catch (e) { rows.push({ a, s: { action: "WAIT", symbol: "-", note: e.message } }); } }
-    const act = rows.filter((r) => isAction(r.s, true));
-    $("sigCount").textContent = String(act.length); $("sigCount").classList.toggle("hot", act.length > 0);
-    const ord = { BUY: 0, SHORT: 0, "SELL NEW": 0, SELL: 1, COVER: 1, EXITED: 2 };
-    const sorted = [...act.sort((x, y) => (ord[x.s.action] ?? 5) - (ord[y.s.action] ?? 5)), ...rows.filter((r) => /HOLD/.test(r.s.action))];
-    $("sigTable").innerHTML = sorted.length ? `<table><thead><tr><th>Action</th><th>Symbol</th><th>Agent</th><th class="r">Price</th><th class="r">Entry</th><th class="r">Stop</th><th class="r">Target</th><th class="r">P&amp;L</th><th>Note</th></tr></thead><tbody>${sorted.map(({ a, s }) =>
-      `<tr class="link" data-open="${esc(a.id)}"><td><span class="act ${s.action.replace(/ /g, "-")}">${esc(s.action)}</span></td><td><b>${esc(s.symbol)}</b></td><td>${esc(a.name)}</td><td class="r">${px(s.price)}</td><td class="r">${px(s.entry)}</td><td class="r">${px(s.stop)}</td><td class="r">${px(s.target)}</td><td class="r ${cls(s.pnl_pct)}">${pct(s.pnl_pct)}</td><td class="wrap small muted">${esc(s.note || "")}</td></tr>`).join("")}</tbody></table>`
-      : `<p class="muted">No buy or sell actions today. Every paper agent is holding or waiting.</p>`;
+    for (const a of paper) { try { const p = await paperResult(a); for (const s of p?.signals || []) rows.push({ a, s }); } catch (e) { rows.push({ a, s: { action: "WAIT", symbol: "-", note: e.message } }); } }
+    const n = rows.filter((r) => isAction(r.s)).length; S.sigN = n; setCount("signals", n, true);
+    $("sigTable").innerHTML = sigGroups(rows, true);
     $("sigTable").querySelectorAll("[data-open]").forEach((r) => r.addEventListener("click", () => go("agent-" + r.dataset.open)));
   }
 
@@ -58,10 +72,11 @@
   const curVersion = () => S.room.versions.find((v) => v.n === S.room.ver);
   function renderRoomHead() {
     const a = curAgent(); if (!a) { $("roomName").textContent = "Agent not found"; return; }
-    $("roomName").textContent = a.name; $("roomStatus").textContent = a.status; $("roomStatus").className = "pill " + a.status; $("roomType").textContent = TYPE_LABEL[a.type] || a.type;
+    $("roomName").textContent = a.name; $("roomStatus").textContent = a.status; $("roomStatus").className = "pill " + a.status; $("roomType").textContent = `${TYPE_LABEL[a.type] || a.type} · ${a.universe || ""}`;
+    renderOrdersAll();
     $("roomSummary").textContent = a.summary || "";
     $("roomVersion").innerHTML = S.room.versions.slice().reverse().map((v) => `<option value="${v.n}" ${v.n === S.room.ver ? "selected" : ""}>v${v.n}${v.n === a.version ? " (current)" : ""}${a.paper && a.paper.version === v.n ? " · paper" : ""}</option>`).join("");
-    const btn = (label, st, cls = "ghost") => `<button class="btn ${cls} small" type="button" data-status="${st}" ${S.readOnly ? "disabled" : ""}>${label}</button>`;
+    const btn = (label, st, cls = "ghost") => `<button class="btn ${cls}${cls ? " small" : ""}" type="button" data-status="${st}" ${S.readOnly ? "disabled" : ""}>${label}</button>`;
     let acts = "";
     if (a.status === "testing") acts = btn("Start paper trading", "paper", "") + btn("Retire", "retired", "danger");
     else if (a.status === "paper") acts = (a.paper && a.paper.version !== a.version ? btn(`Restart paper on v${a.version}`, "paper", "") : "") + btn("Pause", "paused") + btn("Retire", "retired", "danger");
@@ -99,8 +114,8 @@
       : m.rebalances != null ? ["Orders", String(m.orders ?? m.executions), `${m.rebalances} rebalances · ${m.round_trips ?? "–"} round trips (${pct(m.win_rate_pct, 0, false)} won) · turnover ${m.turnover_pct_yr ?? "–"}%/yr · fees ${inrShort(m.total_fees)}`]
       : ["Trades", String(m.trades ?? 0), `${pct(m.win_rate_pct, 1, false)} winners · PF ${n2(m.profit_factor)}`];
     const bl = benchLabel(res);
-    return `${m.notes?.length ? `<p class="flag">${esc(m.notes.join(" "))}</p>` : ""}<div class="stats">${[["CAGR", pct(m.cagr_pct), `${bl} ${pct(b.cagr_pct)}`], ["Total return", pct(m.total_return_pct, 0), `${bl} ${pct(b.total_return_pct, 0)}`], ["Worst fall", pct(m.max_drawdown_pct), `${bl} ${pct(b.max_drawdown_pct)}`],
-      ["Sharpe", n2(m.sharpe), `${bl} ${n2(b.sharpe)} · rf 6.5%`], count, ["Final value", inrShort(m.end_equity), `from ${inrShort(m.start_equity)}`]].map(([k, v, s]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${esc(s)}</span></div>`).join("")}</div>`;
+    return `${m.notes?.length ? `<p class="note">${esc(m.notes.join(" "))}</p>` : ""}<div class="stats">${[["CAGR", `<span class="${cls(m.cagr_pct)}">${pct(m.cagr_pct)}</span>`, `${bl} ${pct(b.cagr_pct)}`], ["Total return", pct(m.total_return_pct, 0), `${bl} ${pct(b.total_return_pct, 0)}`], ["Worst fall", pct(m.max_drawdown_pct), `${bl} ${pct(b.max_drawdown_pct)}`],
+      ["Final value", inrShort(m.end_equity), `from ${inrShort(m.start_equity)}`], ["Sharpe", n2(m.sharpe), `${bl} ${n2(b.sharpe)} · rf 6.5%`], count].map(([k, v, s]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${esc(s)}</span></div>`).join("")}</div>`;
   }
   function verdictLine(res) { const m = res.metrics, b = res.benchMetrics || {}, d = (m.cagr_pct ?? 0) - (b.cagr_pct ?? 0);
     return `<p class="verdict">${pct(m.cagr_pct)} a year vs ${esc(benchLabel(res))}'s ${pct(b.cagr_pct)} — <span class="${d >= 0 ? "up" : "down"}">${d >= 0 ? "ahead" : "behind"} by ${Math.abs(d).toFixed(1)} points</span>, worst fall ${pct(m.max_drawdown_pct)} vs ${pct(b.max_drawdown_pct)}.</p>`; }
@@ -121,12 +136,12 @@
     const signals = a.status === "paper" ? ((await paperResult(a).catch(() => null))?.signals || res.signals) : res.signals;
     if (seq !== roomRenderSeq) return;
     const survivor = v.spec.type !== "option_selling" && E.symbolsNeeded(v.spec, S.man.universes).some((x) => S.man.symbols[x]?.kind === "stock")
-      ? `<p class="flag">Survivorship bias: this tests today's index members over the whole period, so stocks that fell out of the index are missing and returns look better than they would have been. Treat the paper-trading record as the real test.</p>` : "";
+      ? `<p class="note">Backtest uses today's index members for the whole period; the paper record is the live test.</p>` : "";
     body.innerHTML = `${paperHtml}
-      <div class="card stack"><div class="row"><h2>${a.status === "paper" ? "Today's signals (paper account)" : "Signals if this ran today"}</h2><span class="grow"></span><span class="small muted">close of ${fmtDate(S.lastDay)} · act at next open</span></div>${signalTable(signals, 40)}</div>
+      <div class="stack"><div class="row"><h2>${a.status === "paper" ? "Today's signals" : "Signals if this ran today"}</h2><span class="grow"></span><span class="note">close of ${fmtDate(S.lastDay)} · act at next open</span></div>${sigGroups(signals.map((s) => ({ s, a })), false)}</div>
       <div class="card stack"><div class="row"><h2>Backtest v${v.n}</h2><span class="small muted">${fmtDate(h.start)} – ${fmtDate(h.end)}</span></div>${verdictLine(res)}${survivor}${kpiTiles(res)}
         ${split ? `<div class="grid2">${["train", "test"].map((k) => { const s = split[k].strategy, n = split[k].nifty || {}; return `<div class="mini" style="padding:12px"><span class="k">${k === "train" ? "Training" : "Test (unseen)"} · ${fmtDate(s.start)} – ${fmtDate(s.end)}</span><span class="v">${pct(s.cagr_pct)} <span class="small muted" style="font-family:var(--font-body);font-weight:400">vs ${esc(benchLabel(res))} ${pct(n.cagr_pct)}</span></span><span class="b">worst fall ${pct(s.max_drawdown_pct)} · Sharpe ${n2(s.sharpe)}${s.trades != null && v.spec.type !== "rotation" ? ` · ${s.trades} ${v.spec.type === "option_selling" ? "cycles" : "trades"}` : ""}</span></div>`; }).join("")}</div>
-          ${split.flags.length ? `<p class="flag">${esc(split.flags.join(". "))}.</p>` : `<p class="flag ok">Results hold up on the unseen test period.</p>`}` : `<p class="small muted">No train/test split set for this version. Set one under Rules & versions to check for overfitting.</p>`}</div>
+          ${split.flags.length ? `<p class="note">Train vs test: ${esc(split.flags.join("; ").toLowerCase())}.</p>` : `<p class="note">Test period results are in line with training.</p>`}` : ""}</div>
       ${runs.length ? `<div class="card"><h2>Earlier paper runs</h2><div class="tablewrap"><table><thead><tr><th>Version</th><th>From</th><th>Until</th></tr></thead><tbody>${runs.map((r) => `<tr><td>v${r.version}</td><td>${fmtDate(r.since)}</td><td>${fmtDate(r.until)}</td></tr>`).join("")}</tbody></table></div></div>` : ""}`;
     const pc = document.getElementById("paperChart");
     if (pc) { const p = await paperResult(a); if (p && !p.pending) chart(pc, p.res.days, [{ short: benchLabel(p.res), color: "var(--series-b)", values: p.res.bench || [], width: 1.6 }, { short: "Paper", color: "var(--series-a)", values: p.res.eq, width: 2 }], { height: 200, endLabels: true, aria: "Paper equity", fmt: inrShort, fmtEnd: inrShort, fmtTip: inr }); }
@@ -233,7 +248,7 @@
       if (m.role === "system") return `<div class="msg system"><div class="body">${esc(m.text)} <span class="muted">· ${esc(fmtWhen(m.at))}</span></div></div>`;
       const who = m.role === "user" ? nameOf(m.by) : curAgent()?.name || "Agent";
       let prop = "";
-      if (m.proposal) { const pr = m.proposal; prop = `<div class="proposal" style="margin-top:6px;padding:10px"><b>Proposed change</b><p class="small">${esc(pr.note || "")}</p><div data-chatres="${esc(m.id)}" class="small muted">${pr.status === "saved" ? `Saved as v${pr.saved_version}.` : pr.status === "discarded" ? "Discarded." : "Testing…"}</div>
+      if (m.proposal) { const pr = m.proposal; prop = `<div class="proposal" style="margin-top:6px;padding:10px"><b>${pr.status === "saved" ? "Change applied" : pr.status === "discarded" ? "Change discarded" : "Suggested change"}</b><p class="small">${esc(pr.note || "")}</p><div data-chatres="${esc(m.id)}" class="small muted">${pr.status === "saved" ? `Saved as v${pr.saved_version}.` : pr.status === "discarded" ? "Discarded." : "Testing…"}</div>
         ${pr.status ? "" : `<div class="row"><button class="btn small" type="button" data-save-prop="${esc(m.id)}" ${S.readOnly ? "disabled" : ""}>Save as new version</button><button class="btn ghost small" type="button" data-drop-prop="${esc(m.id)}">Discard</button></div>`}</div>`; }
       return `<div class="msg ${m.role === "user" ? "user" : ""}"><div class="meta">${esc(who)} · ${esc(fmtWhen(m.at))}</div><div class="body">${md(m.text)}${attHtml(m.attachments)}${prop}</div></div>`;
     }).join("") : `<p class="small muted">Ask this agent anything — how it behaved in 2020, why a stock is in the list, what to change. It can propose edits and you decide whether to keep them.</p>`;
@@ -241,12 +256,18 @@
     for (const m of msgs) if (m.proposal && !m.proposal.status) fillChatProposal(m);
     log.querySelectorAll("[data-save-prop]").forEach((b) => b.addEventListener("click", async () => {
       const m = S.room.messages.find((x) => x.id === b.dataset.saveProp), a = curAgent(); if (!m || !a) return; b.disabled = true;
-      try { const cur = S.room.versions.find((x) => x.n === a.version) || {}; const spec = E.normalize(m.proposal.spec, S.man.universes);
-        const n = await saveVersion(a, { spec, meta: { ...(cur.meta || {}), explanation: m.proposal.explanation || cur.meta?.explanation || "" }, test: m.proposal.test || cur.test || { start: "2012-01-01" }, note: m.proposal.note });
-        await S.db.doc(`agents/${a.id}/messages/${m.id}`).update({ proposal: { ...m.proposal, status: "saved", saved_version: n } }); S.room.ver = n; renderRoomHead(); renderRoomBody(); }
-      catch (e) { b.disabled = false; toast(e.message || String(e)); } }));
+      try { await saveChatProposal(a, m.id, m.proposal); } catch (e) { b.disabled = false; toast(e.message || String(e)); } }));
     log.querySelectorAll("[data-drop-prop]").forEach((b) => b.addEventListener("click", async () => { const m = S.room.messages.find((x) => x.id === b.dataset.dropProp); if (!m) return;
       try { await S.db.doc(`agents/${S.room.id}/messages/${m.id}`).update({ proposal: { ...m.proposal, status: "discarded" } }); } catch (e) { toast(e.message || String(e)); } }));
+  }
+  // save a chat proposal as the agent's next version; an agent that is paper trading moves its paper record to it
+  async function saveChatProposal(a, msgId, pr) {
+    const cur = S.room.versions.find((x) => x.n === a.version) || {}, spec = E.normalize(pr.spec, S.man.universes);
+    const n = await saveVersion(a, { spec, meta: { ...(cur.meta || {}), explanation: pr.explanation || cur.meta?.explanation || "" }, test: pr.test || cur.test || { start: "2012-01-01" }, note: pr.note });
+    await S.db.doc(`agents/${a.id}/messages/${msgId}`).update({ proposal: { ...pr, status: "saved", saved_version: n } });
+    if (a.status === "paper") await setStatus({ ...a, version: n }, "paper");
+    if (S.room.id === a.id) { S.room.ver = n; renderRoomHead(); renderRoomBody(); }
+    return n;
   }
   async function fillChatProposal(m) {
     const box = document.querySelector(`[data-chatres="${CSS.escape(m.id)}"]`), a = curAgent(); if (!box || !a) return;
@@ -258,9 +279,18 @@
   function agentPrompt(a, v, res, stats, text, atts) {
     const hist = S.room.messages.filter((m) => m.role !== "system").slice(-12).map((m) => `${m.role === "user" ? "USER" : "YOU"}: ${m.text}${m.attachments?.length ? ` [attached: ${attNames(m.attachments)}]` : ""}${m.att_notes ? ` [the attachments showed: ${m.att_notes}]` : ""}${m.proposal ? ` [proposed: ${m.proposal.note}; ${m.proposal.status || "pending"}]` : ""}`).join("\n\n");
     const trades = (res.trades || []).slice(-12).map((t) => t.symbol ? `${t.symbol} ${t.entry_date || t.date}→${t.exit_date || ""} ${t.return_pct != null ? t.return_pct.toFixed(1) + "%" : ""} ${t.reason || t.note || ""}` : `${t.entry_date}→${t.exit_date} pnl ${Math.round(t.pnl)} ${t.reason}`);
-    return `You are "${a.name}", one agent inside TradeOS (an AI investment desk for Indian markets). You are the portfolio manager and quant responsible for this single strategy. Speak in the first person about your rules and results. Be candid about weaknesses, explain with numbers, and think like an experienced trader and risk manager. Research only, not investment advice.
+    return `You are "${a.name}", one agent inside TradeOS, a strategy desk for Indian markets. You run this one strategy for the user. The user is the portfolio manager and decides; you carry out their instructions exactly and help them make money.
 
-When the user wants a change (stocks, numbers, rules, test window), return a "proposal" containing the FULL new spec (not a patch), a one-line note, an updated explanation, and the test window. Check it first with the backtest tool when available, and say honestly whether it helps. For questions, proposal = null. Never invent data you weren't given.
+${ordersBlock(a)}
+
+RULES
+- When the user tells you to change something (stocks, numbers, rules, filters, rebalancing, test window), make exactly that change and nothing else. Return a "proposal" whose "changes" holds ONLY the fields that change — null removes a setting, e.g. {"trend_filter":null} or {"min_score":null} — and set "apply_now": true because they instructed it; the app applies it at once as a new version.
+- Never add filters, floors, stops, caps or conditions the user did not ask for, and never keep one they asked to remove. Check the SPEC below: if a field they want gone is there, null it.
+- A change YOU suggest without being asked gets "apply_now": false; the user decides.
+- Your goal is profit. Answer with numbers from the data below or the backtest tool. No lectures or disclaimers. If you expect their change to lose money, say so in one sentence with the number, after making it.
+- For a plain question, "proposal" is null.
+- When the user states a lasting rule for this agent ("never…", "always…"), add it to "remember"; to cancel one, put its exact text in "forget".
+- Never invent data you weren't given.
 
 ${SCHEMAS}
 
@@ -278,7 +308,7 @@ VERSION HISTORY: ${JSON.stringify(S.room.versions.map((x) => ({ n: x.n, note: x.
 ${dataBrief()}
 
 When the user selects part of the page or attaches a photo/screenshot, answer about exactly that and set "attachment_notes" to 1-3 lines of the key facts it shows.
-REPLY with ONE JSON object only (no text before or after it, no code fences; keep "reply" under 200 words; escape quotes and newlines inside strings): {"reply":"markdown","attachment_notes":"" ,"proposal":null or {"note":"...","spec":{...},"explanation":"...","test":{"start":"...","end":null,"split":"..."}}}
+REPLY with ONE JSON object only (no text before or after it, no code fences; keep "reply" under 200 words; escape quotes and newlines inside strings): {"reply":"markdown","attachment_notes":"","proposal":null or {"note":"what changed, in a few words","changes":{only the changed fields; null removes},"apply_now":true|false,"explanation":"updated one-paragraph description of the rules","test":null or {"start":"...","end":null,"split":"..."}},"remember":[],"forget":[]}
 
 CONVERSATION:
 ${hist || "(new)"}
@@ -286,7 +316,7 @@ ${hist || "(new)"}
 USER NOW: ${text}${attachmentText(atts)}`;
   }
   async function sendRoom() {
-    const a = curAgent(), v = curVersion(), text = $("roomInput").value.trim();
+    const a = curAgent(), text = $("roomInput").value.trim(), v = (a && S.room.versions.find((x) => x.n === a.version)) || curVersion();
     if (!a || !v || S.busyRoom || (!text && !S.roomAttach.length)) return;
     const atts = S.roomAttach.splice(0); renderAttach(S.roomAttach, $("roomAttach")); $("roomInput").value = "";
     S.busyRoom = true; $("roomSend").disabled = true; const st = $("roomStatusLine"); st.classList.remove("err"); st.innerHTML = '<span class="thinking">Thinking<span class="dots"></span></span>';
@@ -297,9 +327,18 @@ USER NOW: ${text}${attachmentText(atts)}`;
       const out = await callClaude(agentPrompt(a, v, res, { risk, crises: cr }, text || "(no text — see what I attached or selected)", atts), imagesOf(atts), (msg) => { st.innerHTML = `<span class="thinking">${esc(msg)}<span class="dots"></span></span>`; }, new AbortController().signal);
       const msg = { role: "agent", text: (typeof out?.reply === "string" && out.reply.trim() ? out.reply : "…") + (out?._unstructured ? "\n\n_(Answer came back without structure, so any proposed change couldn't be attached. Ask me to “propose that as a change”.)_" : "") };
       if (atts.some((x) => x.kind === "image" || x.kind === "snippet") && typeof out?.attachment_notes === "string" && out.attachment_notes.trim()) msg.att_notes = out.attachment_notes.slice(0, 1200);
-      if (out?.proposal && out.proposal.spec) { try { E.normalize(out.proposal.spec, S.man.universes); msg.proposal = { note: String(out.proposal.note || "Change"), spec: out.proposal.spec, explanation: String(out.proposal.explanation || ""), test: out.proposal.test || v.test || null, status: null }; }
-        catch (e) { msg.text += `\n\n_(My proposed rules didn't validate: ${e.message})_`; } }
-      await addAgentMsg(a.id, msg); st.textContent = "";
+      const pr = out?.proposal; let applyNow = false;
+      if (pr && typeof pr === "object" && (pr.changes || pr.spec)) {
+        try {
+          const spec = E.normalize(applyChanges(v.spec, pr.changes, pr.changes ? null : pr.spec), S.man.universes), off = stillOn(spec, pr.changes);
+          if (off.length) throw new Error(`${off.join(", ")} would still be on`);
+          msg.proposal = { note: String(pr.note || "Change"), spec, changes: pr.changes || null, explanation: String(pr.explanation || ""), test: pr.test || v.test || null, status: null };
+          applyNow = pr.apply_now === true && !S.readOnly;
+        } catch (e) { msg.text += `\n\n_(That change couldn't be applied: ${e.message}. Say it again or edit the rules under Rules.)_`; }
+      }
+      msg.text += await applyOrderChanges("agent", a, out);
+      const mid = await addAgentMsg(a.id, msg); st.textContent = "";
+      if (applyNow && msg.proposal) { st.innerHTML = '<span class="thinking">Applying your change<span class="dots"></span></span>'; const n = await saveChatProposal(a, mid, msg.proposal); st.textContent = ""; toast(`Applied as v${n}${a.status === "paper" ? " — paper trading now runs v" + n : ""}`); }
     } catch (e) { st.classList.add("err"); st.textContent = claudeError(e); }
     finally { S.busyRoom = false; $("roomSend").disabled = false; }
   }
@@ -357,7 +396,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
     const view = h.startsWith("agent-") ? "room" : h === "agents" ? "agents" : h === "signals" ? "signals" : "main";
     for (const v of ["main", "agents", "signals", "room"]) $("view-" + v).hidden = v !== view;
     document.querySelectorAll(".nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.view === (view === "room" ? "agents" : view) ? "page" : "false"));
-    S.view = view;
+    S.view = view; closeMenus(); if (view !== "room") document.body.classList.remove("chat-open");
     if (view === "room") { const id = h.slice(6); if (S.room.id !== id) openRoom(id); else { renderRoomHead(); renderRoomBody(); } }
     else { S.room.unsubs.forEach((u) => u()); S.room.unsubs = []; S.room.id = null; }
     if (view === "agents") renderFleet(); if (view === "signals") renderSignals(); if (view === "main") { S.suppressScroll = false; renderMain(); }
@@ -378,7 +417,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
   $("photoIn").addEventListener("change", (e) => { readFiles([...e.target.files], S.mainAttach, $("attachList")); e.target.value = ""; });
   $("roomPhoto").addEventListener("change", (e) => { readFiles([...e.target.files], S.roomAttach, $("roomAttach")); e.target.value = ""; });
   $("roomInput").addEventListener("paste", (e) => { const files = [...(e.clipboardData?.files || [])]; if (files.length) { e.preventDefault(); readFiles(files, S.roomAttach, $("roomAttach")); } });
-  for (const [zone, list, box] of [[document.querySelector("#view-main .composer .box"), () => S.mainAttach, "attachList"], [document.querySelector(".chatrail"), () => S.roomAttach, "roomAttach"]]) {
+  for (const [zone, list, box] of [[document.querySelector("#view-main .cbox"), () => S.mainAttach, "attachList"], [document.querySelector(".chatrail"), () => S.roomAttach, "roomAttach"]]) {
     zone.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { e.preventDefault(); zone.classList.add("drop"); } });
     zone.addEventListener("dragleave", (e) => { if (!zone.contains(e.relatedTarget)) zone.classList.remove("drop"); });
     zone.addEventListener("drop", (e) => { zone.classList.remove("drop"); const files = [...(e.dataTransfer?.files || [])]; if (files.length) { e.preventDefault(); readFiles(files, list(), $(box)); } });
@@ -388,6 +427,20 @@ USER NOW: ${text}${attachmentText(atts)}`;
   $("roomVersion").addEventListener("change", (e) => { S.room.ver = +e.target.value; renderRoomBody(); });
   $("roomTabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (!b) return; S.room.tab = b.dataset.tab; renderRoomBody(); });
   $("fleetFilter").addEventListener("click", (e) => { const b = e.target.closest("button[data-f]"); if (!b) return; fleetFilter = b.dataset.f; $("fleetFilter").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); renderFleet(); });
+  // "+" menus, the standing-orders sheet and the phone chat sheet
+  function closeMenus() { document.querySelectorAll(".menu").forEach((m) => { m.hidden = true; }); document.querySelectorAll("[data-menu]").forEach((b) => b.setAttribute("aria-expanded", "false")); }
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-menu]");
+    if (t) { const m = $(t.dataset.menu), open = m.hidden; closeMenus(); m.hidden = !open; t.setAttribute("aria-expanded", String(open)); return; }
+    if (e.target.closest(".menu > *")) { setTimeout(closeMenus, 0); return; }
+    if (!e.target.closest(".menu")) closeMenus();
+    const sh = e.target.closest("[data-sheet]"); if (sh) { $(sh.dataset.sheet).hidden = false; renderOrdersAll(); $(sh.dataset.sheet).querySelector("input")?.focus({ preventScroll: true }); return; }
+    if (e.target.closest("[data-close-sheet]") || e.target.classList.contains("sheet")) document.querySelectorAll(".sheet").forEach((x) => { x.hidden = true; });
+  });
+  document.addEventListener("keydown", (e) => { if (e.key !== "Escape") return; closeMenus(); document.querySelectorAll(".sheet").forEach((x) => { x.hidden = true; }); document.body.classList.remove("chat-open"); });
+  $("chatFab").addEventListener("click", () => { document.body.classList.add("chat-open"); const log = $("roomLog"); log.scrollTop = log.scrollHeight; setTimeout(() => $("roomInput").focus({ preventScroll: true }), 50); });
+  $("chatClose").addEventListener("click", () => document.body.classList.remove("chat-open"));
+  $("roomInput").addEventListener("input", (e) => autoGrow(e.target));
   let rsT; window.addEventListener("resize", () => { clearTimeout(rsT); rsT = setTimeout(() => { if (S.view === "room" && S.room.tab === "performance") renderRoomBody(); }, 200); });
 
   (async () => {
@@ -406,13 +459,14 @@ USER NOW: ${text}${attachmentText(atts)}`;
     if (S.readOnly) $("mainHint").textContent = "You have view-only access: you can explore agents but not change them.";
     S.db.collection("agents").onSnapshot((snap) => {
       S.agents = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }])); renderRail();
-      $("agentCount").textContent = [...S.agents.values()].filter((a) => a.status !== "retired").length;
+      setCount("agents", [...S.agents.values()].filter((a) => a.status !== "retired").length); renderOrdersAll();
       if (S.view === "agents") renderFleet(); if (S.view === "room") renderRoomHead();
       if (S.view === "signals") renderSignals(); else refreshSigCount();
     }, () => toast("Couldn't load agents."));
+    ordersRef().onSnapshot((snap) => { S.orders = snap.exists ? (snap.data().items || []) : []; renderOrdersAll(); }, () => { /* no orders yet */ });
     mainCol().orderBy("at").limit(300).onSnapshot((snap) => { S.mainMsgs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.kind === "main"); if (S.view === "main") renderMain(); });
     route();
     window.addEventListener("hashchange", route);
   })();
   let sigT;
-  function refreshSigCount() { clearTimeout(sigT); sigT = setTimeout(async () => { let n = 0; for (const a of [...S.agents.values()].filter((x) => x.status === "paper")) { try { const p = await paperResult(a); n += (p?.signals || []).filter((s) => isAction(s)).length; } catch (e) { /* ignore */ } } $("sigCount").textContent = String(n); $("sigCount").classList.toggle("hot", n > 0); }, 400); }
+  function refreshSigCount() { clearTimeout(sigT); sigT = setTimeout(async () => { let n = 0; for (const a of [...S.agents.values()].filter((x) => x.status === "paper")) { try { const p = await paperResult(a); n += (p?.signals || []).filter((s) => isAction(s)).length; } catch (e) { /* ignore */ } } S.sigN = n; setCount("signals", n, true); renderToday(); }, 400); }

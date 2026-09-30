@@ -948,8 +948,9 @@
 
   // ----------------------------------------------------------------- spec normalisation
   const RULE_DEF = { symbols: [], entry: "", exit: "", side: "long", stop_loss_pct: null, take_profit_pct: null, capital: 1000000, position_size_pct: 100, cost_pct: 0.12 };
-  const ROT_DEF = { universe: "nifty50", lookback: 126, skip: 21, top_n: 5, rebalance: "monthly", score: "momentum", min_score: 0.0,
-    trend_filter: { symbol: "NIFTY", sma: 200 }, rebalance_band_pct: 1.0, capital: 1000000, cost_pct: 0.12 };
+  // No hidden filters: a trend filter or score floor exists only when the spec asks for it (omitted = off).
+  const ROT_DEF = { universe: "nifty50", lookback: 126, skip: 21, top_n: 5, rebalance: "monthly", score: "momentum", min_score: null,
+    trend_filter: null, rebalance_band_pct: 1.0, capital: 1000000, cost_pct: 0.12 };
   const OPT_DEF = { underlying: "NIFTY", structure: "strangle", expiry: null, expiry_weekday: 1, strike_mode: "delta", delta: 0.15, otm_pct: 2.0,
     wing_width: 500, strike_step: null, lot_size: null, lots: 1, min_dte: 2, stop_loss_mult: 2.0, profit_target_pct: 50, exit_dte: 0,
     min_vix: null, max_vix: null, iv_mult: 1.0, capital: 500000, fee_per_order: 20, cost_pct_premium: 0.15, vix_symbol: "INDIAVIX" };

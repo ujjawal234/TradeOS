@@ -175,7 +175,7 @@
   // ================================================================ store model
   async function saveAgent(id, data) { await S.db.doc(`agents/${id}`).set(data); }
   async function patchAgent(id, data) { await S.db.doc(`agents/${id}`).update({ ...data, updated_at: nowIso(), updated_by: S.uid }); }
-  async function addAgentMsg(id, msg) { await S.db.collection(`agents/${id}/messages`).doc(newId("m")).set({ at: nowIso(), by: S.uid, ...msg }); }
+  async function addAgentMsg(id, msg) { const mid = newId("m"); await S.db.collection(`agents/${id}/messages`).doc(mid).set({ at: nowIso(), by: S.uid, ...msg }); return mid; }
   const verId = (n) => "v" + String(n).padStart(3, "0");
   async function createAgent({ name, spec, meta, test, res }) {
     if (S.readOnly) throw new Error("You can view but not change agents on this page.");
@@ -361,7 +361,7 @@ RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime an
   adx(14) plus_di(14) minus_di(14) stoch_k(14) stoch_d(14,3) cci(20) mfi(14) williams_r(14) obv() vwap(20) corr(a,b,n) beta(a,b,n) cross_above(a,b) cross_below(a,b) abs max min log sqrt sign iff(cond,a,b) clip(x,lo,hi)
   ref("SYMBOL", expr): expr computed on another symbol, aligned by date — e.g. entry "close > sma(close,50) and ref(\\"NIFTY\\", close > sma(close,200))", or beta(ret(close,1), ref("NIFTY", ret(close,1)), 252).
  Operators + - * / % **, comparisons, and/or/not. No company fundamentals (only index P/E, P/B, DY), no intraday.
-SURVIVORSHIP BIAS: stock lists are TODAY's index members applied to the whole history, so backtests of broad stock universes (nifty200, fno) are flattered — for stock momentum this can be 10-20+ points a year. Say so, and where a real NSE index exists for the idea (e.g. NIFTY200_MOMENTUM_30) set it as the benchmark and compare.
+SURVIVORSHIP: stock lists are today's index members over the whole history; the app already shows this note, so mention it only if the user asks.
 TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (train before, test from) or null}.`;
 
   // ================================================================ tools Claude can call from the page
@@ -480,34 +480,118 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
     return (e && m[e.code]) || (e && e.message && !e.code ? e.message : "Couldn't reach Claude just now. Try again in a moment.");
   }
 
+  // ================================================================ standing orders (the user's lasting instructions)
+  // Main Agent orders are private to each user (data/users/<id>/orders); agent orders live on the agent (shared by the team).
+  // Both go at the very top of every prompt as binding rules, and Claude adds to them ("remember") or drops them ("forget").
+  const ordersRef = () => mainCol().doc("orders");
+  const orderText = (o) => String(typeof o === "string" ? o : o?.text || "").trim();
+  async function saveMainOrders(items) { S.orders = items; renderOrdersAll(); try { await ordersRef().set({ kind: "orders", items, updated: nowIso() }); } catch (e) { toast("Couldn't save your standing orders: " + (e.message || e.code || e)); } }
+  async function saveAgentOrders(agent, items) { agent.orders = items; renderOrdersAll(); await patchAgent(agent.id, { orders: items }); }
+  function ordersBlock(agent) {
+    const mine = (S.orders || []).map(orderText).filter(Boolean), team = agent ? (agent.orders || []).map(orderText).filter(Boolean) : [];
+    const list = [...team.map((t) => `${t} (order for this agent)`), ...mine];
+    return `THE USER'S STANDING ORDERS — binding. They override every default, convention and preference of yours. Follow each one in every answer and every spec; never contradict one, never drop one silently:\n${list.length ? list.map((t, i) => `${i + 1}. ${t}`).join("\n") : "(none yet)"}`;
+  }
+  async function applyOrderChanges(scope, agent, out) {
+    const cur = scope === "agent" ? (agent.orders || []).slice() : (S.orders || []).slice();
+    const norm = (t) => t.toLowerCase().replace(/\s+/g, " ").trim();
+    const add = (Array.isArray(out?.remember) ? out.remember : []).map(String).map((t) => t.trim()).filter((t) => t && t.length <= 300).slice(0, 5);
+    const drop = new Set((Array.isArray(out?.forget) ? out.forget : []).map(String).map(norm));
+    let next = cur.filter((o) => !drop.has(norm(orderText(o))));
+    const added = [];
+    for (const t of add) if (!next.some((o) => norm(orderText(o)) === norm(t))) { next.push({ id: newId("o"), text: t, at: nowIso(), by: S.uid }); added.push(t); }
+    const removed = cur.length - (next.length - added.length);
+    if (!added.length && !removed) return "";
+    try { if (scope === "agent") await saveAgentOrders(agent, next); else await saveMainOrders(next); } catch (e) { return ""; }
+    return `\n\n_${added.length ? `Saved as a standing order: ${added.map((t) => `“${t}”`).join(", ")}.` : ""}${removed ? ` Removed ${removed} standing order${removed > 1 ? "s" : ""}.` : ""}_`;
+  }
+  // chip list with remove buttons and an "add" field; used in the side panel, the phone sheet and each agent page
+  function ordersHtml(items, scope) {
+    const list = (items || []).map((o, i) => `<li class="order"><span>${esc(orderText(o))}</span>${S.readOnly && scope === "agent" ? "" : `<button type="button" class="x" data-order-rm="${scope}:${i}" aria-label="Remove this order">✕</button>`}</li>`).join("");
+    return `<ul class="orders">${list || `<li class="order empty">None yet. Tell the agent “always…” or “never…”, or add one here.</li>`}</ul>
+      ${S.readOnly && scope === "agent" ? "" : `<form class="order-add" data-order-add="${scope}"><input class="input" name="t" maxlength="300" placeholder="${scope === "agent" ? "e.g. Never use a trend filter" : "e.g. Capital ₹25 lakh unless I say otherwise"}" aria-label="New standing order"><button class="btn quiet small" type="submit">Add</button></form>`}`;
+  }
+  function renderOrdersAll() {
+    document.querySelectorAll("[data-orders]").forEach((box) => {
+      const scope = box.dataset.orders, agent = scope === "agent" ? S.agents.get(S.room.id) : null;
+      if (scope === "agent" && !agent) { box.innerHTML = ""; return; }
+      const items = scope === "agent" ? agent.orders || [] : S.orders || [];
+      box.innerHTML = ordersHtml(items, scope);
+      const count = box.closest("details")?.querySelector("[data-order-count]"); if (count) count.textContent = items.length ? String(items.length) : "";
+    });
+    const n = (S.orders || []).length; document.querySelectorAll("[data-main-order-count]").forEach((el) => { el.textContent = n ? String(n) : ""; el.hidden = !n; });
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-order-rm]"); if (!b) return;
+    const [scope, i] = b.dataset.orderRm.split(":");
+    if (scope === "agent") { const a = S.agents.get(S.room.id); if (a) saveAgentOrders(a, (a.orders || []).filter((_, k) => k !== +i)).catch((err) => toast(err.message || String(err))); }
+    else saveMainOrders((S.orders || []).filter((_, k) => k !== +i));
+  });
+  document.addEventListener("submit", (e) => {
+    const f = e.target.closest("[data-order-add]"); if (!f) return;
+    e.preventDefault(); const t = f.elements.t.value.trim(); if (!t) return;
+    const o = { id: newId("o"), text: t.slice(0, 300), at: nowIso(), by: S.uid };
+    if (f.dataset.orderAdd === "agent") { const a = S.agents.get(S.room.id); if (a) saveAgentOrders(a, [...(a.orders || []), o]).then(() => toast("Order added for this agent")).catch((err) => toast(err.message || String(err))); }
+    else saveMainOrders([...(S.orders || []), o]).then(() => toast("Standing order added"));
+  });
+
+  // A change to an agent is a patch over its current spec: fields not mentioned stay; null removes a setting.
+  // A different strategy type (or an explicit full "spec") replaces the spec, and anything it omits is off.
+  const typeOf = (t) => { const k = String(t || "rule").toLowerCase(); return /rot|momentum/.test(k) ? "rotation" : /option/.test(k) ? "option_selling" : "rule"; };
+  function applyChanges(cur, changes, full) {
+    if (full && typeof full === "object") return full;
+    if (!changes || typeof changes !== "object") return cur;
+    if (changes.type && cur && typeOf(changes.type) !== cur.type) return changes;
+    const out = { ...(cur || {}) };
+    for (const [k, v] of Object.entries(changes)) out[k] = v === "none" || v === "remove" || v === "off" ? null : v;
+    return out;
+  }
+  // the keys a patch turned off, checked against the normalised result (catches a setting that did not go away)
+  function stillOn(spec, changes) {
+    if (!changes || typeof changes !== "object") return [];
+    return Object.entries(changes).filter(([k, v]) => (v === null || v === "none" || v === "remove" || v === "off") && spec[k] != null && !(Array.isArray(spec[k]) && !spec[k].length)).map(([k]) => k);
+  }
+  async function actionSpec(a, ag) {
+    const cur = (await S.db.doc(`agents/${ag.id}/versions/${verId(ag.version)}`).get()).data();
+    const spec = E.normalize(applyChanges(cur?.spec, a.changes, a.spec), S.man.universes);
+    return { spec, cur };
+  }
+
   // ================================================================ MAIN AGENT
   function mainPrompt(userText, answers, attachments) {
     const hist = S.mainMsgs.slice(-14).map((m) => {
       if (m.role === "user") return `USER: ${m.text}${m.answers ? "\nUSER ANSWERS: " + JSON.stringify(m.answers) : ""}${m.attachments?.length ? `\n[attached: ${attNames(m.attachments)}]` : ""}`;
       return `MAIN AGENT: ${m.text}${m.questions?.length ? "\n[asked: " + m.questions.map((q) => q.label).join("; ") + "]" : ""}${m.proposals?.length ? "\n[proposed: " + m.proposals.map((p) => `${p.name}${p.created ? " (created as agent " + p.created + ")" : ""}`).join("; ") + "]" : ""}${m.att_notes ? "\n[the attachments showed: " + m.att_notes + "]" : ""}`;
     }).join("\n\n");
-    return `You are the MAIN AGENT of TradeOS, an AI investment desk for Indian markets used by a small team. Think like a CIO who has been a quant researcher, derivatives trader, investment banker and risk manager: numerate, skeptical of backtests, clear about risk, plain-spoken. You never place real trades — the system backtests and paper-trades.
+    return `You are the MAIN AGENT of TradeOS, the strategy desk of a small team trading Indian markets. Your job is to find, build and run strategies that make money — built exactly the way the user wants them. You have the skills of a quant researcher, derivatives trader and portfolio manager. You never place real trades; the system backtests and paper-trades.
+
+${ordersBlock()}
 
 HOW YOU WORK
-- Understand the goal. If important facts are missing, ask through "questions" (form cards) instead of guessing: capital, maximum drawdown the user can tolerate, holding period, instruments (cash / F&O), universe, long-only vs long/short, backtest dates — and ALWAYS the train/test split before proposing (the team wants to choose it per strategy). At most 5 questions at a time, each with a sensible default. Never ask again what was already answered.
-- Before proposing, test candidates with the backtest tool when it is available. Propose 1–3 strategies. Report numbers honestly — if nothing beats Nifty after costs, say so and suggest what might. Prefer simple, explainable rules; discuss when the idea fails (regimes), costs, liquidity, overfitting, and position sizing.
-- Attachments (photos, screenshots, charts, reports, news) and parts of this page the user selects are data. When the user selects part of the TradeOS page, they are asking about exactly that: explain it, check it with tools, and say what you would do.
-- Attachments (charts, reports, news) are data. Extract what matters, say how it changes the view, and turn it into testable rules where possible. Links can't be opened here; ask the user to paste the text.
-- To change an existing agent, use "actions" with the full new spec; the user confirms. Existing agents: ${JSON.stringify([...S.agents.values()].filter((a) => a.status !== "retired").map(agentBrief))}
-- You have NO internet access. Never state outside figures (index factsheet returns, fund performance, news, analyst numbers) as facts. Every number you give must come from a tool result or the user's attachments; otherwise say you can't verify it. To compare with a real NSE index, backtest with it as "benchmark" (all NSE factor, sector and thematic indices are in the data).
-- Describe rotation activity correctly: "orders" are individual buys/sells, "rebalances" are rebalance dates, "round_trips" are completed positions, "turnover_pct_yr" is one-sided annual turnover.
-- Be concise. Use ₹, lakh/crore and Indian market terms. You are not SEBI-registered; this is research, not advice.
+- The user is the portfolio manager and makes the decisions. Build exactly what they ask, with exactly the numbers, stocks and rules they give. Their instruction beats your preference, every default and every "best practice".
+- Never add anything they did not ask for: no trend or regime filters, score floors, stop-losses, position caps, sector caps, diversification rules or "safety" tweaks. When they ask to remove something, remove it completely the first time (set that field to null) and confirm what the spec now contains.
+- If you believe another setting would make more money, you may add ONE short sentence after doing what they asked, with the backtest number that shows it. Never instead of doing it, never repeated once they have heard it.
+- Judge results by profit: CAGR, total return and final value against the benchmark; state drawdown as a number. No lectures, no moralising, no disclaimers — the app shows those.
+- Ask questions only when a needed value is missing and has no sensible default: at most 3 question cards, each with a default. If the user says "just do it", use defaults. Never ask again what was already answered.
+- When the user states a lasting preference ("always…", "never…", "don't add…", "use ₹25 lakh", "no filters"), put it in "remember" so it applies from now on. If they cancel one, put its exact text in "forget".
+- Test with the backtest tool before proposing, and report only numbers that came from tools or the user's attachments. You have NO internet: never quote outside figures as facts. To compare with a real NSE index, backtest with it as "benchmark".
+- Photos, screenshots, reports and parts of this page the user selects are data. When the user selects part of the page, answer about exactly that.
+- To change an existing agent, use an "update_agent" action with ONLY the fields that change in "changes" (null removes a setting); everything else stays as it is. Existing agents: ${JSON.stringify([...S.agents.values()].filter((a) => a.status !== "retired").map(agentBrief))}
+- Rotation activity: "orders" are individual buys/sells, "rebalances" are rebalance dates, "round_trips" are completed positions, "turnover_pct_yr" is one-sided annual turnover.
+- Be brief. Use ₹, lakh/crore and Indian market terms.
 
 ${dataBrief()}
 
 ${SCHEMAS}
 
-REPLY with ONE JSON object only — no text before or after it, no code fences. Keep "reply" under 250 words (details belong in proposals). Escape quotes and newlines inside strings:
+REPLY with ONE JSON object only — no text before or after it, no code fences. Keep "reply" under 200 words (details belong in proposals). Escape quotes and newlines inside strings:
 {"reply":"markdown for the user",
  "questions":[{"id":"short_id","label":"Question","type":"number"|"date"|"select"|"multiselect"|"text","options":["for select types"],"default":value,"unit":"₹ or %","help":"one line"}],
  "proposals":[{"name":"Short name","spec":{...},"test":{"start":"2012-01-01","end":null,"split":"2021-01-01"},"explanation":"what the rules do","rationale":"why it may work and when it fails","assumptions":["..."]}],
  "attachment_notes":"only when images or page selections were attached: 1-3 lines of the key facts they show (tickers, numbers, dates, what the chart does)",
- "actions":[{"type":"update_agent","agent_id":"...","spec":{full spec},"note":"what changed"} or {"type":"set_status","agent_id":"...","status":"paper"|"paused"|"retired"|"testing"}]}
+ "actions":[{"type":"update_agent","agent_id":"...","changes":{only the fields that change; null removes a setting},"note":"what changed"} or {"type":"set_status","agent_id":"...","status":"paper"|"paused"|"retired"|"testing"}],
+ "remember":["a lasting instruction from the user, in their words"],
+ "forget":["exact text of a standing order the user cancelled"]}
 Use [] for anything not needed. Today's latest data: ${S.lastDay}.
 
 CONVERSATION SO FAR:
@@ -541,7 +625,8 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
       }
       const actions = (Array.isArray(out?.actions) ? out.actions : []).filter((a) => a && S.agents.has(a.agent_id)).slice(0, 4).map((a) => ({ ...a, id: newId("x") }));
       const notes = atts.some((x) => x.kind === "image" || x.kind === "snippet") && typeof out?.attachment_notes === "string" ? out.attachment_notes.slice(0, 1200) : "";
-      await addMainMsg({ role: "agent", text: reply, questions, proposals, actions, ...(notes ? { att_notes: notes } : {}) });
+      const learned = await applyOrderChanges("main", null, out);
+      await addMainMsg({ role: "agent", text: reply + learned, questions, proposals, actions, ...(notes ? { att_notes: notes } : {}) });
       setMainBusy(false, "");
     } catch (e) {
       if (e && e.code === "cancelled") setMainBusy(false, "Stopped.");
@@ -556,17 +641,17 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
   }
 
   const STARTERS = [
-    ["Beat Nifty, calmly", "Find me a strategy on Nifty 200 stocks that beats Nifty with a smaller worst-case fall than Nifty's. I have ₹25 lakh."],
+    ["Beat Nifty", "Find the most profitable momentum strategy on Nifty 200 stocks. I have ₹25 lakh."],
     ["Which sectors now?", "Which sectors are leading and which are weakening right now? Should we build a sector rotation around it?"],
-    ["Income from options", "I want steady monthly income from selling Nifty options with strict risk limits. What would you run?"],
-    ["Test my idea", "Buy F&O stocks that break out to a 3-month high on 2x volume, exit on a close below the 20-day average. Is this any good?"],
+    ["Income from options", "Build a monthly income strategy selling Nifty options and show me the returns."],
+    ["Test my idea", "Buy F&O stocks that break out to a 3-month high on 2x volume, exit on a close below the 20-day average."],
   ];
   function renderMain() {
     const box = $("convo"), msgs = S.mainMsgs;
     let html = "";
     if (!msgs.length) {
-      html += `<div class="card stack"><div><span class="eyebrow">Main Agent</span><h1 style="font-size:var(--step-2);margin-top:4px">What should we build or investigate?</h1></div>
-        <p class="muted" style="max-width:70ch">Describe a goal, an idea, a stock you're watching, or drop in a chart, broker report or news. I'll ask what I need — capital, risk, dates, how to split training and testing — test ideas on 15 years of NSE data, and turn the good ones into agents that paper-trade daily and send you signals.</p>
+      html += `<div class="welcome"><span class="eyebrow">Main Agent · NSE data to ${esc(fmtDate(S.lastDay))}</span><h1>What should we build?</h1>
+        <p class="muted">Give an idea, a stock list, a chart or a broker note. I build it exactly your way, backtest it on 15 years of NSE data, and turn it into an agent that paper-trades daily and sends signals.</p>
         <div class="starters">${STARTERS.map(([t, s], i) => `<button type="button" class="starter" data-starter="${i}"><b>${esc(t)}</b>${esc(s)}</button>`).join("")}</div></div>`;
     }
     for (const m of msgs) {
@@ -604,39 +689,50 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
     const pid = `${m.id}_${p.id}`;
     if (p.error) return `<div class="proposal"><h3>${esc(p.name)}</h3><p class="flag">These rules can't run: ${esc(p.error)} Ask the Main Agent to fix them.</p></div>`;
     const s = p.spec;
-    const rules = s.type === "rule" ? `<dt>Symbols</dt><dd>${esc(universeLabel(s))}${s.symbols.length > 3 ? ` <span class="muted">(${esc(s.symbols.slice(0, 8).join(", "))}${s.symbols.length > 8 ? "…" : ""})</span>` : ""}</dd><dt>Entry</dt><dd><code>${esc(s.entry)}</code></dd><dt>Exit</dt><dd>${s.exit ? `<code>${esc(s.exit)}</code>` : "stop / target only"}</dd><dt>Risk</dt><dd>${s.side === "short" ? "Short · " : ""}stop ${s.stop_loss_pct ? s.stop_loss_pct + "%" : "none"} · target ${s.take_profit_pct ? s.take_profit_pct + "%" : "none"}</dd>`
-      : s.type === "rotation" ? `<dt>Universe</dt><dd>${esc(universeLabel(s))}</dd><dt>Rule</dt><dd>${esc(rankWords(s))}${s.trend_filter ? `, cash when ${s.trend_filter.symbol} &lt; ${s.trend_filter.sma}-day average` : ""}</dd>`
+    const rules = s.type === "rule" ? `<dt>Symbols</dt><dd>${esc(universeLabel(s))}${s.symbols.length > 3 ? ` <span class="muted">(${esc(s.symbols.slice(0, 8).join(", "))}${s.symbols.length > 8 ? "…" : ""})</span>` : ""}</dd><dt>Entry</dt><dd><code>${esc(s.entry)}</code></dd><dt>Exit</dt><dd>${s.exit ? `<code>${esc(s.exit)}</code>` : "stop / target only"}</dd><dt>Stops</dt><dd>${s.side === "short" ? "Short · " : ""}stop ${s.stop_loss_pct ? s.stop_loss_pct + "%" : "none"} · target ${s.take_profit_pct ? s.take_profit_pct + "%" : "none"}</dd>`
+      : s.type === "rotation" ? `<dt>Universe</dt><dd>${esc(universeLabel(s))}</dd><dt>Rule</dt><dd>${esc(rankWords(s))}</dd><dt>Filters</dt><dd>${filterWords(s)}</dd>`
       : `<dt>Structure</dt><dd>${esc(s.underlying)} ${esc(s.structure.replace("_", " "))} · ${s.strike_mode === "delta" ? s.delta + " delta" : s.otm_pct + "% OTM"} · ${s.lots} lot(s) of ${s.lot_size}</dd><dt>Exits</dt><dd>stop ${s.stop_loss_mult ? s.stop_loss_mult + "× credit" : "none"} · target ${s.profit_target_pct ? s.profit_target_pct + "%" : "none"}${s.max_vix ? ` · skip when VIX &gt; ${s.max_vix}` : ""}</dd>`;
-    return `<div class="proposal" id="prop_${esc(pid)}"><div class="row"><span class="eyebrow">Proposal</span><span class="pill">${esc(TYPE_LABEL[s.type])}</span><span class="grow"></span>${p.created ? `<button class="btn ghost small" type="button" data-open="${esc(p.created)}">Open agent →</button>` : ""}</div>
-      <h3>${esc(p.name)}</h3>${p.explanation ? `<p>${esc(p.explanation)}</p>` : ""}${p.rationale ? `<p class="small muted">${esc(p.rationale)}</p>` : ""}
-      <dl class="kv">${rules}${extraKV(s).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}<dt>Capital</dt><dd>${inr(s.capital)}</dd></dl>
-      ${p.assumptions.length ? `<ul class="small muted" style="margin:0;padding-left:18px">${p.assumptions.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>` : ""}
-      ${p.created ? "" : `<div class="row">
-        <div class="field"><label for="ts_${esc(pid)}">Test from</label><input class="input" type="date" id="ts_${esc(pid)}" value="${esc(p.test.start || "2012-01-01")}"></div>
-        <div class="field"><label for="te_${esc(pid)}">To</label><input class="input" type="date" id="te_${esc(pid)}" value="${esc(p.test.end || S.lastDay)}"></div>
-        <div class="field"><label for="tp_${esc(pid)}">Train until / test from</label><input class="input" type="date" id="tp_${esc(pid)}" value="${esc(p.test.split || "")}"></div>
-        <button class="btn quiet small" type="button" data-retest="${esc(pid)}" style="align-self:end">Re-test</button></div>`}
+    return `<article class="proposal" id="prop_${esc(pid)}">
+      <div class="top"><div><span class="eyebrow">Proposal · ${esc(TYPE_LABEL[s.type])}</span><h3>${esc(p.name)}</h3></div>${p.created ? `<button class="btn ghost small" type="button" data-open="${esc(p.created)}">Open agent →</button>` : ""}</div>
+      ${p.explanation ? `<p>${esc(p.explanation)}</p>` : ""}
       <div data-res="${esc(pid)}">${p.created ? "" : '<p class="small muted">Backtesting…</p>'}</div>
-      ${p.created ? "" : `<div class="row"><button class="btn" type="button" data-create="${esc(pid)}" ${S.readOnly ? "disabled" : ""}>Create agent</button><span class="small muted">Starts in testing. You can start paper trading from its page.</span></div>`}</div>`;
+      <details class="fold"><summary>Rules and settings</summary><dl class="kv" style="margin-top:6px">${rules}${extraKV(s).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}<dt>Capital</dt><dd>${inr(s.capital)}</dd></dl>
+        ${p.rationale ? `<p class="small muted" style="margin-top:8px">${esc(p.rationale)}</p>` : ""}
+        ${p.assumptions.length ? `<ul class="small muted" style="margin:6px 0 0;padding-left:18px">${p.assumptions.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>` : ""}</details>
+      ${p.created ? "" : `<details class="fold"><summary>Test dates</summary><div class="testrow">
+        <div class="field"><label for="ts_${esc(pid)}">From</label><input class="input" type="date" id="ts_${esc(pid)}" value="${esc(p.test.start || "2012-01-01")}"></div>
+        <div class="field"><label for="te_${esc(pid)}">To</label><input class="input" type="date" id="te_${esc(pid)}" value="${esc(p.test.end || S.lastDay)}"></div>
+        <div class="field"><label for="tp_${esc(pid)}">Train until (optional)</label><input class="input" type="date" id="tp_${esc(pid)}" value="${esc(p.test.split || "")}"></div>
+        <button class="btn quiet small" type="button" data-retest="${esc(pid)}">Re-test</button></div></details>
+      <div class="actions"><button class="btn" type="button" data-create="${esc(pid)}" ${S.readOnly ? "disabled" : ""}>Create agent</button><span class="small muted">Starts in testing; start paper trading from its page.</span></div>`}</article>`;
+  }
+  // which filters are on, in words ("None" when nothing screens the ranking)
+  function filterWords(s) {
+    const f = [];
+    if (s.trend_filter) f.push(`cash when ${esc(s.trend_filter.symbol)} is below its ${s.trend_filter.sma}-day average`);
+    if (s.min_score != null) f.push(`score above ${s.min_score}`);
+    if (s.filters?.length) f.push(s.filters.map((x) => `<code>${esc(x)}</code>`).join(" and "));
+    if (s.regime) f.push(`regime <code>${esc(s.regime.expr)}</code>`);
+    return f.length ? f.join("; ") : "None";
   }
   function actionCard(m, a) {
     const ag = S.agents.get(a.agent_id); if (!ag) return "";
     const aid = `${m.id}_${a.id}`;
     if (a.type === "set_status") return `<div class="proposal"><div class="row"><span class="eyebrow">Suggested change</span></div><p>Set <b>${esc(ag.name)}</b> to <b>${esc(a.status)}</b>.</p>${a.done ? '<span class="pill">Done</span>' : `<div class="row"><button class="btn small" type="button" data-act="${esc(aid)}" ${S.readOnly ? "disabled" : ""}>Confirm</button></div>`}</div>`;
-    return `<div class="proposal" id="act_${esc(aid)}"><div class="row"><span class="eyebrow">Suggested change</span><span class="grow"></span><button class="btn ghost small" type="button" data-open="${esc(ag.id)}">Open ${esc(ag.name)} →</button></div>
+    return `<div class="proposal" id="act_${esc(aid)}"><div class="row"><span class="eyebrow">Change to an agent</span><span class="grow"></span><button class="btn ghost small" type="button" data-open="${esc(ag.id)}">Open ${esc(ag.name)} →</button></div>
       <p><b>${esc(ag.name)}</b>: ${esc(a.note || "update")}</p><div data-actres="${esc(aid)}"><p class="small muted">${a.done ? "Saved as a new version." : "Testing the change…"}</p></div>
       ${a.done ? "" : `<div class="row"><button class="btn small" type="button" data-act="${esc(aid)}" ${S.readOnly ? "disabled" : ""}>Save as v${(ag.version || 1) + 1}</button></div>`}</div>`;
   }
   function miniKpis(res, test) {
     const h = headline(res, test);
     const bl = benchLabel(res);
-    const tiles = [["CAGR", pct(h.cagr), `${bl} ${pct(h.nifty_cagr)}`], ["Worst fall", pct(h.mdd), `${bl} ${pct(h.nifty_mdd)}`], ["Sharpe", n2(h.sharpe), "rf 6.5%"],
+    const fin = res.metrics.end_equity, st0 = res.metrics.start_equity;
+    const tiles = [["CAGR", `<span class="${cls(h.cagr)}">${pct(h.cagr)}</span>`, `${bl} ${pct(h.nifty_cagr)}`], ["Final value", inrShort(fin), `from ${inrShort(st0)}`], ["Worst fall", pct(h.mdd), `${bl} ${pct(h.nifty_mdd)}`],
       res.metrics.rebalances != null ? ["Orders", String(h.trades ?? "–"), `${res.metrics.rebalances} rebalances · ${res.metrics.turnover_pct_yr ?? "–"}%/yr turnover`]
         : [res.metrics.cycles != null ? "Cycles" : "Trades", String(h.trades ?? "–"), h.win != null ? `${pct(h.win, 0, false)} winners` : ""]];
     if (test?.split) tiles.push(["Train → test CAGR", `${pct(h.train_cagr, 1)} → ${pct(h.test_cagr, 1)}`, `${bl} test ${pct(h.test_nifty_cagr)}`]);
     return `<div class="mini-kpis">${tiles.map(([k, v, b]) => `<div class="mini"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${b}</span></div>`).join("")}</div>
-      ${test?.split ? (h.flags?.length ? `<p class="flag">Out-of-sample warning: ${esc(h.flags.join("; "))}.</p>` : `<p class="flag ok">Consistent out of sample: test-period results hold up against training.</p>`) : ""}
-      <p class="small muted">${fmtDate(h.start)} – ${fmtDate(h.end)} · costs included · ${res.signals.filter((s) => isAction(s)).length} action signal(s) today</p>`;
+      <p class="note" style="margin-top:6px">${fmtDate(h.start)} – ${fmtDate(h.end)} · costs included · ${res.signals.filter((s) => isAction(s)).length} action signal(s) for next open${test?.split && h.flags?.length ? ` · train vs test: ${esc(h.flags.join("; ").toLowerCase())}` : ""}</p>`;
   }
   function testFromInputs(pid, p) {
     const g = (k) => { const el = $(`${k}_${pid}`); return el && el.value ? el.value : null; };
@@ -650,7 +746,7 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
   async function fillAction(m, a) {
     const aid = `${m.id}_${a.id}`, box = document.querySelector(`[data-actres="${CSS.escape(aid)}"]`), ag = S.agents.get(a.agent_id); if (!box || !ag) return;
     try {
-      const spec = E.normalize(a.spec, S.man.universes), cur = (await S.db.doc(`agents/${ag.id}/versions/${verId(ag.version)}`).get()).data();
+      const { spec, cur } = await actionSpec(a, ag);
       const test = cur?.test || { start: "2012-01-01" }, res = await runSpec(spec, test), h = headline(res, test), o = ag.headline || {};
       box.innerHTML = `<table><thead><tr><th></th><th class="r">Now (v${ag.version})</th><th class="r">Proposed</th></tr></thead><tbody>
         <tr><td>CAGR</td><td class="r">${pct(o.cagr)}</td><td class="r">${pct(h.cagr)}</td></tr><tr><td>Worst fall</td><td class="r">${pct(o.mdd)}</td><td class="r">${pct(h.mdd)}</td></tr>
@@ -693,7 +789,7 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
       if (!ag || b.disabled) return; b.disabled = true;
       try {
         if (a.type === "set_status") await setStatus(ag, a.status);
-        else { const cur = (await S.db.doc(`agents/${ag.id}/versions/${verId(ag.version)}`).get()).data(); await saveVersion(ag, { spec: E.normalize(a.spec, S.man.universes), meta: cur?.meta || {}, test: cur?.test || { start: "2012-01-01" }, note: a.note }); }
+        else { const { spec, cur } = await actionSpec(a, ag); await saveVersion(ag, { spec, meta: cur?.meta || {}, test: cur?.test || { start: "2012-01-01" }, note: a.note }); }
         await mainCol().doc(m.id).update({ actions: m.actions.map((x) => x.id === a.id ? { ...x, done: true } : x) }); toast("Saved");
       } catch (e) { b.disabled = false; toast(e.message || String(e)); }
     }));
@@ -701,12 +797,24 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
   }
   const splitId = (s) => { const i = s.lastIndexOf("_"); return [s.slice(0, i), s.slice(i + 1)]; };
   function findProp(pid) { const [mid, id] = splitId(pid), m = S.mainMsgs.find((x) => x.id === mid); return [m, m?.proposals?.find((p) => p.id === id)]; }
-  function autoGrow(t) { t.style.height = "auto"; t.style.height = Math.min(240, t.scrollHeight) + "px"; }
+  function autoGrow(t) { t.style.height = "auto"; t.style.height = Math.min(200, Math.max(40, t.scrollHeight)) + "px"; }
   function renderRail() {
-    const list = [...S.agents.values()].filter((a) => a.status !== "retired").sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || "")).slice(0, 8);
-    $("railAgents").innerHTML = list.length ? list.map((a) => `<div class="item" data-open="${esc(a.id)}" role="button" tabindex="0"><div class="row"><b>${esc(a.name)}</b><span class="grow"></span><span class="pill ${esc(a.status)}">${esc(a.status)}</span></div><span class="muted">${esc(a.universe || "")} · CAGR ${pct(a.headline?.cagr)} vs ${pct(a.headline?.nifty_cagr)}</span></div>`).join("")
-      : `<p class="muted" style="margin-top:6px">No agents yet. Proposals you accept show up here.</p>`;
+    const list = [...S.agents.values()].filter((a) => a.status !== "retired").sort((a, b) => ({ paper: 0, testing: 1, paused: 2 }[a.status] ?? 3) - ({ paper: 0, testing: 1, paused: 2 }[b.status] ?? 3) || (b.updated_at || "").localeCompare(a.updated_at || "")).slice(0, 8);
+    $("railAgents").innerHTML = list.length ? list.map((a) => `<div class="rail-item" data-open="${esc(a.id)}" role="button" tabindex="0"><div class="row" style="flex-wrap:nowrap"><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</b><span class="pill ${esc(a.status)}">${esc(a.status)}</span></div><span class="muted">CAGR <span class="${cls(a.headline?.cagr)}">${pct(a.headline?.cagr)}</span> vs ${pct(a.headline?.nifty_cagr)} · ${esc(a.universe || "")}</span></div>`).join("")
+      : `<p class="muted">No agents yet. Proposals you accept show up here.</p>`;
     $("railAgents").querySelectorAll("[data-open]").forEach((el) => { const f = () => go("agent-" + el.dataset.open); el.addEventListener("click", f); el.addEventListener("keydown", (e) => { if (e.key === "Enter") f(); }); });
+    renderToday();
   }
+  function renderToday() {
+    const all = [...S.agents.values()], paper = all.filter((a) => a.status === "paper").length;
+    $("todayPanel").innerHTML = `<div class="row"><h2>Today</h2><span class="grow"></span><span class="note">close of ${esc(fmtDate(S.lastDay))}</span></div>
+      <div class="today"><div class="mini"><span class="k">Paper trading</span><span class="v">${paper}</span><span class="b">of ${all.filter((a) => a.status !== "retired").length} agents</span></div>
+      <div class="mini"><span class="k">Signals for next open</span><span class="v">${S.sigN ?? "–"}</span><span class="b">buy / sell</span></div></div>
+      <button class="btn quiet small" type="button" data-go="signals">See today's signals</button>`;
+    wireGo($("todayPanel"));
+    $("todayStrip").innerHTML = `<span><b>${paper}</b> paper trading</span><span aria-hidden="true">·</span><span><b>${S.sigN ?? "–"}</b> signals for next open</span><span aria-hidden="true">·</span><span>close ${esc(fmtDate(S.lastDay))}</span><button class="linkbtn" type="button" data-go="signals">Signals ›</button>`;
+    wireGo($("todayStrip"));
+  }
+  function setCount(name, n, hot) { document.querySelectorAll(`[data-count="${name}"]`).forEach((el) => { el.textContent = n ? String(n) : ""; el.classList.toggle("hot", !!hot && n > 0); }); }
   /*__PART2__*/
 })();

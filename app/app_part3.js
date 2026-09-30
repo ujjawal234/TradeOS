@@ -6,7 +6,7 @@
   const selHit = (r, R) => r.width + r.height > 0 && r.right > R.left && r.left < R.right && r.bottom > R.top && r.top < R.bottom;
   const selTidy = (t) => String(t || "").replace(/[ \t ]+/g, " ").replace(/\s*\n\s*/g, "\n").trim();
   const selLine = (t) => selTidy(t).replace(/\n+/g, " · ");
-  const SKIP = "svg, script, style, textarea, input, select, .tip, .composer, .chatrail .foot, .tabs, .seg, button:not(.opt), label.btn, #selPop, #capOverlay";
+  const SKIP = "svg, script, style, textarea, input, select, .tip, .composer, .chatrail .foot, .tabs, .seg, .menu, .order-add, button:not(.opt), label.btn, #selPop, #capOverlay";
   function whereNow() {
     if (S.view === "room") {
       const a = curAgent(), tab = document.querySelector('#roomTabs button[aria-selected="true"]')?.textContent?.trim() || "";
@@ -15,7 +15,7 @@
     return { main: "Main Agent conversation", agents: "Agents list", signals: "Today's signals" }[S.view] || String(S.view);
   }
   function headingFor(el) {
-    const box = el.closest(".card, .proposal, .qcard, .msg, .chatrail");
+    const box = el.closest(".card, .proposal, .qcard, .msg, .chatrail, .agent-card, .panel");
     const h = box && box.querySelector("h1, h2, h3");
     return h ? selLine(h.innerText) : "";
   }
@@ -29,7 +29,7 @@
       range.selectNodeContents(n);
       if (![...range.getClientRects()].some((r) => selHit(r, R))) continue;
       const p = n.parentElement;
-      const u = p.closest("tr") || p.closest(".kpi, .mini, .ver, .item, .flag, .banner, .verdict") || p.closest("li, dt, dd, p, h1, h2, h3, h4, .opt, .pill, .act, summary, label") || p;
+      const u = p.closest("tr, .sig") || p.closest(".kpi, .mini, .nums > div, .ver, .rail-item, .order, .flag, .banner, .verdict, .note") || p.closest("li, dt, dd, p, h1, h2, h3, h4, .opt, .pill, .act, summary, label") || p;
       if (!seen.has(u)) { seen.add(u); found.push(u); }
     }
     const units = found.filter((u) => !found.some((o) => o !== u && o.contains(u)));
@@ -137,6 +137,7 @@
     let skipped = 0;
     for (const it of items) { if (it.kind === "image" && imageCount(list) >= (S.images?.maxCount || 4)) { skipped++; continue; } list.push(it); }
     if (!room && S.view !== "main") go("");
+    if (room) document.body.classList.add("chat-open");
     renderAttach(list, box);
     const input = $(room ? "roomInput" : "mainInput");
     setTimeout(() => { input.focus({ preventScroll: true }); if (!room) window.scrollTo({ top: document.body.scrollHeight }); }, 80);
@@ -166,7 +167,7 @@
   // ---- (2) select mode: drag a box, or tap a card / row / chart
   const CAP = { target: null, start: null };
   function startCapture(target) {
-    hidePop(); window.getSelection()?.removeAllRanges();
+    hidePop(); closeMenus(); document.body.classList.remove("chat-open"); window.getSelection()?.removeAllRanges();
     CAP.target = target; CAP.start = null;
     $("capOverlay").hidden = false; $("capRect").hidden = true; $("capHover").hidden = true;
     $("capHint").textContent = `Drag a box around anything — or tap a card, table row or chart${target === "room" ? " — for this agent" : ""}. Scroll first if needed.`;
@@ -176,7 +177,7 @@
     const ov = $("capOverlay"); ov.style.pointerEvents = "none";
     const el = document.elementFromPoint(x, y); ov.style.pointerEvents = "";
     const main = document.querySelector("main.page");
-    const t = el && main.contains(el) ? el.closest(".chart, tr, .kpi, .mini, .ver, .item, .proposal, .qcard, .msg, dl.kv, .card") : null;
+    const t = el && main.contains(el) ? el.closest(".chart, tr, .sig, .kpi, .mini, .ver, .rail-item, .agent-card, .proposal, .qcard, .msg, dl.kv, .card, .panel") : null;
     return t && main.contains(t) ? t : null;
   }
   const boxOf = (a, b) => { const left = Math.min(a.x, b.x), top = Math.min(a.y, b.y), right = Math.max(a.x, b.x), bottom = Math.max(a.y, b.y); return { left, top, right, bottom, width: right - left, height: bottom - top }; };

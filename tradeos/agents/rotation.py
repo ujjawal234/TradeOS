@@ -21,7 +21,7 @@ class RotationAgent(BaseAgent):
                    "rebalances weekly or monthly. Optional trend filter goes to cash when Nifty is below its 200 DMA. "
                    "Its daily ranking also answers 'which sectors / stocks are leading right now'.")
     defaults = {"universe": "nifty50", "lookback": 126, "skip": 21, "top_n": 5, "rebalance": "monthly",
-                "score": "momentum", "min_score": 0.0, "trend_filter": {"symbol": "NIFTY", "sma": 200},
+                "score": "momentum", "min_score": None, "trend_filter": None,  # no hidden filters
                 "rebalance_band_pct": 1.0, "capital": 1_000_000, "cost_pct": 0.12}
     example = {"universe": "sectors", "lookback": 63, "skip": 5, "top_n": 3, "rebalance": "weekly",
                "trend_filter": None}
