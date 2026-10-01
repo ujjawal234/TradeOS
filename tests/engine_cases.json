@@ -493,5 +493,91 @@
    "entry": "ref(\"INDIAVIX\", close) > 20",
    "expiry": "monthly"
   }
+ ],
+ [
+  "mkt nifty long straddle",
+  {
+   "type": "options",
+   "underlying": "NIFTY",
+   "structure": "long straddle",
+   "entry": "vix > sma(vix,20)"
+  },
+  {
+   "start": "2018-01-01"
+  }
+ ],
+ [
+  "mkt reliance covered strangle",
+  {
+   "type": "options",
+   "underlying": "RELIANCE",
+   "structure": "short strangle",
+   "otm_pct": 5
+  }
+ ],
+ [
+  "mkt banknifty bull put",
+  {
+   "type": "options",
+   "underlying": "BANKNIFTY",
+   "structure": "bull put spread",
+   "delta": 0.25,
+   "wing_pct": 2,
+   "expiry": "monthly"
+  }
+ ],
+ [
+  "mkt iv rule",
+  {
+   "type": "rule",
+   "symbols": [
+    "NIFTY",
+    "RELIANCE"
+   ],
+   "entry": "iv < pct_rank(iv,252) + 10 and pcr > 1",
+   "exit": "iv > 25",
+   "stop_loss_pct": 6
+  }
+ ],
+ [
+  "mkt iv rotation",
+  {
+   "type": "rotation",
+   "universe": "fno",
+   "factors": [
+    "momentum",
+    {
+     "name": "iv",
+     "invert": true
+    }
+   ],
+   "lookback": 126,
+   "skip": 21,
+   "top_n": 10
+  }
+ ],
+ [
+  "flows breadth rule",
+  {
+   "type": "rule",
+   "symbols": [
+    "NIFTY"
+   ],
+   "entry": "ref(\"BREADTH_ABOVE200\", close) > 60",
+   "exit": "ref(\"BREADTH_ABOVE200\", close) < 40",
+   "stop_loss_pct": 8
+  }
+ ],
+ [
+  "global ref rule",
+  {
+   "type": "rule",
+   "symbols": [
+    "NIFTY"
+   ],
+   "entry": "ref(\"SPX\", close > sma(close,200)) and ref(\"USDINR\", roc(close,20)) < 1",
+   "exit": "ref(\"SPX\", close < sma(close,200))",
+   "stop_loss_pct": 8
+  }
  ]
 ]

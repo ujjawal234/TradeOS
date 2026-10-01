@@ -22,7 +22,20 @@ const pitDir = path.join(dir, "data", "pit"), hasPit = fs.existsSync(path.join(p
 const pitLight = hasPit ? E.framesFromPack(readJ(path.join(pitDir, "closes.json"))) : {};
 const pitMem = hasPit ? JSON.parse(fs.readFileSync(path.join(pitDir, "membership.json"))) : {}; if (hasPit) E.setPit(pitMem);
 const pitFull = {}; const pitFrame = (s) => { if (!pitFull[s]) for (const [k, raw] of Object.entries(readJ(path.join(pitDir, "full", `${pitMem.bundles[s]}.json`)))) pitFull[k] = E.frame(raw); return pitFull[s]; };
+// NSE option data (data/opt), when the build has it
+const U = (man.options && man.options.underlyings) || null, optDone = { c: new Set(), s: new Set() };
+if (U) E.setData({ optIndex: U });
+function loadOpt(Eng, syms, kind) {
+  if (!U) return;
+  for (const x of syms) { if (!U[x] || !U[x][kind] || optDone[kind].has(x)) continue;
+    for (const [y, p] of Object.entries(readJ(path.join(dir, "data", "opt", `${U[x][kind]}.json`)))) { kind === "c" ? Eng.setOptions(y, p) : Eng.setOptionSummary(y, p); optDone[kind].add(y); } }
+}
 function framesFor(Eng, spec) {
+  if (U && Eng === E) {
+    if (spec.type === "option_selling") loadOpt(E, [spec.underlying], "c");
+    const ex = spec.type === "rule" ? [spec.entry, spec.exit, spec.rank_by] : spec.type === "rotation" ? E.exprsOf(spec) : [spec.entry, spec.exit];
+    if (ex.some(E.usesOptionVars)) { E.initOptionSummaries(); loadOpt(E, E.symbolsNeeded(spec, man.universes).concat(ex.flatMap((x) => E.refSymbols(x))), "s"); }
+  }
   const need = [...new Set(Eng.symbolsNeeded(spec, man.universes).concat(["NIFTY"]))], useFull = Eng.needsFull ? Eng.needsFull(spec) : spec.type === "rule", out = {};
   const pk = Eng.usesPit ? Eng.usesPit(spec) : null;
   for (const s of need) {
@@ -33,6 +46,7 @@ function framesFor(Eng, spec) {
 let fail = 0;
 const EXPECT_ERR = /^(bad expr|bad ref|no exit)$/;
 for (const [label, raw, opt] of JSON.parse(fs.readFileSync(path.join(here, "engine_cases.json")))) {
+  if (label.startsWith("mkt ") && !U) { console.log(`skip ${label} (no option data in this build)`); continue; }
   if (label.startsWith("pit ") && !hasPit) { console.log(`skip ${label} (no point-in-time data in this build)`); continue; }
   try {
     const spec = E.normalize(raw, man.universes), r = E.run(spec, framesFor(E, spec), man.universes, opt || { start: "2012-01-01" }), m = r.metrics, sig = E.signals(spec, r);

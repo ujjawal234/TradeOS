@@ -402,7 +402,17 @@ def main(out: Path) -> None:
             (dst / "p" / f"{old}.json").write_text((dst / "p" / f"{new}.json").read_text())
             symbols[old] = {**symbols[new], "alias_of": new}
     # calendar = union of all trading days
-    cal = sorted(set().union(*[set(df.index) for df in frames.values()]))
+    # calendar = Indian trading days (union of NSE series); world markets are put on it (last known value), so
+    # weekends and foreign holidays never become extra rows in Indian strategies
+    cal = sorted(set().union(*[set(df.index) for k, df in frames.items() if symbols.get(k, {}).get("group") != "global"]))
+    cal_set = pd.DatetimeIndex(cal)
+    for k in [k for k in frames if symbols.get(k, {}).get("group") == "global"]:
+        g = frames[k]
+        rng = cal_set[(cal_set >= g.index[0]) & (cal_set <= g.index[-1] + pd.Timedelta(days=4))]
+        g = g.reindex(g.index.union(rng)).sort_index().ffill().reindex(rng).dropna(subset=["close"])
+        frames[k] = g
+        symbols[k].update({"first": str(g.index[0].date()), "last": str(g.index[-1].date()), "rows": len(g)})
+        (dst / "p" / f"{k}.json").write_text(json.dumps(enc_full(g), separators=(",", ":")))
     cal_idx = pd.DatetimeIndex(cal)
     closes = pd.DataFrame({s: df["close"] for s, df in frames.items()}).reindex(cal_idx)
     # equal-weight sector baskets from today's Nifty 200 members (daily rebalanced, base 1000)
