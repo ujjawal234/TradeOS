@@ -60,7 +60,7 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p data/flows
-          python scripts/fetch_participants.py 2>&1 | tail -20
+          python scripts/fetch_participants.py 2>&1 | tee data/flows/_log.txt | tail -20
       - name: Save participant cache
         if: always()
         uses: actions/cache/save@v4

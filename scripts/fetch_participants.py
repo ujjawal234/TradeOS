@@ -69,7 +69,10 @@ def fetch(d: date, kind: str, session: requests.Session) -> tuple[date, dict | N
             if r.status_code != 200 or len(r.content) < 100:
                 last = f"http {r.status_code}"
                 continue
-            p = parse(r.text)
+            try:
+                p = parse(r.text)
+            except Exception as e:  # noqa: BLE001
+                return d, None, f"unparsed {e.__class__.__name__}"
             return d, p, "ok" if p else "unparsed"
         if last.startswith("http 404"):
             break
@@ -152,8 +155,16 @@ def main() -> None:
     cache.mkdir(parents=True, exist_ok=True)
     start = date.fromisoformat(args.start)
     days = sorted(d for d in (datetime.strptime(f.name[:8], "%Y%m%d").date() for f in (ROOT / args.eq_cache).glob("*.csv.gz") if f.name[:8].isdigit()) if d >= start)
-    st = participants(days, cache, args.workers)
-    st["fii_dii_cash"] = fii_dii_cash()
+    OUT.mkdir(parents=True, exist_ok=True)
+    try:
+        st = participants(days, cache, args.workers)
+    except Exception as e:  # noqa: BLE001
+        import traceback
+        st = {"error": traceback.format_exc()[-1500:]}
+    try:
+        st["fii_dii_cash"] = fii_dii_cash()
+    except Exception as e:  # noqa: BLE001
+        st["fii_dii_cash"] = {"error": str(e)[:300]}
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "_report.json").write_text(json.dumps(st, indent=1))
     print(json.dumps(st), flush=True)
