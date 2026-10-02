@@ -1,6 +1,6 @@
 {
- "generated": "2026-10-01",
- "start": "2011-09-27",
+ "generated": "2026-10-02",
+ "start": "2011-09-28",
  "adjusted": true,
  "source": "Yahoo Finance",
  "symbols": {
@@ -1626,45 +1626,45 @@
   },
   "SPX": {
    "yahoo": "^GSPC",
-   "rows": 3775,
+   "rows": 3776,
    "first": "2011-09-27",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "NASDAQ": {
    "yahoo": "^IXIC",
-   "rows": 3775,
+   "rows": 3776,
    "first": "2011-09-27",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "DOWJONES": {
    "yahoo": "^DJI",
-   "rows": 3775,
+   "rows": 3776,
    "first": "2011-09-27",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "RUSSELL2000": {
    "yahoo": "^RUT",
-   "rows": 3775,
+   "rows": 3776,
    "first": "2011-09-27",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "USVIX": {
    "yahoo": "^VIX",
    "rows": 3777,
-   "first": "2011-09-27",
-   "last": "2026-10-01"
+   "first": "2011-09-28",
+   "last": "2026-10-02"
   },
   "NIKKEI": {
    "yahoo": "^N225",
-   "rows": 3671,
+   "rows": 3672,
    "first": "2011-09-26",
-   "last": "2026-09-30"
+   "last": "2026-10-01"
   },
   "HANGSENG": {
    "yahoo": "^HSI",
-   "rows": 3693,
+   "rows": 3694,
    "first": "2011-09-26",
-   "last": "2026-09-30"
+   "last": "2026-10-02"
   },
   "SHANGHAI": {
    "yahoo": "000001.SS",
@@ -1674,135 +1674,135 @@
   },
   "KOSPI": {
    "yahoo": "^KS11",
-   "rows": 3685,
+   "rows": 3686,
    "first": "2011-09-26",
-   "last": "2026-09-30"
+   "last": "2026-10-01"
   },
   "TAIWAN": {
    "yahoo": "^TWII",
-   "rows": 3659,
+   "rows": 3661,
    "first": "2011-09-26",
-   "last": "2026-09-30"
+   "last": "2026-10-02"
   },
   "FTSE100": {
    "yahoo": "^FTSE",
-   "rows": 3793,
+   "rows": 3794,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "DAX": {
    "yahoo": "^GDAXI",
-   "rows": 3807,
+   "rows": 3808,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "CAC40": {
    "yahoo": "^FCHI",
-   "rows": 3839,
+   "rows": 3840,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "EUROSTOXX50": {
    "yahoo": "^STOXX50E",
-   "rows": 3764,
+   "rows": 3765,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "MSCI_EM": {
    "yahoo": "EEM",
-   "rows": 3776,
-   "first": "2011-09-26",
-   "last": "2026-10-01"
+   "rows": 3775,
+   "first": "2011-09-28",
+   "last": "2026-10-02"
   },
   "US10Y": {
    "yahoo": "^TNX",
-   "rows": 3774,
+   "rows": 3775,
    "first": "2011-09-27",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "US2Y": {
    "yahoo": "^IRX",
-   "rows": 3768,
-   "first": "2011-09-26",
-   "last": "2026-10-01"
+   "rows": 3767,
+   "first": "2011-09-28",
+   "last": "2026-10-02"
   },
   "DXY": {
    "yahoo": "DX-Y.NYB",
-   "rows": 3777,
+   "rows": 3778,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "USDINR": {
    "yahoo": "INR=X",
-   "rows": 3910,
+   "rows": 3911,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "EURINR": {
    "yahoo": "EURINR=X",
-   "rows": 3912,
+   "rows": 3913,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "GBPINR": {
    "yahoo": "GBPINR=X",
-   "rows": 3911,
+   "rows": 3912,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "JPYINR": {
    "yahoo": "JPYINR=X",
-   "rows": 3911,
+   "rows": 3912,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "GOLD": {
    "yahoo": "GC=F",
-   "rows": 3776,
+   "rows": 3777,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "SILVER": {
    "yahoo": "SI=F",
-   "rows": 3774,
+   "rows": 3775,
    "first": "2011-09-27",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "CRUDE": {
    "yahoo": "CL=F",
    "rows": 3774,
-   "first": "2011-09-27",
-   "last": "2026-10-01"
+   "first": "2011-09-28",
+   "last": "2026-10-02"
   },
   "BRENT": {
    "yahoo": "BZ=F",
    "rows": 3755,
-   "first": "2011-09-27",
-   "last": "2026-10-01"
+   "first": "2011-09-28",
+   "last": "2026-10-02"
   },
   "NATGAS": {
    "yahoo": "NG=F",
-   "rows": 3776,
+   "rows": 3777,
    "first": "2011-09-27",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "COPPER": {
    "yahoo": "HG=F",
    "rows": 3775,
-   "first": "2011-09-27",
-   "last": "2026-10-01"
+   "first": "2011-09-28",
+   "last": "2026-10-02"
   },
   "BITCOIN": {
    "yahoo": "BTC-USD",
-   "rows": 4398,
+   "rows": 4399,
    "first": "2014-09-17",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "ETHEREUM": {
    "yahoo": "ETH-USD",
-   "rows": 3249,
+   "rows": 3250,
    "first": "2017-11-09",
-   "last": "2026-10-01"
+   "last": "2026-10-02"
   },
   "AADHARHFC": {
    "yahoo": "AADHARHFC.NS",
@@ -2052,9 +2052,9 @@
   },
   "BIRET": {
    "yahoo": "BIRET.NS",
-   "rows": 1392,
+   "rows": 1393,
    "first": "2021-02-16",
-   "last": "2026-09-30"
+   "last": "2026-10-01"
   },
   "BLS": {
    "yahoo": "BLS.NS",
@@ -2322,9 +2322,9 @@
   },
   "EMBASSY": {
    "yahoo": "EMBASSY.NS",
-   "rows": 1858,
+   "rows": 1859,
    "first": "2019-04-01",
-   "last": "2026-09-30"
+   "last": "2026-10-01"
   },
   "EMCURE": {
    "yahoo": "EMCURE.NS",

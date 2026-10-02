@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-01",
+ "generated": "2026-10-02",
  "lists_fetched": {
   "nifty50": true,
   "nifty200": true,
@@ -1221,7 +1221,7 @@
   },
   "DUMMYHEG": {
    "name": "Dummy HEG Ltd.",
-   "industry": "Metals & Mining",
+   "industry": "Capital Goods",
    "nifty500": true,
    "nifty50": false,
    "nifty200": false,
