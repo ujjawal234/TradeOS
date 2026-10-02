@@ -1,54 +1,6 @@
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (0/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (5/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (10/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (15/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (20/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (25/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (30/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (35/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (40/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (45/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (50/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
-Today's bhavcopy (2026-10-02) isn't out yet; retrying in 5 minutes (55/60 min)
-Bhavcopy: 2 weekdays to fetch (5753 calendar days since 2011-01-01)
-  0/2 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 2}
+Bhavcopy: 3 weekdays to fetch (5754 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
 Loaded 3904 trading days, 6,538,411 rows, 3,829 tickers
 Symbol changes: 1056
 Corporate actions: 0 price-report files to fetch
