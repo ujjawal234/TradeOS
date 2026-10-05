@@ -1,0 +1,60 @@
+name: Intraday bars (5-minute and 1-minute history)
+
+# Yahoo serves only the last ~60 days of 5-minute bars and ~7 days of 1-minute bars, so this job keeps every bar it
+# has ever fetched in the `intraday-data` release and adds each new day. The app backtests intraday agents on it.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["scripts/fetch_intraday_bars.py", ".github/workflows/intraday-bars.yml"]
+  schedule:
+    - cron: "0 11 * * 1-5"           # 16:30 IST on weekdays
+
+permissions:
+  contents: write
+
+concurrency:
+  group: intraday-bars
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install pandas numpy yfinance requests
+      - name: Previous history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download intraday-data -p intraday_data.tar -O prev.tar 2>/dev/null && ls -la prev.tar || echo "no previous history (first run)"
+      - name: Fetch the latest bars and merge
+        run: |
+          ARGS=""
+          if [ -f prev.tar ]; then ARGS="--prev prev.tar"; fi
+          python scripts/fetch_intraday_bars.py $ARGS --out build_intra
+      - name: Publish history and app bundles
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -f build_intra/app/intra/index.json || { echo "no output"; exit 1; }
+          tar -C build_intra -cf intraday_data.tar hist
+          tar -C build_intra/app -cf intraday_app.tar intra
+          ls -la intraday_data.tar intraday_app.tar
+          gh release view intraday-data >/dev/null 2>&1 || gh release create intraday-data --title "Intraday bars (daily)" --notes "5-minute and 1-minute NSE bars kept by .github/workflows/intraday-bars.yml. intraday_data.tar: full history (CSV per symbol). intraday_app.tar: bundles for the TradeOS app."
+          gh release upload intraday-data intraday_data.tar intraday_app.tar --clobber
+      - name: Commit report
+        if: always()
+        run: |
+          git config user.name "tradeos-bot"
+          git config user.email "tradeos-bot@users.noreply.github.com"
+          git add data/intraday_bars/ 2>/dev/null || true
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "data: intraday bars $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 5; done
