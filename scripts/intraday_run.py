@@ -128,12 +128,22 @@ def main() -> int:
     live = NseLive()
 
     if args.probe:
-        t0 = time.time()
-        q, upd = live.quotes(watch)
-        print(f"NSE live: {len(q)}/{len(watch)} symbols in {time.time() - t0:.1f}s, server updated {upd}")
-        for s in list(q)[:5]:
+        ok = 0
+        for k in range(3):  # three polls a minute apart: speed and whether the data moves
+            t0 = time.time()
+            q, upd = live.quotes(watch)
+            secs = time.time() - t0
+            slow = sorted(live.timings.items(), key=lambda x: -x[1])[:3]
+            line = f"poll {k + 1}: {len(q)}/{len(watch)} symbols in {secs:.1f}s, NSE updated {upd}, slowest letters {slow}"
+            print(line, flush=True)
+            if os.environ.get("GITHUB_ACTIONS"):
+                print(f"::notice title=NSE probe {k + 1}::{line}", flush=True)
+            ok += len(q) >= 0.8 * len(watch)
+            if k < 2:
+                time.sleep(max(0.0, 60 - secs))
+        for s in list(q)[:3]:
             print(" ", q[s])
-        return 0 if len(q) >= 0.8 * len(watch) else 1
+        return 0 if ok >= 2 else 1
 
     if day.dayofweek >= 5:
         print("Weekend: market closed.")

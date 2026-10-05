@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import requests
@@ -116,17 +117,35 @@ class NseLive:
         raise NseLiveError(f"{tool} failed after {self.retries} tries: {last}")
 
     # ---------------------------------------------------------------- data
-    def quotes(self, symbols: list[str]) -> tuple[dict[str, Quote], str | None]:
+    def quotes(self, symbols: list[str], workers: int = 5) -> tuple[dict[str, Quote], str | None]:
         """Latest quotes for these symbols (EQ series only) and the server's crawl time (UTC ISO).
-        One call per distinct first letter; a failed letter is skipped, so the caller sees missing symbols."""
+        One call per distinct first letter, `workers` at a time (each worker has its own MCP session);
+        a failed letter is skipped, so the caller sees missing symbols. Per-letter seconds go to self.timings."""
         want = set(symbols)
         out: dict[str, Quote] = {}
         updated = None
-        for letter in sorted({s[0] for s in want}):
+        letters = sorted({s[0] for s in want})
+        if not hasattr(self, "_pool"):
+            self._pool = [self] + [NseLive(self.url, self.timeout, self.retries) for _ in range(max(0, workers - 1))]
+        self.timings: dict[str, float] = {}
+
+        def fetch(i_letter):
+            i, letter = i_letter
+            client = self._pool[i % len(self._pool)]
+            t0 = time.monotonic()
             try:
-                d = self.call("cm_get_equity_stocks", {"limit": 500, "symbolFilter": letter})
+                return letter, client.call("cm_get_equity_stocks", {"limit": 500, "symbolFilter": letter}), time.monotonic() - t0
             except NseLiveError as e:
                 log.warning("letter %s: %s", letter, e)
+                return letter, None, time.monotonic() - t0
+
+        # worker k only ever uses client k (letters are dealt round-robin), so no session is shared between threads
+        groups = [[(i, L) for i, L in enumerate(letters) if i % len(self._pool) == k] for k in range(len(self._pool))]
+        with ThreadPoolExecutor(max_workers=len(self._pool)) as ex:
+            results = [r for batch in ex.map(lambda g: [fetch(x) for x in g], groups) for r in batch]
+        for letter, d, secs in results:
+            self.timings[letter] = round(secs, 2)
+            if d is None:
                 continue
             updated = max(updated or "", d.get("updatedAt") or "") or None
             for s in d.get("stocks", []):
