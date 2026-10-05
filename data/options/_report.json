@@ -1,10 +1,12 @@
 {
  "asof": "2026-10-01",
- "days": 3904,
+ "days": 3905,
  "days_used": 3901,
  "download": {
   "new_files": 0,
-  "not_available": {}
+  "not_available": {
+   "http 404": 1
+  }
  },
  "underlyings": 432,
  "indices": [
