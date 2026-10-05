@@ -71,7 +71,7 @@ jobs:
         run: |
           mkdir -p data/options
           set -o pipefail
-          ARGS="$(grep -E '^--' data/REQUEST_OPTIONS 2>/dev/null | tr '\n' ' ')"
+          ARGS="$(grep -E '^--' data/REQUEST_OPTIONS 2>/dev/null | tr '\n' ' ' || true)"
           if [ "${{ github.event_name }}" = "schedule" ]; then ARGS="--wait-today 50"; fi
           python scripts/fetch_fo.py $ARGS 2>&1 | tee data/options/_log.txt
       - name: Save F&O cache
