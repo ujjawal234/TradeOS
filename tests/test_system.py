@@ -283,3 +283,22 @@ if __name__ == "__main__":
         if name.startswith("test_"):
             fn()
             print("PASS", name)
+
+
+def test_intraday_app_engine_matches_python():
+    """Agents built in the app run live with "engine": "js" (lab/engine.js via scripts/intraday_eval.mjs): same trades."""
+    import shutil
+
+    from tradeos.live.intraday import Session
+    if not shutil.which("node"):
+        return
+    polls = _synthetic_day()
+    out = {}
+    for eng in ("py", "js"):
+        specs = [{**s, **({"engine": "js"} if eng == "js" else {})} for s in _intraday_specs()]
+        s = Session("2026-10-06", specs, {})
+        for polled, qs in polls:
+            s.feed(polled, qs)
+        s.finish()
+        out[eng] = s.results()["agents"]
+    assert out["py"] == out["js"], (out["py"], out["js"])

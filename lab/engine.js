@@ -88,7 +88,8 @@
     "adx", "plus_di", "minus_di", "stoch_k", "stoch_d", "cci", "mfi", "williams_r", "obv", "vwap", "supertrend", "keltner_upper", "keltner_lower",
     "log", "sqrt", "sign", "iff", "clip", "ref"];
   const VARS = ["open", "high", "low", "close", "volume", "hl2", "hlc3", "dow", "dom", "month", "year", "pe", "pb", "dy", "vix",
-    "iv", "iv_near", "iv_next", "pcr", "pcr_vol", "skew", "straddle", "max_pain", "oi_calls", "oi_puts", "fut_oi", "dte", "fut_basis", "rollover", "fut_next"];
+    "iv", "iv_near", "iv_next", "pcr", "pcr_vol", "skew", "straddle", "max_pain", "oi_calls", "oi_puts", "fut_oi", "dte", "fut_basis", "rollover", "fut_next",
+    "day_open", "prev_close", "day_high", "day_low", "or_high", "or_low", "minutes", "day_ret"]; // + vwap (as a variable): intraday only
   // option-market variables (NSE F&O data): name -> [summary key, divisor]
   const OPTVARS = { iv: ["iv30", 10], iv_near: ["ivn", 10], iv_next: ["ivx", 10], pcr: ["pcr", 1000], pcr_vol: ["pcrv", 1000], skew: ["sk", 10],
     straddle: ["st", 1000], max_pain: ["mp", 100], oi_calls: ["coi", 1], oi_puts: ["poi", 1], fut_oi: ["foi", 1], dte: ["dte", 1],
@@ -151,7 +152,7 @@
           if (!FUNCS.includes(tk.v)) throw new RuleError(`Unknown function '${tk.v}'. Allowed: ${FUNCS.join(", ")}`);
           return { t: "call", f: tk.v, args, kw };
         }
-        if (!VARS.includes(tk.v)) throw new RuleError(`Unknown variable '${tk.v}'. Allowed: ${VARS.join(", ")}${/^[A-Z0-9_&-]{2,}$/.test(tk.v) ? `. To use another symbol's data write ref("${tk.v}", close)` : ""}`);
+        if (!VARS.includes(tk.v) && tk.v !== "vwap") throw new RuleError(`Unknown variable '${tk.v}'. Allowed: ${VARS.join(", ")}${/^[A-Z0-9_&-]{2,}$/.test(tk.v) ? `. To use another symbol's data write ref("${tk.v}", close)` : ""}`);
         return { t: "var", v: tk.v };
       }
       throw new RuleError(`Unexpected '${tk.v}' in '${src}'`);
@@ -313,8 +314,14 @@
           if (n.v === "dom") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCDate());
           if (n.v === "month") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCMonth() + 1);
           if (n.v === "year") return Float64Array.from(df.d, (d) => new Date(d * 864e5).getUTCFullYear());
+          if (INTRA_VARS.includes(n.v)) {
+            if (ctx.validating) return n.v === "minutes" ? Float64Array.from(df.c, (_, i) => (i % 75) * 5 + 5) : df.c;
+            if (!ctx.intra) throw new RuleError(`'${n.v}' is an intraday variable: it works in intraday strategies (type "intraday"). On daily bars use vwap(n) for a rolling VWAP.`);
+            return ctx.intra[n.v];
+          }
           if (OPTVARS[n.v]) { // this symbol's option-market series (NSE F&O), NaN where it had no options
             if (ctx.validating) return df.c;
+            if (ctx.intraday) throw new RuleError(`'${n.v}' is end-of-day option data; inside an intraday strategy use ref("${df.sym || "NIFTY"}", ${n.v}) for yesterday's value.`);
             if (!DATA.optSum) throw new RuleError(`Option data isn't loaded here (needed for '${n.v}')`);
             const os = DATA.optSum[df.sym];
             if (!os) return nanArr();
@@ -330,7 +337,7 @@
             if (ctx.validating) return df.c;
             const vf = (ctx.frames || DATA.frames || {}).INDIAVIX;
             if (!vf) throw new RuleError("India VIX data isn't loaded (needed for 'vix')");
-            return alignTo(df.d, vf.d, vf.c);
+            return alignTo(ctx.intraday ? df.d.map((x) => x - 1) : df.d, vf.d, vf.c); // intraday: yesterday's close (today's isn't known yet)
           }
           return vars[n.v];
         case "str": return n.v;
@@ -360,8 +367,8 @@
             if (!other.sym) other.sym = sym;
             const key = sym + "|" + unparse(en), cache = ctx.refCache || (ctx.refCache = new Map());
             let v = cache.get(key);
-            if (!v) { v = toF(evaluate(en, other, ctx), other.c.length); cache.set(key, v); }
-            return alignTo(df.d, other.d, v);
+            if (!v) { v = toF(evaluate(en, other, { ...ctx, intra: null, intraday: false }), other.c.length); cache.set(key, v); }
+            return alignTo(ctx.intraday ? df.d.map((x) => x - 1) : df.d, other.d, v); // intraday: daily data as of yesterday's close
           }
           const args = n.args.map(ev), kw = Object.fromEntries(Object.entries(n.kw).map(([k, v]) => [k, ev(v)]));
           if ([...args, ...Object.values(kw)].some((x) => typeof x === "string")) throw new RuleError(`Quoted text is only allowed as ref()'s symbol (in ${n.f})`);
@@ -372,7 +379,17 @@
     return ev(ast);
   }
   function condition(expr, df, ctx) { return toB(evaluate(typeof expr === "string" ? parse(expr) : expr, df, ctx), df.c.length); }
-  function validate(expr) {
+  function astVars(n, out = new Set()) {
+    if (!n || typeof n !== "object") return out;
+    if (n.t === "var") out.add(n.v);
+    for (const k of ["a", "b", "first"]) if (n[k]) astVars(n[k], out);
+    if (n.parts) for (const [, x] of n.parts) astVars(x, out);
+    if (n.args) for (const x of n.args) astVars(x, out);
+    if (n.kw) for (const x of Object.values(n.kw)) astVars(x, out);
+    return out;
+  }
+  function validate(expr, intraday = false) {
+    if (!intraday) { const iv = [...astVars(parse(expr))].filter((v) => INTRA_VARS.includes(v)); if (iv.length) throw new RuleError(`'${iv[0]}' is an intraday variable: it works in intraday strategies (type "intraday"). On daily bars use vwap(n) for a rolling VWAP.`); }
     const n = 300, d = new Float64Array(n), c = new Float64Array(n);
     let x = 100; for (let i = 0; i < n; i++) { x *= 1 + Math.sin(i) * 0.01; c[i] = x; d[i] = 18000 + i; }
     condition(expr, { d, o: c, h: c.map((v) => v * 1.01), l: c.map((v) => v * 0.99), c, v: c.map(() => 1000) }, { validating: true });
@@ -1154,17 +1171,171 @@
     return { days: Float64Array.from(eqD), eq: Float64Array.from(eqV), trades: cycles, metrics: m, optState };
   }
 
+  // ----------------------------------------------------------------- intraday (port of tradeos/live/intraday.py)
+  // Bars: DATA intraday store INTRA[sym][step] = {step, days: [{d, b0, o, h, l, c, v}]}, bar k of a day covers minutes
+  // [(b0+k)*step, (b0+k+1)*step) after 09:15 IST. Indicators see only the same day's bars (as the live runner does).
+  const INTRA = {};
+  const INTRA_VARS = ["vwap", "day_open", "prev_close", "day_high", "day_low", "or_high", "or_low", "minutes", "day_ret"];
+  const SESSION_MIN = 375; // 09:15 to 15:30
+  function decodeIntra(p) {
+    const days = p.days.map(([d, b0, c0, dc, dO, dH, dL, v]) => {
+      const n = dc.length, c = new Float64Array(n), o = new Float64Array(n), h = new Float64Array(n), l = new Float64Array(n);
+      let cc = c0; for (let i = 0; i < n; i++) { if (i) cc += dc[i]; c[i] = cc / 100; o[i] = (cc + dO[i]) / 100; h[i] = (cc + dH[i]) / 100; l[i] = (cc + dL[i]) / 100; }
+      const vv = Float64Array.from(v);
+      if (b0 === 0 && vv[0] === 0 && vv.some((x) => x > 0)) vv[0] = NaNv; // Yahoo reports no volume for the opening bar: unknown, not zero
+      return { d, b0, o, h, l, c, v: vv };
+    });
+    return { step: p.step, days };
+  }
+  function setIntraday(sym, p) { if (!p) return; const x = p.days && p.days[0] && p.days[0].c instanceof Float64Array ? p : decodeIntra(p); (INTRA[sym] ||= {})[x.step] = x; }
+  function intradayData(sym) { return INTRA[sym] || null; }
+  const hhmm = (s) => { const m = String(s ?? "").match(/^(\d{1,2})[:.](\d{2})/); if (!m) return null; return (+m[1]) * 60 + (+m[2]) - 555; }; // minutes after 09:15
+  const clockOf = (mins) => { const t = 555 + Math.round(mins); return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
+  function aggDay(day, step, m) { // base bars -> m-minute bars on the 09:15 grid
+    if (step === m) return { ...day, k0: day.b0 };
+    const r = m / step, n = day.c.length, k0 = Math.floor(day.b0 / r), k1 = Math.floor((day.b0 + n - 1) / r), N = k1 - k0 + 1;
+    const o = f64(N), h = f64(N), l = f64(N), c = f64(N), v = new Float64Array(N);
+    for (let i = 0; i < n; i++) {
+      const k = Math.floor((day.b0 + i) / r) - k0;
+      if (o[k] !== o[k]) { o[k] = day.o[i]; h[k] = day.h[i]; l[k] = day.l[i]; }
+      else { h[k] = Math.max(h[k], day.h[i]); l[k] = Math.min(l[k], day.l[i]); }
+      c[k] = day.c[i]; v[k] += day.v[i];
+    }
+    return { d: day.d, k0, o, h, l, c, v };
+  }
+  // the per-day frame and intraday variables for one symbol-day (k0 = index of the first bar on the m-minute grid)
+  function intraFrame(bar, m, orMin, prevClose, sym) {
+    const n = bar.c.length, d = new Float64Array(n).fill(bar.d), mins = new Float64Array(n), vw = f64(n), dh = f64(n), dl = f64(n), orh = f64(n), orl = f64(n), dr = f64(n);
+    let pv = 0, vv = 0, tp = 0, hi = -Infinity, lo = Infinity, oh = -Infinity, ol = Infinity, haveOr = false;
+    const noVol = !bar.v.some((x) => x > 0); // indices: no volume -> time-weighted average price
+    for (let i = 0; i < n; i++) {
+      const end = Math.min(SESSION_MIN, (bar.k0 + i + 1) * m), t = (bar.h[i] + bar.l[i] + bar.c[i]) / 3;
+      const vol = bar.v[i] > 0 ? bar.v[i] : 0;
+      mins[i] = end; pv += t * vol; vv += vol; tp += t;
+      vw[i] = noVol ? tp / (i + 1) : vv > 0 ? pv / vv : NaNv;
+      hi = Math.max(hi, bar.h[i]); lo = Math.min(lo, bar.l[i]); dh[i] = hi; dl[i] = lo;
+      if (end <= orMin) { oh = Math.max(oh, bar.h[i]); ol = Math.min(ol, bar.l[i]); haveOr = true; }
+      dr[i] = (bar.c[i] / prevClose - 1) * 100;
+    }
+    for (let i = 0; i < n; i++) if (mins[i] >= orMin && haveOr) { orh[i] = oh; orl[i] = ol; }
+    const df = { d, o: bar.o, h: bar.h, l: bar.l, c: bar.c, v: bar.v, sym };
+    const intra = { vwap: vw, day_open: f64(n, bar.o[0]), prev_close: f64(n, prevClose), day_high: dh, day_low: dl, or_high: orh, or_low: orl, minutes: mins, day_ret: dr };
+    return { df, intra };
+  }
+  function intraBase(sym, m) { // which stored bar size serves m-minute bars (the coarsest that divides m)
+    const x = INTRA[sym]; if (!x) return null;
+    for (const st of [5, 1]) if (x[st] && m % st === 0) return x[st];
+    return null;
+  }
+  function runIntraday(spec, frames, opt) {
+    const sp = spec, m = sp.bar_minutes, long = sp.side === "long", sgn = long ? 1 : -1;
+    const en0 = parse(sp.entry), ex0 = sp.exit ? parse(sp.exit) : null, rk0 = sp.rank_by ? parse(sp.rank_by) : null;
+    const t0 = hhmm(sp.start_after), t1 = hhmm(sp.no_entry_after), tSq = hhmm(sp.square_off);
+    const slip = sp.slippage_pct / 100, cost = sp.cost_pct / 100, cap = sp.capital;
+    const px = (p, buying) => buying ? p * (1 + slip) : p * (1 - slip);
+    const fee = (notional) => Math.abs(notional) * cost;
+    // per symbol: days -> prepared signals
+    const bySym = {}, missing = [], daySet = new Set(), refCache = new Map();
+    let firstDay = Infinity, lastDay = -Infinity;
+    for (const s of sp.symbols) {
+      const base = intraBase(s, m);
+      if (!base) { missing.push(s); continue; }
+      const map = new Map(); let prev = NaNv;
+      for (const day of base.days) {
+        const lastC = day.c[day.c.length - 1];
+        if ((opt.startDay != null && day.d < opt.startDay) || (opt.endDay != null && day.d > opt.endDay)) { prev = lastC; continue; }
+        const bar = aggDay(day, base.step, m), { df, intra } = intraFrame(bar, m, sp.opening_range_minutes, prev, s);
+        const ctx = { frames, intra, intraday: true, refCache };
+        const L = df.c.length;
+        map.set(day.d, { bar, en: toB(evaluate(en0, df, ctx), L), ex: ex0 ? toB(evaluate(ex0, df, ctx), L) : null, rk: rk0 ? toF(evaluate(rk0, df, ctx), L) : null, mins: intra.minutes });
+        daySet.add(day.d); firstDay = Math.min(firstDay, day.d); lastDay = Math.max(lastDay, day.d); prev = lastC;
+      }
+      bySym[s] = map;
+    }
+    const days = [...daySet].sort((a, b) => a - b), trades = [], eqD = [], eqV = [];
+    if (!days.length) return { days: new Float64Array(0), eq: new Float64Array(0), trades, metrics: { note: missing.length ? `No intraday bars for ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? "…" : ""}` : "no intraday data in range" }, intraState: { missing } };
+    let realized = 0; const reasons = {}, dayPnl = [];
+    eqD.push(days[0] - 1); eqV.push(cap);
+    for (const d of days) {
+      const live = Object.keys(bySym).filter((s) => bySym[s].has(d)).map((s) => [s, bySym[s].get(d)]);
+      let kMin = Infinity, kMax = -Infinity;
+      for (const [, x] of live) { kMin = Math.min(kMin, x.bar.k0); kMax = Math.max(kMax, x.bar.k0 + x.bar.c.length - 1); }
+      const pos = new Map(), entries = {}; let dayReal = 0, squared = false;
+      const close = (s, p, k, x, reason, market = true) => { // eslint-disable-line no-unused-vars
+        const q = pos.get(s), fill = market ? px(p, !(q.qty > 0)) : p, gross = (fill - q.entry) * q.qty, xf = fee(Math.abs(q.qty) * fill);
+        const pnl = gross - xf - fee(Math.abs(q.qty) * q.entry);
+        dayReal += gross - xf; reasons[reason] = (reasons[reason] || 0) + 1;
+        trades.push({ symbol: s, side: sp.side, entry_date: isoOf(d), entry_time: clockOf(q.t), entry_price: r2(q.entry), exit_date: isoOf(d), exit_time: clockOf(Math.min(SESSION_MIN, (k + 1) * m)),
+          exit_price: r2(fill), qty: Math.abs(q.qty), pnl, return_pct: sgn * (fill / q.entry - 1) * 100, reason, bars: k - q.k });
+        pos.delete(s);
+      };
+      for (let k = kMin; k <= kMax && !squared; k++) {
+        const endMin = Math.min(SESSION_MIN, (k + 1) * m);
+        // 1) stops, targets, trailing stops on this bar's range (positions opened on an earlier bar)
+        for (const [s, q] of [...pos]) {
+          const x = bySym[s].get(d), i = k - x.bar.k0; if (i < 0 || i >= x.bar.c.length || q.k >= k) continue;
+          const o = x.bar.o[i], hi = x.bar.h[i], lo = x.bar.l[i];
+          if (q.stop != null && (long ? lo <= q.stop : hi >= q.stop)) { close(s, long ? Math.min(o, q.stop) : Math.max(o, q.stop), k, x, q.trailed ? "trailing stop" : "stop"); continue; }
+          if (q.target != null && (long ? hi >= q.target : lo <= q.target)) { close(s, q.target, k, x, "target", false); continue; }
+          if (sp.trailing_stop_pct) {
+            q.best = long ? Math.max(q.best, hi) : Math.min(q.best, lo);
+            const ts = long ? q.best * (1 - sp.trailing_stop_pct / 100) : q.best * (1 + sp.trailing_stop_pct / 100);
+            const ns = q.stop == null ? ts : long ? Math.max(q.stop, ts) : Math.min(q.stop, ts);
+            if (ns !== q.stop) { q.stop = ns; q.trailed = true; }
+          }
+        }
+        // 2) exit rule at the bar's close
+        if (ex0) for (const [s, q] of [...pos]) { const x = bySym[s].get(d), i = k - x.bar.k0; if (i >= 0 && i < x.bar.c.length && q.k < k && x.ex[i]) close(s, x.bar.c[i], k, x, "exit rule"); }
+        // 3) square-off
+        if (endMin >= tSq) {
+          for (const [s] of [...pos]) { const x = bySym[s].get(d), i = Math.min(k - x.bar.k0, x.bar.c.length - 1); close(s, x.bar.c[i], k, x, "square-off"); }
+          squared = true; break;
+        }
+        // 4) entries at the bar's close (ranked when more signal than there are free slots)
+        if (endMin < t0 || endMin > t1 || pos.size >= sp.max_positions) continue;
+        const cands = [];
+        for (const [s, x] of live) {
+          const i = k - x.bar.k0; if (i < 0 || i >= x.bar.c.length || pos.has(s) || (entries[s] || 0) >= sp.max_trades_per_symbol || !x.en[i]) continue;
+          const sc = x.rk ? x.rk[i] : 0; cands.push([sc === sc ? sc : -Infinity, s, x, i]);
+        }
+        cands.sort((a, b) => b[0] - a[0] || (a[1] < b[1] ? -1 : 1));
+        for (const [, s, x, i] of cands.slice(0, Math.max(0, sp.max_positions - pos.size))) {
+          let used = 0; for (const q of pos.values()) used += Math.abs(q.qty) * q.entry;
+          const budget = Math.min(cap * sp.position_pct / 100, cap - used), p = px(x.bar.c[i], long), qty = Math.floor(budget / p);
+          if (qty < 1) continue;
+          pos.set(s, { qty: sgn * qty, entry: p, k, t: x.mins[i], best: p,
+            stop: sp.stop_loss_pct ? p * (1 - sgn * sp.stop_loss_pct / 100) : null, target: sp.target_pct ? p * (1 + sgn * sp.target_pct / 100) : null });
+          dayReal -= fee(qty * p); entries[s] = (entries[s] || 0) + 1;
+        }
+      }
+      for (const [s] of [...pos]) { const x = bySym[s].get(d); close(s, x.bar.c[x.bar.c.length - 1], x.bar.k0 + x.bar.c.length - 1, x, "end of data"); }
+      realized += dayReal; dayPnl.push(dayReal); eqD.push(d); eqV.push(cap + realized);
+    }
+    const met = computeMetrics(eqD, eqV, trades, opt.rf);
+    const traded = dayPnl.filter((p) => p !== 0), up = dayPnl.filter((p) => p > 0);
+    Object.assign(met, { sessions: days.length, sessions_traded: traded.length, avg_trades_per_session: r2(trades.length / days.length),
+      positive_sessions_pct: traded.length ? r2(up.length / traded.length * 100) : null, best_session: r2(Math.max(...dayPnl)), worst_session: r2(Math.min(...dayPnl)),
+      avg_session_pnl: r2(realized / days.length), exit_reasons: reasons, bar_minutes: m });
+    if (missing.length) met.notes = [`No intraday bars for ${missing.length} symbol(s): ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? "…" : ""} (skipped).`];
+    const ld = days[days.length - 1], lastTrades = trades.filter((t) => t.entry_date === isoOf(ld));
+    return { days: Float64Array.from(eqD), eq: Float64Array.from(eqV), trades, metrics: met,
+      intraState: { lastDate: isoOf(ld), firstDate: isoOf(days[0]), sessions: days.length, lastTrades, lastPnl: dayPnl[dayPnl.length - 1], missing, symbols: Object.keys(bySym).length } };
+  }
+
   // ----------------------------------------------------------------- spec normalisation
   const RULE_DEF = { symbols: [], entry: "", exit: "", side: "long", stop_loss_pct: null, take_profit_pct: null, capital: 1000000, position_size_pct: 100, cost_pct: 0.12 };
   // No hidden filters: a trend filter or score floor exists only when the spec asks for it (omitted = off).
   const ROT_DEF = { universe: "nifty50", lookback: 126, skip: 21, top_n: 5, rebalance: "monthly", score: "momentum", min_score: null,
     trend_filter: null, rebalance_band_pct: 1.0, capital: 1000000, cost_pct: 0.12 };
+  const INTRA_DEF = { symbols: [], bar_minutes: 5, side: "long", entry: "", opening_range_minutes: 15, stop_loss_pct: null, target_pct: null,
+    capital: 1000000, max_positions: 4, position_pct: 25, start_after: "09:30", no_entry_after: "14:45", square_off: "15:15", max_trades_per_symbol: 1,
+    cost_pct: 0.03, slippage_pct: 0.02 };
   const OPT_DEF = { underlying: "NIFTY", structure: "strangle", expiry: null, expiry_weekday: 1, strike_mode: "delta", delta: 0.15, otm_pct: 2.0,
     wing_width: 500, strike_step: null, lot_size: null, lots: 1, min_dte: 2, stop_loss_mult: 2.0, profit_target_pct: 50, exit_dte: 0,
     min_vix: null, max_vix: null, iv_mult: 1.0, capital: 500000, fee_per_order: 20, cost_pct_premium: 0.15, vix_symbol: "INDIAVIX" };
   // Claude (or a person) may write values loosely: "15" for 0.15 delta, "Nifty 50" for nifty50, "RELIANCE.NS",
   // null for "use the default". Normalise all of that here so a sensible strategy never fails on format.
-  const NULLABLE = new Set(["stop_loss_pct", "take_profit_pct", "min_score", "trend_filter", "min_vix", "max_vix", "stop_loss_mult", "profit_target_pct", "exit", "entry"]);
+  const NULLABLE = new Set(["target_pct", "trailing_stop_pct", "stop_loss_pct", "take_profit_pct", "min_score", "trend_filter", "min_vix", "max_vix", "stop_loss_mult", "profit_target_pct", "exit", "entry"]);
   const ALIASES = { NIFTY50: "NIFTY", "NIFTY 50": "NIFTY", NIFTY_50: "NIFTY", NSEI: "NIFTY", "BANK NIFTY": "BANKNIFTY", NIFTYBANK: "BANKNIFTY", NIFTY_BANK: "BANKNIFTY", NSEBANK: "BANKNIFTY",
     "INDIA VIX": "INDIAVIX", INDIA_VIX: "INDIAVIX", VIX: "INDIAVIX", NIFTYFIN: "FINNIFTY", NIFTYFINSERVICE: "FINNIFTY", NIFTYFINANCIALSERVICES: "FINNIFTY", NIFTY_FINANCIAL_SERVICES: "FINNIFTY",
     MIDCAPSELECT: "MIDCPNIFTY", NIFTYMIDSELECT: "MIDCPNIFTY", NIFTYMIDCAPSELECT: "MIDCPNIFTY", NIFTY_MIDCAP_SELECT: "MIDCPNIFTY", NIFTYNEXT50: "NIFTYNXT50", NEXT50: "NIFTYNXT50", NIFTY_NEXT_50: "NIFTYNXT50",
@@ -1202,7 +1373,7 @@
   function normalize(spec, universes) {
     if (!spec || typeof spec !== "object") throw new RuleError("No strategy given");
     const t = groupKey(spec.type || "rule");
-    const type = t.startsWith("rot") || t.includes("momentum") ? "rotation" : t.includes("option") ? "option_selling" : t === "rule" || t === "" ? "rule" : spec.type;
+    const type = t.includes("intraday") || t.includes("daytrad") || t === "intra" ? "intraday" : t.startsWith("rot") || t.includes("momentum") ? "rotation" : t.includes("option") ? "option_selling" : t === "rule" || t === "" ? "rule" : spec.type;
     if (type === "rule") {
       const s = Object.assign({}, RULE_DEF, clean(spec, RULE_DEF), { type });
       const pk = (Array.isArray(spec.symbols) ? spec.symbols : String(spec.symbols || "").split(/[,;\s]+/)).map(groupKey).find((k) => isPitKey(k) && universes[k]);
@@ -1372,7 +1543,32 @@
       normBenchmark(s);
       return s;
     }
-    throw new RuleError(`Unknown strategy type '${spec.type}'. Use rule, rotation or options.`);
+    if (type === "intraday") {
+      const s = Object.assign({}, INTRA_DEF, clean(spec, INTRA_DEF), { type });
+      if (spec.take_profit_pct != null && spec.target_pct == null) s.target_pct = spec.take_profit_pct;
+      delete s.take_profit_pct;
+      s.symbols = expandSymbols(s.symbols, universes).sort();
+      if (!s.symbols.length) throw new RuleError("Add at least one symbol (or a universe such as nifty50).");
+      s.side = /short|sell/i.test(String(s.side)) ? "short" : "long";
+      s.bar_minutes = Math.trunc(numOr(s.bar_minutes, 5));
+      if (!(s.bar_minutes >= 1 && s.bar_minutes <= 75) || 375 % s.bar_minutes && s.bar_minutes % 5) throw new RuleError("bar_minutes should be 1, 3, 5, 10, 15, 25, 30, 45, 60 or 75.");
+      s.opening_range_minutes = Math.trunc(numOr(s.opening_range_minutes, 15));
+      if (!s.entry) throw new RuleError("The strategy needs an entry rule.");
+      for (const k of ["entry", "exit", "rank_by"]) { if (s[k] == null || s[k] === "" || s[k] === false) { if (k !== "entry") delete s[k]; continue; } s[k] = String(s[k]); validate(s[k], true); }
+      const ex = [s.entry, s.exit, s.rank_by].filter(Boolean).join(" ");
+      if (/\bor_(high|low)\b/.test(ex) && s.opening_range_minutes % s.bar_minutes) throw new RuleError(`The opening range (${s.opening_range_minutes} min) must be a whole number of ${s.bar_minutes}-minute bars.`);
+      for (const k of ["stop_loss_pct", "target_pct", "trailing_stop_pct"]) optNum(s, k, (v) => v > 0, `${k} must be positive`);
+      for (const k of ["start_after", "no_entry_after", "square_off"]) { const v = hhmm(s[k]); if (v == null || v < 0 || v > SESSION_MIN) throw new RuleError(`${k} should be a time between 09:15 and 15:30, like "09:30".`); s[k] = clockOf(v); }
+      if (hhmm(s.square_off) <= hhmm(s.start_after)) throw new RuleError("square_off must be after start_after.");
+      s.max_positions = Math.max(1, Math.trunc(numOr(s.max_positions, INTRA_DEF.max_positions)));
+      s.position_pct = Math.min(100, Math.max(1, numOr(s.position_pct ?? spec.position_size_pct, INTRA_DEF.position_pct)));
+      s.max_trades_per_symbol = Math.max(1, Math.trunc(numOr(s.max_trades_per_symbol, 1)));
+      for (const k of ["capital", "cost_pct", "slippage_pct"]) s[k] = numOr(s[k], INTRA_DEF[k]);
+      delete s.position_size_pct;
+      normBenchmark(s);
+      return s;
+    }
+    throw new RuleError(`Unknown strategy type '${spec.type}'. Use rule, rotation, options or intraday.`);
   }
   function optNum(s, k, ok, msg, int) {
     if (s[k] == null || s[k] === false) { delete s[k]; return; }
@@ -1386,6 +1582,7 @@
   function symbolsNeeded(s, universes) {
     const extra = [s.benchmark].filter(Boolean);
     if (s.type === "rule") return [...new Set(s.symbols.concat(refSymbols(s.entry), refSymbols(s.exit), refSymbols(s.rank_by), extra))];
+    if (s.type === "intraday") return [...new Set(refSymbols(s.entry).concat(refSymbols(s.exit), refSymbols(s.rank_by), extra))]; // daily frames: ref()/vix/benchmark only (bars come from the intraday store)
     if (s.type === "rotation") {
       const u = Array.isArray(s.universe) ? s.universe : (universes[s.universe] || []);
       const refs = exprsOf(s).flatMap(refSymbols);
@@ -1397,6 +1594,7 @@
   const OHLCV_RX = /\b(open|high|low|volume|hl2|hlc3|pe|pb|dy|atr|atr_pct|adx|plus_di|minus_di|stoch_k|stoch_d|cci|mfi|williams_r|obv|vwap|supertrend|keltner_upper|keltner_lower)\b/;
   function needsFull(s) {
     if (s.type === "rule") return true;
+    if (s.type === "intraday") return [s.entry, s.exit, s.rank_by].filter(Boolean).some((e) => /ref\s*\(/.test(e) && OHLCV_RX.test(e));
     if (s.type === "rotation") return exprsOf(s).some((e) => OHLCV_RX.test(e)) || factorList(s).some((f) => f.name === "liquidity");
     return false;
   }
@@ -1405,6 +1603,7 @@
     let res;
     if (spec.type === "rule") res = runRule(spec, frames, o);
     else if (spec.type === "rotation") res = runRotation(spec, frames, o, Array.isArray(spec.universe) ? spec.universe : universes[spec.universe]);
+    else if (spec.type === "intraday") res = runIntraday(spec, frames, o);
     else res = runOptions(spec, frames, o);
     // benchmark: NIFTY (or spec.benchmark) buy & hold on the same dates
     const bsym = spec.benchmark || "NIFTY"; res.benchName = bsym;
@@ -1470,6 +1669,11 @@
       const due = isoOf(nx) === rs.nextRebalance;
       for (const o of out) if (/BUY|SELL|SHORT|COVER/.test(o.action) && !/HOLD/.test(o.action)) o.due = due;
       if (!out.length) out.push({ symbol: "-", action: "CASH", date: rs.lastDate, note: rs.regimeOn === false ? (spec.trend_filter ? `Trend filter off (${spec.trend_filter.symbol} below its ${spec.trend_filter.sma}-day average)` : `Regime filter off (${spec.regime ? spec.regime.expr : ""})`) : spec.trend_filter ? `Trend filter off (${spec.trend_filter.symbol} below its ${spec.trend_filter.sma}-day average) or nothing qualifies` : "Nothing qualifies" });
+    } else if (spec.type === "intraday") {
+      const is = res.intraState || {};
+      for (const t of is.lastTrades || []) out.push({ symbol: t.symbol, action: "TRADED", price: r2(t.exit_price), date: t.exit_date, entry: r2(t.entry_price), time: `${t.entry_time}–${t.exit_time}`, reason: t.reason, pnl: r2(t.pnl),
+        note: `${t.side === "short" ? "Short" : "Long"} ${t.entry_time} @${r2(t.entry_price)} → ${t.exit_time} @${r2(t.exit_price)} (${t.reason}), P&L ₹${Math.round(t.pnl).toLocaleString("en-IN")}`, pnl_pct: r2(t.return_pct) });
+      if (!out.length) out.push({ symbol: "-", action: "WAIT", date: is.lastDate || null, note: is.lastDate ? `No entry signal in the last session (${is.lastDate}). Intraday positions open and close within the day.` : "No intraday bars yet" });
     } else if (spec.type === "option_selling") {
       const os = res.optState, verb = os.side === "buy" ? "BUY NEW" : os.side === "sell" ? "SELL NEW" : "OPEN NEW";
       const src = (l) => l.pricing === "market" ? "market price" : "model price";
@@ -1480,7 +1684,7 @@
       else out.push({ symbol: spec.underlying, action: verb, price: r2(os.spot), date: os.lastDate,
         note: `Open a new ${spec.structure.replace(/_/g, " ")} at next session (VIX ${r2(os.vix)})` });
     }
-    const order = { BUY: 0, SHORT: 0, SELL: 1, COVER: 1, "SELL NEW": 1, "BUY NEW": 1, "OPEN NEW": 1, EXITED: 2, HOLD: 3, "HOLD SHORT": 3, "HOLD LONG": 3, CASH: 4, WAIT: 5 };
+    const order = { BUY: 0, SHORT: 0, SELL: 1, COVER: 1, "SELL NEW": 1, "BUY NEW": 1, "OPEN NEW": 1, EXITED: 2, TRADED: 2, HOLD: 3, "HOLD SHORT": 3, "HOLD LONG": 3, CASH: 4, WAIT: 5 };
     return out.sort((a, b) => (order[a.action] ?? 9) - (order[b.action] ?? 9) || String(a.symbol).localeCompare(b.symbol));
   }
 
@@ -1605,6 +1809,10 @@
       for (const k of ["trailing_stop_pct", "stop_atr_mult", "target_atr_mult"]) if (s[k]) s[k] = sc(s[k]);
       if (s.max_hold_days) s.max_hold_days = Math.max(1, Math.round(s.max_hold_days * f));
     }
+    else if (s.type === "intraday") {
+      s.entry = scaleWindows(s.entry, f); if (s.exit) s.exit = scaleWindows(s.exit, f); if (s.rank_by) s.rank_by = scaleWindows(s.rank_by, f);
+      for (const k of ["stop_loss_pct", "target_pct", "trailing_stop_pct"]) if (s[k]) s[k] = sc(s[k]);
+    }
     else if (s.type === "rotation") {
       s.lookback = Math.max(5, Math.round(s.lookback * f)); s.skip = Math.round(s.skip * f);
       if (s.factors) s.factors = s.factors.map((x) => PRESETS.includes(x.name) ? { ...x, ...(x.lookback ? { lookback: Math.max(5, Math.round(x.lookback * f)) } : {}), ...(x.skip ? { skip: Math.round(x.skip * f) } : {}) } : { ...x, name: scaleWindows(x.name, f) });
@@ -1626,13 +1834,13 @@
       const s = f === 1 ? spec : variant(spec, f), r = run(s, frames, universes, opt), m = r.metrics;
       return { factor: f, label: f === 1 ? "As designed" : `Parameters ${f > 1 ? "+" : "−"}${Math.round(Math.abs(f - 1) * 100)}%`,
         cagr_pct: m.cagr_pct, max_drawdown_pct: m.max_drawdown_pct, sharpe: m.sharpe, trades: m.trades ?? m.cycles ?? m.executions,
-        detail: s.type === "rule" ? `${s.entry}${s.exit ? "  |  exit: " + s.exit : ""}` : s.type === "rotation" ? `lookback ${s.lookback}, skip ${s.skip}` : [s.strike_mode === "delta" ? `delta ${s.delta}` : s.strike_mode === "otm_pct" ? `${s.otm_pct}% OTM` : "ATM", s.stop_loss_mult ? `stop ${s.stop_loss_mult}x` : "", s.stop_loss_pct ? `stop ${s.stop_loss_pct}%` : "", s.profit_target_pct ? `target ${s.profit_target_pct}%` : "", s.max_hold_days ? `${s.max_hold_days}d` : "", s.entry || ""].filter(Boolean).join(", ") };
+        detail: s.type === "rule" || s.type === "intraday" ? `${s.entry}${s.exit ? "  |  exit: " + s.exit : ""}` : s.type === "rotation" ? `lookback ${s.lookback}, skip ${s.skip}` : [s.strike_mode === "delta" ? `delta ${s.delta}` : s.strike_mode === "otm_pct" ? `${s.otm_pct}% OTM` : "ATM", s.stop_loss_mult ? `stop ${s.stop_loss_mult}x` : "", s.stop_loss_pct ? `stop ${s.stop_loss_pct}%` : "", s.profit_target_pct ? `target ${s.profit_target_pct}%` : "", s.max_hold_days ? `${s.max_hold_days}d` : "", s.entry || ""].filter(Boolean).join(", ") };
     });
   }
   function costShock(spec, frames, universes, opt) {
     return [1, 2, 3].map((k) => {
       const s = JSON.parse(JSON.stringify(spec));
-      if (s.type === "option_selling") { s.fee_per_order *= k; s.cost_pct_premium *= k; } else s.cost_pct *= k;
+      if (s.type === "option_selling") { s.fee_per_order *= k; s.cost_pct_premium *= k; } else { s.cost_pct *= k; if (s.type === "intraday") s.slippage_pct *= k; }
       const m = run(s, frames, universes, opt).metrics;
       return { multiple: k, label: k === 1 ? "Current costs" : `${k}× costs & slippage`, cagr_pct: m.cagr_pct, max_drawdown_pct: m.max_drawdown_pct, sharpe: m.sharpe };
     });
@@ -1641,7 +1849,7 @@
     return { risk: riskStats(res), crises: crises(res), monteCarlo: monteCarlo(res), sensitivity: sensitivity(spec, frames, universes, opt), costs: costShock(spec, frames, universes, opt) };
   }
 
-  const api = { parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, decodeOptions, setOptionSummary, initOptionSummaries, usesOptionVars, OPTVARS, OPT_BUY, OPT_SELL,
+  const api = { setIntraday, intradayData, decodeIntra, INTRA_VARS, runIntraday, parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, decodeOptions, setOptionSummary, initOptionSummaries, usesOptionVars, OPTVARS, OPT_BUY, OPT_SELL,
     signals, splitMetrics, riskStats, crises, monteCarlo, sensitivity, costShock, stressAll, scaleWindows, unparse, CRISES,
     setData, setPit, usesPit, pitAt, needsFull, refSymbols, periodKey, nextRebalanceDay, factorList, exprsOf, PRESETS, WEIGHTINGS, symKey };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.TradeEngine = api;

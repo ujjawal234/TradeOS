@@ -33,7 +33,17 @@ function ensureOptions(syms, kind) {
     for (const [y, p] of Object.entries(js)) { if (kind === "c") E.setOptions(y, p); else E.setOptionSummary(y, p); optLoaded[kind].add(y); }
   }
 }
-const specExprs = (spec) => spec.type === "rule" ? [spec.entry, spec.exit, spec.rank_by] : spec.type === "rotation" ? E.exprsOf(spec) : [spec.entry, spec.exit];
+// intraday bars (data/intra/*.json) for intraday agents
+const intraLoaded = new Set();
+function ensureIntraday(spec) {
+  const I = man.intraday; if (!I) throw new Error("no intraday bars in this build");
+  const kind = spec.bar_minutes % 5 === 0 ? "5m" : "1m";
+  for (const k of new Set(spec.symbols.filter((s) => I.symbols[s] && I.symbols[s][kind]).map((s) => I.symbols[s][kind]))) {
+    if (intraLoaded.has(k)) continue; intraLoaded.add(k);
+    for (const [s, p] of Object.entries(readJ(path.join(data, "intra", `${k}.json`)))) E.setIntraday(s, p);
+  }
+}
+const specExprs = (spec) => spec.type === "rule" || spec.type === "intraday" ? [spec.entry, spec.exit, spec.rank_by] : spec.type === "rotation" ? E.exprsOf(spec) : [spec.entry, spec.exit];
 const full = {};
 const bundleCache = {};
 const fullFrame = (s) => {
@@ -63,6 +73,7 @@ function framesFor(spec) {
     if (spec.type === "option_selling") ensureOptions([spec.underlying], "c");
     if (specExprs(spec).some(E.usesOptionVars)) { E.initOptionSummaries(); ensureOptions(need.concat(specExprs(spec).flatMap((x) => E.refSymbols(x))), "s"); }
   }
+  if (spec.type === "intraday") ensureIntraday(spec);
   const out = {};
   for (const s of need) {
     if (pk && pitSyms.has(s)) { if (!pitLight) throw new Error("point-in-time data missing"); out[s] = E.needsFull(spec) ? pitFrame(s) : pitLight[s]; continue; }
@@ -115,7 +126,7 @@ for (const a of agents) {
       const res = E.run(spec, frames, man.universes, { start: a.version.test?.start || "2012-01-01" });
       r.pending = true; r.signals = E.signals(spec, res);
     } else {
-      const res = E.run(spec, frames, man.universes, { start: a.paper.since });
+      const res = E.run(spec, frames, man.universes, { start: spec.type === "intraday" ? E.isoOf(E.dayOf(a.paper.since) + 1) : a.paper.since }); // intraday: sessions after the start day
       const m = res.metrics, b = res.benchMetrics || {};
       r.paper = { asof: m.end, days: res.days.length, return_pct: m.total_return_pct, nifty_pct: b.total_return_pct ?? null,
         max_drawdown_pct: m.max_drawdown_pct, equity: Math.round(m.end_equity), start_equity: Math.round(m.start_equity) };

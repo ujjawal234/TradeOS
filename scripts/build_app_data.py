@@ -305,6 +305,35 @@ def copy_options(dst: Path, symbols: dict) -> dict | None:
     return {"asof": idx.get("asof"), "method": idx.get("method", ""), "underlyings": unders}
 
 
+def copy_intraday(dst: Path) -> dict | None:
+    """intraday bars (scripts/fetch_intraday_bars.py via scripts/get_options.py) -> data/intra, plus the live paper
+    runner's daily results (intraday/results) -> data/intra/live.json"""
+    src = ROOT / ".intraday" / "intra"
+    if not (src / "index.json").exists():
+        return None
+    out = dst / "intra"
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True)
+    import base64
+    for f in sorted(src.glob("*.json.gz")):
+        (out / f.name[:-3]).write_text(json.dumps({"b64gz": base64.b64encode(f.read_bytes()).decode()}))
+    idx = json.loads((src / "index.json").read_text())
+    live = {}
+    res_dir = ROOT / "intraday" / "results"
+    for f in sorted(res_dir.glob("*.json")) if res_dir.exists() else []:
+        try:
+            r = json.loads(f.read_text())
+        except ValueError:
+            continue
+        for a in r.get("agents", []):
+            live.setdefault(a["id"], []).append({"date": r.get("date", f.stem), **{k: a.get(k) for k in ("trades", "wins", "pnl", "return_pct")},
+                                                 "trade_list": a.get("trade_list", [])[:60]})
+    (out / "live.json").write_text(json.dumps({"agents": live}, separators=(",", ":")))
+    print(f"intraday: {len(idx.get('symbols', {}))} symbols to {idx.get('asof')}, live results for {len(live)} agent(s)")
+    return {"asof": idx.get("asof"), "source": idx.get("source", ""), "symbols": idx.get("symbols", {}), "live": bool(live)}
+
+
 def main(out: Path) -> None:
     src, dst = ROOT / "data" / "prices", out / "data"
     nse_stocks, _ = load_pit_frames()
@@ -479,9 +508,10 @@ def main(out: Path) -> None:
                 else:  # not in a bundle for some reason: fall back to its own file
                     (dst / "p" / f"{s_}.json").write_text(json.dumps(enc_full(frames[s_]), separators=(",", ":")))
     opt_info = copy_options(dst, symbols)
+    intra_info = copy_intraday(dst)
     has_shares = (ROOT / "data" / "shares.json").exists()
     manifest = {"generated": fetched.get("generated"), "shares": has_shares, "source": "Stocks: NSE daily bhavcopy, adjusted with NSE's corporate-action records (splits, bonuses, dividends, demergers, rights) and cross-checked against Yahoo; Yahoo only where NSE history is missing. Indices: NSE daily index files (with P/E, P/B, dividend yield). Lists: NSE.",
-                "symbols": symbols, "universes": universes, "sectors": sectors, **({"pit": pit} if pit else {}), **({"options": opt_info} if opt_info else {})}
+                "symbols": symbols, "universes": universes, "sectors": sectors, **({"pit": pit} if pit else {}), **({"options": opt_info} if opt_info else {}), **({"intraday": intra_info} if intra_info else {})}
     (dst / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":")))
     # share counts (for market-cap weights): {SYM: {"f": free-float ratio, "s": [[epoch_day, shares], ...]}}
     sh_file = ROOT / "data" / "shares.json"

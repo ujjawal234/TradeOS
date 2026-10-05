@@ -131,8 +131,31 @@
       delete S.optFiles[k]; done++; if (onProgress && keys.length > 1) onProgress(done, keys.length);
     }));
   }
+  // ---- intraday bars (data/intra): 5-minute bars (1-minute for bar sizes that aren't multiples of 5), loaded on first use
+  S.intraFiles = {}; S.intraLoaded = new Set();
+  async function ensureIntraday(syms, m, onProgress) {
+    const I = S.man.intraday;
+    if (!I) throw new Error("Intraday bars aren't in this build of the page yet.");
+    const kind = m % 5 === 0 ? "5m" : "1m";
+    const have = syms.filter((s) => I.symbols[s] && I.symbols[s][kind]);
+    if (!have.length) throw new Error(`No ${kind === "1m" ? "1-minute" : "5-minute"} bars for ${syms.slice(0, 6).join(", ")}${syms.length > 6 ? "…" : ""}. Intraday bars cover ${Object.keys(I.symbols).length} symbols (Nifty 100 stocks and NIFTY, BANKNIFTY, FINNIFTY, INDIAVIX)${kind === "1m" ? "; 1-minute bars only Nifty 50 stocks and the indices" : ""}.`);
+    const keys = [...new Set(have.filter((s) => !S.intraLoaded.has(kind + s)).map((s) => I.symbols[s][kind]))]; let done = 0;
+    await Promise.all(keys.map(async (k) => {
+      if (!S.intraFiles[k]) S.intraFiles[k] = fetchJsonGz(`data/intra/${k}.json`).catch((e) => { delete S.intraFiles[k]; throw e; });
+      const js = await S.intraFiles[k];
+      for (const [x, p] of Object.entries(js)) { E.setIntraday(x, p); S.intraLoaded.add(kind + x); }
+      delete S.intraFiles[k]; done++; if (onProgress && keys.length > 1) onProgress(done, keys.length);
+    }));
+  }
+  function intraRange(m) { // first/last session of the bars an m-minute strategy uses
+    const I = S.man.intraday; if (!I) return null; const kind = m % 5 === 0 ? "5m" : "1m";
+    const v = Object.values(I.symbols).filter((x) => x[kind]); if (!v.length) return null;
+    return { kind, first: v.map((x) => x[kind + "_first"]).sort()[0], last: v.map((x) => x[kind + "_last"]).sort().pop(), days: Math.max(...v.map((x) => x[kind + "_days"] || 0)) };
+  }
+  let liveP = null; // the live paper runner's daily results (GitHub Actions, NSE live data), by runner agent id
+  function liveResults() { if (!liveP) liveP = (S.man.intraday?.live ? fetch("data/intra/live.json").then((r) => r.ok ? r.json() : { agents: {} }) : Promise.resolve({ agents: {} })).catch(() => ({ agents: {} })); return liveP; }
   function specExprs(spec) {
-    if (spec.type === "rule") return [spec.entry, spec.exit, spec.rank_by];
+    if (spec.type === "rule" || spec.type === "intraday") return [spec.entry, spec.exit, spec.rank_by].filter(Boolean);
     if (spec.type === "rotation") return E.exprsOf(spec);
     return [spec.entry, spec.exit];
   }
@@ -143,6 +166,7 @@
     if (missing.length) throw new Error(`No data for ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? "…" : ""}. Use NSE tickers from the Nifty 200 / F&O list.`);
     if (pk) await ensurePit();
     if (E.needsFull(spec)) { await ensureFull(need.filter((s) => !inPit(s)), onProgress); await ensurePitFull(need.filter(inPit), onProgress); }
+    if (spec.type === "intraday") await ensureIntraday(spec.symbols, spec.bar_minutes, onProgress);
     if (S.man.options) {
       if (spec.type === "option_selling") await ensureOptions([spec.underlying], "c", onProgress);
       if (specExprs(spec).some(E.usesOptionVars)) { E.initOptionSummaries(); await ensureOptions(need.concat(specExprs(spec).flatMap((x) => E.refSymbols(x))), "s", onProgress); }
@@ -174,12 +198,13 @@
   const PIT_LABEL = { top500pit: "Top 500 point-in-time", top200pit: "Top 200 point-in-time", top100pit: "Top 100 point-in-time" };
   function universeLabel(spec) {
     if (spec.type === "rule") return spec.symbols.length > 3 ? `${spec.symbols.length} symbols` : spec.symbols.join(", ");
+    if (spec.type === "intraday") return `${spec.symbols.length > 3 ? `${spec.symbols.length} symbols` : spec.symbols.join(", ")} · ${spec.bar_minutes}-min`;
     if (spec.type === "rotation") return Array.isArray(spec.universe) ? `${spec.universe.length} symbols` : (PIT_LABEL[spec.universe] || spec.universe);
     return `${spec.underlying} ${spec.structure.replace(/_/g, " ")}`;
   }
   // an actionable signal for the next session (rotation changes before their rebalance day are previews)
   const isAction = (s, withExited) => (withExited ? /BUY|SELL|SHORT|COVER|NEW|EXITED/ : /BUY|SELL|SHORT|COVER|NEW/).test(s.action) && s.due !== false;
-  const TYPE_LABEL = { rule: "Rule strategy", rotation: "Rotation", option_selling: "Options" };
+  const TYPE_LABEL = { rule: "Rule strategy", rotation: "Rotation", option_selling: "Options", intraday: "Intraday" };
   // plain-words description of an options spec (bought or sold, strikes, exits, entry rule)
   function optStrikes(s) { return s.structure === "custom" ? "" : s.strike_mode === "atm" ? "at the money" : s.strike_mode === "delta" ? `${Math.round(s.delta * 100)} delta` : `${s.otm_pct}% ${s.otm_pct < 0 ? "in" : "out of"} the money`; }
   function optLegs(s) {
@@ -218,6 +243,10 @@
       if (s.trailing_stop_pct) out.push(["Trailing stop", pc(s.trailing_stop_pct)]);
       if (s.stop_atr_mult || s.target_atr_mult) out.push(["ATR exits", `${s.stop_atr_mult ? `stop ${s.stop_atr_mult}× ATR` : ""}${s.stop_atr_mult && s.target_atr_mult ? " · " : ""}${s.target_atr_mult ? `target ${s.target_atr_mult}× ATR` : ""} (ATR ${s.atr_period || 14})`]);
       if (s.max_hold_days) out.push(["Time exit", `after ${s.max_hold_days} trading days`]);
+    }
+    if (s.type === "intraday") {
+      if (s.trailing_stop_pct) out.push(["Trailing stop", pc(s.trailing_stop_pct)]);
+      if (s.rank_by) out.push(["Ranked by", c(s.rank_by)]);
     }
     if (s.type === "rotation") {
       if (s.filters) out.push(["Filters", s.filters.map(c).join(" and ")]);
@@ -295,7 +324,7 @@
       const full = await runSpec(spec, { start: v.test?.start || "2012-01-01" });
       out = { pending: true, signals: full.signals, since: agent.paper.since, version: agent.paper.version };
     } else {
-      const res = await runSpec(spec, { start: agent.paper.since });
+      const res = await runSpec(spec, { start: spec.type === "intraday" ? E.isoOf(E.dayOf(agent.paper.since) + 1) : agent.paper.since });
       const m = res.metrics, b = res.benchMetrics || {};
       out = { res, since: agent.paper.since, version: agent.paper.version, ret: m.total_return_pct, nifty: b.total_return_pct, mdd: m.max_drawdown_pct, days: res.days.length, signals: res.signals };
     }
@@ -408,9 +437,15 @@ Derived (leveraged, inverse, futures, arbitrage, USD): ${byGroup("derived")}
 Equal-weight baskets of Nifty 200 members by industry (closes only): ${secs}.
 Named groups usable as "symbols" entries or "universe": ${groups}.
 ${m.pit ? `SURVIVORSHIP-FREE universes (use these whenever the user wants no survivorship bias, point-in-time or realistic results): ${Object.entries(m.pit.universes).map(([k, v]) => `${k} = the ${v.size} most-traded NSE stocks at each March/September review since ${v.first} (${v.ever} different stocks over time)`).join("; ")}. Membership uses only what was known on each review date and includes stocks later delisted, merged or dropped (${m.pit.no_longer_trading} of them no longer trade); prices are NSE bhavcopy adjusted for splits/bonuses (price only). Use them as "universe" in rotation, or in "symbols" for rule strategies (entries only while a stock is a member). Data to ${m.pit.asof}.` : ""}
+${intradayBrief(m)}
 ${m.options ? optionsBrief(m.options) : "OPTION PRICES: not loaded in this build — option strategies use the Black-Scholes model on India VIX (index options only)."}
 Market-cap weights: ${nSh ? `share counts available for ${nSh} stocks (Yahoo; free float = today's ratio)` : "no share-count data loaded yet — mcap weights fall back to equal"}.
 Stocks (ticker=company): ${tick}`;
+  }
+  function intradayBrief(m) {
+    const I = m.intraday; if (!I) return "INTRADAY BARS: not in this build — intraday strategies can't be backtested here yet.";
+    const r5 = intraRange(5), r1 = intraRange(1), syms = Object.keys(I.symbols), one = syms.filter((s) => I.symbols[s]["1m"]);
+    return `INTRADAY BARS (Yahoo Finance, NSE session 09:15–15:30 IST, kept and extended every trading day): 5-minute bars for ${syms.length} symbols (Nifty 100 stocks plus NIFTY, BANKNIFTY, FINNIFTY, INDIAVIX index levels — indices have no volume) from ${r5?.first} to ${r5?.last} (${r5?.days} sessions); 1-minute bars for ${one.length} symbols (Nifty 50 + indices) from ${r1?.first} (${r1?.days} sessions) — only bar sizes that aren't multiples of 5 (1, 3 min) use them. Free intraday history only goes back ~60 days, so intraday backtests are short: say so, judge them by trades, win rate, profit factor and average P&L per session rather than CAGR, and don't over-fit. Yahoo reports no volume for the 09:15 bar (treated as unknown). Intraday symbols: ${syms.join(", ")}.`;
   }
   function seriesBrief(m) {
     const ser = (g) => Object.entries(m.symbols).filter(([, v]) => v.kind === "series" && v.group === g).map(([k, v]) => `${k}=${v.name} (from ${v.first})`).join("; ");
@@ -451,13 +486,21 @@ MARKET BREADTH (point-in-time top 500 NSE stocks, daily; use via ref): ${b}` : "
     "stop_loss_pct":% of premium lost,"stop_loss_mult":x credit (sold only),"profit_target_pct":% of premium gained,"exit_dte":int,"max_hold_days":int,"min_dte":2,
     "min_vix":num|null,"max_vix":num|null,"lots":int,"capital":₹,"benchmark":symbol}
    Omitted exits = held to expiry (sold structures keep their long-standing 2× stop / 50% target defaults unless set to null). Bought options default to ATM strikes, sold to 15 delta.
+4) "intraday": day trading on intraday bars — positions open and close the same day (MIS). Use it for anything intraday: opening-range breakouts, VWAP strategies, EMA crosses on 5-minute bars, gap trades, scalps with square-off.
+   {"type":"intraday","symbols":[tickers or nifty50],"bar_minutes":5 (1, 3, 5, 10, 15, 25, 30, 45, 60, 75),"side":"long"|"short","entry":expr,"exit":expr (optional),"rank_by":expr (which signals win when slots are short),
+    "opening_range_minutes":15,"stop_loss_pct":num,"target_pct":num,"trailing_stop_pct":num,"start_after":"09:30","no_entry_after":"14:45","square_off":"15:15","max_trades_per_symbol":1,
+    "max_positions":4,"position_pct":25 (% of capital per position),"capital":₹,"cost_pct":0.03 (per side),"slippage_pct":0.02 (per side),"benchmark":symbol}
+   Mechanics: rules are checked at each bar's close and fill at that close plus slippage; stops and trailing stops are checked against every later bar's high/low (a gap through the stop fills at the bar's open; when a bar touches both, the stop counts first), targets fill at the target; everything still open is squared off at the close of the bar ending at square_off. Capital is fixed per day (no compounding); the equity curve is end-of-day.
+   Intraday rule variables (only in this type): vwap (session VWAP; time-weighted for indices), day_open, prev_close, day_high, day_low (so far), or_high, or_low (opening range, NaN until it completes), minutes (minutes since 09:15 at the bar's end), day_ret (% vs prev_close). Indicators see only the same session's bars (sma(close,20) on 5-minute bars needs 20 bars of today), exactly as the live paper runner does. ref("SYMBOL", expr) and vix give the daily value as of YESTERDAY's close (no look-ahead). e.g. ORB: entry "close > or_high and close > vwap and volume > 1.5 * sma(volume, 3)", exit "close < vwap", stop 0.7, target 1.4.
+   Test window for intraday: use {"start":null,"split":null} (or a split date inside the bar range); never the daily defaults like split 2021.
+   An intraday agent put on paper trading is also traded live by the paper runner on NSE's live data every session (results appear on its page after the close).
 RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime and expression weights; evaluated each day on that symbol; rules signal at the close and fill at the next open):
  variables: open high low close volume hl2 hlc3 dow(0=Mon) dom(day of month) month(1-12) year; vix (India VIX close); option-market series where DATA lists option prices: iv iv_near iv_next straddle pcr pcr_vol skew max_pain oi_calls oi_puts fut_oi dte; pe pb dy for NSE indices marked (P/E,P/B,DY) (NaN elsewhere).
  functions: sma ema wma(x,n) rsi(x,14) atr(14) atr_pct(14) macd(x,12,26) macd_signal(x,12,26,9) bb_upper/bb_lower(x,20,2) keltner_upper/keltner_lower(20,2) supertrend(10,3) highest/lowest(x,n) (include today: breakouts use shift(highest(high,55),1))
   shift(x,n) prev(x) change(x,n) roc(x,n)(%) ret(x,n)(fraction) sum(x,n) median(x,n) stdev(x,n) zscore(x,n) volatility(x,n)(ann.%) pct_rank(x,n)(0-100) slope(x,n) drawdown(x)(% from peak) days_since(cond) count_true(cond,n)
   adx(14) plus_di(14) minus_di(14) stoch_k(14) stoch_d(14,3) cci(20) mfi(14) williams_r(14) obv() vwap(20) corr(a,b,n) beta(a,b,n) cross_above(a,b) cross_below(a,b) abs max min log sqrt sign iff(cond,a,b) clip(x,lo,hi)
   ref("SYMBOL", expr): expr computed on another symbol, aligned by date — e.g. entry "close > sma(close,50) and ref(\\"NIFTY\\", close > sma(close,200))", or beta(ret(close,1), ref("NIFTY", ret(close,1)), 252).
- Operators + - * / % **, comparisons, and/or/not. No company fundamentals (only index P/E, P/B, DY), no intraday.
+ Operators + - * / % **, comparisons, and/or/not. No company fundamentals (only index P/E, P/B, DY). Daily types run on daily bars; use type "intraday" for anything within the day.
 SURVIVORSHIP: nifty50/nifty200/nifty500/fno are TODAY's members over the whole history (flattering). top500pit/top200pit/top100pit (if listed in DATA) are survivorship-free — use them when the user asks to remove survivorship bias; don't say it can't be done.
 TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (train before, test from) or null}.`;
 
@@ -470,6 +513,9 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
         : { trades: h.trades }), win_rate_pct: h.win,
       benchmark: b, [b === "NIFTY" ? "nifty_cagr_pct" : "benchmark_cagr_pct"]: h.nifty_cagr, [b === "NIFTY" ? "nifty_max_drawdown_pct" : "benchmark_max_drawdown_pct"]: h.nifty_mdd,
       period: `${h.start} to ${h.end}`, train_cagr_pct: h.train_cagr, test_cagr_pct: h.test_cagr, test_benchmark_cagr_pct: h.test_nifty_cagr, split_verdict: h.verdict, flags: h.flags, notes: m.notes,
+      ...(m.sessions != null ? { sessions: m.sessions, sessions_traded: m.sessions_traded, avg_trades_per_session: m.avg_trades_per_session, positive_sessions_pct: m.positive_sessions_pct,
+        avg_session_pnl: m.avg_session_pnl, best_session: m.best_session, worst_session: m.worst_session, profit_factor: m.profit_factor, avg_trade_pnl: m.avg_trade_pnl, exit_reasons: m.exit_reasons,
+        note: `intraday: ${m.sessions} sessions only — CAGR annualises a short sample; judge by profit factor, win rate and P&L per session` } : {}),
       signals_now: res.signals.slice(0, 6).map((s) => `${s.action} ${s.symbol}${s.price ? " @" + s.price : ""}`) };
   }
   function snapshot(sym) {
@@ -514,7 +560,7 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
   function agentBrief(a) { return { agent_id: a.id, name: a.name, type: a.type, status: a.status, version: a.version, universe: a.universe, cagr_pct: a.headline?.cagr, max_dd_pct: a.headline?.mdd, nifty_cagr_pct: a.headline?.nifty_cagr, paper_since: a.paper?.since || null }; }
   function makeTools(progress) {
     return [
-      { name: "backtest", description: "Backtest a strategy spec on daily NSE data. Returns CAGR, drawdown, Sharpe, trade/order counts, the benchmark comparison (Nifty unless spec.benchmark names another series, e.g. a real NSE factor index), train/test results when test.split is given, notes, and current signals. Use before proposing.",
+      { name: "backtest", description: "Backtest a strategy spec on NSE data (daily bars; intraday bars for type intraday). Returns CAGR, drawdown, Sharpe, trade/order counts, the benchmark comparison (Nifty unless spec.benchmark names another series, e.g. a real NSE factor index), train/test results when test.split is given, notes, and current signals. Use before proposing.",
         inputSchema: { type: "object", properties: { spec: { type: "object" }, test: { type: "object", properties: { start: { type: "string" }, end: { type: "string" }, split: { type: "string" } } } }, required: ["spec"] },
         execute: async (input) => { const spec = E.normalize(input.spec, S.man.universes), test = { start: "2012-01-01", ...(input.test || {}) };
           progress(`Backtesting ${TYPE_LABEL[spec.type].toLowerCase()} on ${universeLabel(spec)}…`); const res = await runSpec(spec, test); return compactRes(res, test); } },
@@ -661,7 +707,7 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
 
   // A change to an agent is a patch over its current spec: fields not mentioned stay; null removes a setting.
   // A different strategy type (or an explicit full "spec") replaces the spec, and anything it omits is off.
-  const typeOf = (t) => { const k = String(t || "rule").toLowerCase(); return /rot|momentum/.test(k) ? "rotation" : /option|straddle|strangle|condor/.test(k) ? "option_selling" : "rule"; };
+  const typeOf = (t) => { const k = String(t || "rule").toLowerCase(); return /intra|day.?trad/.test(k) ? "intraday" : /rot|momentum/.test(k) ? "rotation" : /option|straddle|strangle|condor/.test(k) ? "option_selling" : "rule"; };
   function applyChanges(cur, changes, full) {
     if (full && typeof full === "object") return full;
     if (!changes || typeof changes !== "object") return cur;
@@ -852,6 +898,7 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
     const s = p.spec;
     const rules = s.type === "rule" ? `<dt>Symbols</dt><dd>${esc(universeLabel(s))}${s.symbols.length > 3 ? ` <span class="muted">(${esc(s.symbols.slice(0, 8).join(", "))}${s.symbols.length > 8 ? "…" : ""})</span>` : ""}</dd><dt>Entry</dt><dd><code>${esc(s.entry)}</code></dd><dt>Exit</dt><dd>${s.exit ? `<code>${esc(s.exit)}</code>` : "stop / target only"}</dd><dt>Stops</dt><dd>${s.side === "short" ? "Short · " : ""}stop ${s.stop_loss_pct ? s.stop_loss_pct + "%" : "none"} · target ${s.take_profit_pct ? s.take_profit_pct + "%" : "none"}</dd>`
       : s.type === "rotation" ? `<dt>Universe</dt><dd>${esc(universeLabel(s))}</dd><dt>Rule</dt><dd>${esc(rankWords(s))}</dd><dt>Filters</dt><dd>${filterWords(s)}</dd>`
+      : s.type === "intraday" ? `<dt>Symbols</dt><dd>${esc(universeLabel(s))}${s.symbols.length > 3 ? ` <span class="muted">(${esc(s.symbols.slice(0, 8).join(", "))}${s.symbols.length > 8 ? "…" : ""})</span>` : ""}</dd><dt>Entry</dt><dd><code>${esc(s.entry)}</code>${s.side === "short" ? " · short" : ""}</dd><dt>Exit</dt><dd>${s.exit ? `<code>${esc(s.exit)}</code> · ` : ""}stop ${s.stop_loss_pct ? s.stop_loss_pct + "%" : "none"} · target ${s.target_pct ? s.target_pct + "%" : "none"}${s.trailing_stop_pct ? ` · trail ${s.trailing_stop_pct}%` : ""} · square-off ${esc(s.square_off)}</dd><dt>Window</dt><dd>entries ${esc(s.start_after)}–${esc(s.no_entry_after)} · max ${s.max_positions} × ${s.position_pct}%</dd>`
       : `<dt>Structure</dt><dd>${esc(s.underlying)} ${esc(optLegs(s))} · ${s.lots} lot(s) of ${s.lot_size}</dd>${s.entry ? `<dt>Entry</dt><dd><code>${esc(s.entry)}</code></dd>` : ""}<dt>Exits</dt><dd>${esc(optExits(s))}${s.min_vix ? ` · only when VIX ≥ ${s.min_vix}` : ""}${s.max_vix ? ` · skip when VIX &gt; ${s.max_vix}` : ""}</dd>`;
     return `<article class="proposal" id="prop_${esc(pid)}">
       <div class="top"><div><span class="eyebrow">Proposal · ${esc(TYPE_LABEL[s.type])}</span><h3>${esc(p.name)}</h3></div>${p.created ? `<button class="btn ghost small" type="button" data-open="${esc(p.created)}">Open agent →</button>` : ""}</div>

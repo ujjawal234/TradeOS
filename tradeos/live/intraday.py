@@ -13,12 +13,16 @@ volume is the change in cumulative volume, and vwap is NSE's own day VWAP (turno
 """
 from __future__ import annotations
 
+import json
 import math
+import subprocess
 from dataclasses import asdict, dataclass, field
 from datetime import time as dtime
 
 import numpy as np
 import pandas as pd
+
+from pathlib import Path
 
 from ..rules import RuleEngine, RuleError
 
@@ -153,6 +157,43 @@ def validate_intraday(expr: str, minutes: int = 5) -> None:
     IntradayRules(sample_bars(minutes=minutes), minutes).condition(expr)
 
 
+# ------------------------------------------------------------------------------------------------ app engine bridge
+class JsRules:
+    """Evaluates rules with the app's engine (lab/engine.js, via scripts/intraday_eval.mjs) — used by agents built in the
+    app ("engine": "js"), so the live runner trades exactly the rules that were backtested there (same functions,
+    intraday variables, ref() and vix as of yesterday's close)."""
+    _proc = None
+
+    @classmethod
+    def proc(cls):
+        if cls._proc is None or cls._proc.poll() is not None:
+            script = Path(__file__).resolve().parents[2] / "scripts" / "intraday_eval.mjs"
+            cls._proc = subprocess.Popen(["node", str(script)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+        return cls._proc
+
+    @classmethod
+    def last_values(cls, bars_by_sym: dict, minutes: int, or_minutes: int, exprs: dict) -> dict:
+        """{sym: {"entry": 0|1, "exit": 0|1, "rank_by": float|None}} at each symbol's last bar"""
+        bars = {}
+        for sym, b in bars_by_sym.items():
+            if not len(b):
+                continue
+            o0 = day_open(b.index[0])
+            k = ((b.index - o0).total_seconds() // 60 // minutes).astype(int).tolist()
+            col = lambda c: [None if (x is None or (isinstance(x, float) and math.isnan(x))) else float(x) for x in (b[c] if c in b else [np.nan] * len(b))]  # noqa: E731
+            bars[sym] = {"k": k, **{c[0] if c in ("open", "high", "low", "close", "volume") else c: col(c)
+                                    for c in ("open", "high", "low", "close", "volume", "vwap", "day_open", "prev_close", "day_high", "day_low")}}
+        if not bars:
+            return {}
+        p = cls.proc()
+        p.stdin.write(json.dumps({"m": minutes, "or": or_minutes, "exprs": {k: v for k, v in exprs.items() if v}, "bars": bars}) + "\n")
+        p.stdin.flush()
+        r = json.loads(p.stdout.readline() or '{"ok": false, "error": "rule engine stopped"}')
+        if not r.get("ok"):
+            raise RuleError(r.get("error", "rule engine error"))
+        return r["out"]
+
+
 # ------------------------------------------------------------------------------------------------ agents
 DEFAULTS = {"bar_minutes": 5, "side": "long", "exit": "", "opening_range_minutes": 15, "stop_loss_pct": None,
             "target_pct": None, "trailing_stop_pct": None, "capital": 1_000_000, "max_positions": 4, "position_pct": 25,
@@ -202,8 +243,9 @@ class IntradayAgent:
         self.symbols = resolve_symbols(sp["symbols"], universe)
         self.m = int(sp["bar_minutes"])
         self.short = sp["side"] == "short"
+        self.js = sp.get("engine") == "js"
         for k in ("entry", "exit", "rank_by"):
-            if sp.get(k):
+            if sp.get(k) and not self.js:
                 validate_intraday(sp[k], self.m)
         if not sp.get("entry"):
             raise RuleError(f"{self.id}: entry rule is required")
@@ -293,6 +335,8 @@ class IntradayAgent:
             return
         self.st.last_bar = str(bar_start)
         tnow = bar_end.time()
+        if self.js:
+            return self._on_bar_js(bar_end, bar_start, tnow, store, quotes)
         # exits on rules
         if sp.get("exit"):
             for sym in list(self.st.positions):
@@ -321,6 +365,33 @@ class IntradayAgent:
                 continue
         for _, sym in sorted(cands)[: max(0, sp["max_positions"] - len(self.st.positions))]:
             self._open(sym, quotes[sym], bar_end, "entry rule")
+
+    def _on_bar_js(self, bar_end, bar_start, tnow, store: "TickStore", quotes: dict) -> None:
+        sp = self.spec
+        want_entries = tm(sp["start_after"]) <= tnow <= tm(sp["no_entry_after"])  # slots are checked after this bar's exits
+        syms = [s for s in self.symbols if s in quotes and (s in self.st.positions or (want_entries and self.st.entries.get(s, 0) < sp["max_trades_per_symbol"]))]
+        bars = {}
+        for s in syms:
+            b = store.bars(s, self.m, bar_end)
+            if len(b) and b.index[-1] == bar_start:  # a fresh bar for this symbol
+                bars[s] = b
+        if not bars:
+            return
+        vals = JsRules.last_values(bars, self.m, sp["opening_range_minutes"], {"entry": sp["entry"], "exit": sp.get("exit") or "", "rank_by": sp.get("rank_by") or ""})
+        if sp.get("exit"):
+            for s in list(self.st.positions):
+                if vals.get(s, {}).get("exit"):
+                    self._close(s, quotes[s].ltp, bar_end, "exit rule")
+        if not want_entries or len(self.st.positions) >= sp["max_positions"]:
+            return
+        cands = []
+        for s, v in vals.items():
+            if s in self.st.positions or self.st.entries.get(s, 0) >= sp["max_trades_per_symbol"] or not v.get("entry"):
+                continue
+            score = v.get("rank_by")
+            cands.append((-(score if score is not None else -math.inf), s))
+        for _, s in sorted(cands)[: max(0, sp["max_positions"] - len(self.st.positions))]:
+            self._open(s, quotes[s], bar_end, "entry rule")
 
     def square_off(self, t: pd.Timestamp, quotes: dict, last_px: dict) -> None:
         for sym in list(self.st.positions):

@@ -1,5 +1,6 @@
 """Download the latest option-price bundles (built daily by .github/workflows/options-data.yml and published as the
-`options-data` release asset) into .options/opt, where scripts/build_app_data.py picks them up.
+`options-data` release asset) into .options/opt, and the intraday bar bundles (.github/workflows/intraday-bars.yml,
+`intraday-data` release) into .intraday/intra, where scripts/build_app_data.py picks them up.
 Usage: python scripts/get_options.py [--repo ujjawal234/TradeOS]"""
 import argparse
 import io
@@ -28,6 +29,24 @@ def main() -> None:
     idx = json.loads((dst / "opt" / "index.json").read_text())
     n = len(idx.get("underlyings", {}))
     print(f"options: {n} underlyings to {idx.get('asof')}, {len(data) / 1e6:.1f} MB -> {dst / 'opt'}")
+    try:
+        get_intraday(args.repo)
+    except Exception as e:  # noqa: BLE001
+        print(f"intraday bars: not downloaded ({e})")
+
+
+def get_intraday(repo: str) -> None:
+    url = f"https://github.com/{repo}/releases/download/intraday-data/intraday_app.tar"
+    with urllib.request.urlopen(url, timeout=300) as r:
+        data = r.read()
+    dst = ROOT / ".intraday"
+    if dst.exists():
+        shutil.rmtree(dst)
+    dst.mkdir(parents=True)
+    with tarfile.open(fileobj=io.BytesIO(data)) as t:
+        t.extractall(dst, filter="data")
+    idx = json.loads((dst / "intra" / "index.json").read_text())
+    print(f"intraday bars: {len(idx.get('symbols', {}))} symbols to {idx.get('asof')}, {len(data) / 1e6:.1f} MB -> {dst / 'intra'}")
 
 
 if __name__ == "__main__":
