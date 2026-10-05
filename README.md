@@ -20,6 +20,19 @@ Data timing safeguards
   bhavcopy not published yet while index data is), that agent's signals are held back and the alert says why
   (`data_check` in the output). A single late stock in a large universe (suspension, delisting) is only a warning.
 
+Intraday (paper) on NSE's live data
+* GitHub Actions `Intraday paper trading (NSE live)` starts ~09:08 IST on weekdays and polls NSE's official MCP server
+  (`https://mcp.nseindia.in/cmmkt/mcp`, no key) once a minute until 15:31. NSE's data refreshes once a minute and runs
+  1-3 minutes behind the market, so the agents work on 3-5 minute bars, not ticks.
+* Agents: `intraday/agents.json` (opening-range breakout long/short, EMA trend; edit or add). Rules use the normal
+  expression language plus `vwap`, `or_high`, `or_low`, `day_open`, `prev_close`, `day_high`, `day_low`, `day_ret`,
+  `minutes`. Stops/targets are checked on every snapshot (including moves between snapshots); everything is squared
+  off at `square_off` (default 15:15). Costs and slippage are charged per side.
+* Each day: entries/exits go to Telegram as they happen; `data/intraday/<date>.csv.gz` keeps every snapshot (replay any
+  day with `python scripts/intraday_run.py --replay data/intraday/<date>.csv.gz`), `intraday/results/<date>.json` the
+  trades and P&L. Test the connection with the workflow's "probe" option or `python scripts/intraday_run.py --probe`.
+* NSE allows this data for informational/educational use only. Paper trading only.
+
 Telegram (optional): create a bot with @BotFather, then in this repo add Settings → Secrets and variables → Actions →
 `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
 

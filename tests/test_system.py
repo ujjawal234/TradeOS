@@ -184,6 +184,100 @@ def test_drop_unfinished_session_bar():
     assert len(drop_unfinished(us, us_meta, datetime(2026, 9, 30, 20, 30, tzinfo=timezone.utc))) == 2  # after US close
 
 
+# ---------------------------------------------------------------- intraday (NSE live snapshots)
+def _synthetic_day(day="2026-10-06"):
+    """One snapshot a minute for 4 stocks: UP breaks out of its opening range on volume at 10:00, DN breaks down,
+    DIP rises then has a spike low between snapshots, FLAT drifts. Returns [(polled, {sym: Quote})]."""
+    import numpy as np
+
+    from tradeos.live.nse_live import Quote
+    d0 = pd.Timestamp(day) + pd.Timedelta(hours=9, minutes=15)
+    rng = np.random.default_rng(7)
+    paths = {}
+    n = 376  # 09:15 .. 15:30
+    t = np.arange(n)
+    noise = lambda s: np.cumsum(rng.normal(0, s, n))  # noqa: E731
+    paths["UP"] = 1000 * (1 + np.where(t < 45, 0.0005 * np.sin(t / 3), 0.004 + 0.0002 * (t - 45)) + noise(0.0001))
+    paths["DN"] = 500 * (1 - np.where(t < 45, -0.0005 * np.sin(t / 3), 0.004 + 0.0002 * (t - 45)) + noise(0.0001))
+    paths["DIP"] = 200 * (1 + np.where(t < 45, 0.0, 0.003 + 0.00002 * (t - 45)) + noise(0.00005))
+    paths["FLAT"] = 300 * (1 + noise(0.0002))
+    vol_rate = {s: np.where((t >= 45) & (t < 50) & (s in ("UP", "DN")), 40000, 5000) for s in paths}
+    polls = []
+    state = {s: {"hi": -1e18, "lo": 1e18, "vol": 0.0, "val": 0.0} for s in paths}
+    for i in range(n):
+        polled = d0 + pd.Timedelta(minutes=i, seconds=40)
+        ts = d0 + pd.Timedelta(minutes=i, seconds=30)
+        qs = {}
+        for s, p in paths.items():
+            st = state[s]
+            px = round(float(p[i]), 2)
+            spike_lo = px * 0.985 if (s == "DIP" and i == 120) else px  # 11:15: a quick dip below any 0.7% stop
+            st["hi"], st["lo"] = max(st["hi"], px), min(st["lo"], spike_lo)
+            st["vol"] += float(vol_rate[s][i])
+            st["val"] += float(vol_rate[s][i]) * px / 1e7
+            qs[s] = Quote(s, px, round(float(p[0]), 2), st["hi"], st["lo"], round(float(p[0]), 2), st["vol"], st["val"], str(ts))
+        polls.append((polled, qs))
+    return polls
+
+
+def _intraday_specs():
+    base = {"symbols": ["UP", "DN", "DIP", "FLAT"], "bar_minutes": 5, "opening_range_minutes": 15, "capital": 1_000_000,
+            "max_positions": 2, "position_pct": 50, "start_after": "09:30", "no_entry_after": "13:30", "square_off": "15:15"}
+    return [
+        {**base, "id": "orb_long", "side": "long", "entry": "close > or_high and close > vwap and volume > 1.5 * sma(volume, 3)",
+         "stop_loss_pct": 0.7, "target_pct": 1.4},
+        {**base, "id": "orb_short", "side": "short", "entry": "close < or_low and close < vwap and volume > 1.5 * sma(volume, 3)",
+         "stop_loss_pct": 0.7},
+        {**base, "id": "dip_long", "symbols": ["DIP"], "side": "long", "entry": "close > or_high", "stop_loss_pct": 0.7},
+    ]
+
+
+def test_intraday_bars_and_paper_trades():
+    from tradeos.live.intraday import Session, validate_intraday
+    validate_intraday("cross_above(ema(close, 9), ema(close, 21)) and close > vwap and minutes > 30 and day_ret > 0")
+    polls = _synthetic_day()
+    s = Session("2026-10-06", _intraday_specs(), {})
+    for polled, qs in polls:
+        s.feed(polled, qs)
+    s.finish()
+    b = s.store.bars("UP", 5, pd.Timestamp("2026-10-06 10:00"))
+    assert b.index[0] == pd.Timestamp("2026-10-06 09:15") and b.index[-1] == pd.Timestamp("2026-10-06 09:55") and len(b) == 9
+    assert (b["high"] >= b[["open", "close"]].max(axis=1)).all() and (b["low"] <= b[["open", "close"]].min(axis=1)).all()
+    assert abs(b["volume"].iloc[1] - 5 * 5000) < 1e-6  # one 5-minute bar of 5000/min
+    res = {a["id"]: a for a in s.results()["agents"]}
+    lt, st_, dp = res["orb_long"]["trade_list"], res["orb_short"]["trade_list"], res["dip_long"]["trade_list"]
+    assert [x["sym"] for x in lt] == ["UP"] and lt[0]["t_entry"].startswith("2026-10-06 10:0"), lt
+    assert lt[0]["reason"] in ("target", "square-off") and lt[0]["pnl"] > 0, lt
+    assert [x["sym"] for x in st_] == ["DN"] and st_[0]["side"] == "short" and st_[0]["pnl"] > 0, st_
+    assert dp and dp[0]["reason"] == "stop" and dp[0]["t_exit"].startswith("2026-10-06 11:15"), dp  # dip between snapshots
+    assert all(not a.st.positions for a in s.agents)
+    assert all(x["t_exit"] <= "2026-10-06 15:15:59" for a in s.results()["agents"] for x in a["trade_list"])
+
+
+def test_intraday_resume_matches_one_run():
+    """A GitHub job hands off mid-day: state + saved snapshots must reproduce the single-run result exactly."""
+    import json as _json
+
+    from tradeos.live.intraday import Session
+    polls = _synthetic_day()
+    one = Session("2026-10-06", _intraday_specs(), {})
+    for polled, qs in polls:
+        one.feed(polled, qs)
+    one.finish()
+    a = Session("2026-10-06", _intraday_specs(), {})
+    for polled, qs in polls[:200]:
+        a.feed(polled, qs)
+    with tempfile.TemporaryDirectory() as d:
+        f = Path(d) / "ticks.csv.gz"
+        a.store.frame().to_csv(f, index=False)
+        state = _json.loads(_json.dumps(a.state()))
+        b = Session("2026-10-06", _intraday_specs(), {}, state, pd.read_csv(f))
+    for polled, qs in polls[200:]:
+        b.feed(polled, qs)
+    b.finish()
+    assert _json.dumps(one.results(), sort_keys=True) == _json.dumps(b.results(), sort_keys=True)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

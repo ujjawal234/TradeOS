@@ -1,0 +1,60 @@
+name: Intraday paper trading (NSE live)
+
+# Polls NSE's live data once a minute from 09:14 to 15:31 IST and paper-trades the agents in intraday/agents.json.
+# A job may run at most 6 hours, so the run hands off to a fresh one before then and that one resumes from the
+# saved state. Two schedules: if GitHub drops or delays the first, the second starts the day (a run that finds the
+# day already finished, or a non-trading day, exits at once).
+
+on:
+  workflow_dispatch:
+    inputs:
+      probe:
+        description: "Only test the connection to NSE (one poll, no trading)"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "38 3 * * 1-5"   # 09:08 IST
+    - cron: "4 4 * * 1-5"    # 09:34 IST backup (queues behind a running day)
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: intraday
+  cancel-in-progress: false
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install pandas numpy requests
+      - name: Paper-trade the session
+        id: run
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scripts/intraday_run.py ${{ inputs.probe && '--probe' || '--max-runtime-min 330' }}
+      - name: Save the day's data, positions and results
+        if: always() && !inputs.probe
+        run: |
+          git config user.name "tradeos-bot"
+          git config user.email "tradeos-bot@users.noreply.github.com"
+          git add data/intraday intraday/state intraday/results 2>/dev/null || true
+          if git diff --cached --quiet; then echo "Nothing to save"; exit 0; fi
+          git commit -m "intraday: $(TZ=Asia/Kolkata date +%Y-%m-%d) $([ '${{ steps.run.outputs.handoff }}' = 'true' ] && echo 'midday handoff' || echo 'results')"
+          for i in 1 2 3 4 5; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 5; done
+      - name: Continue in a new run (6-hour job limit)
+        if: steps.run.outputs.handoff == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/intraday.yml/dispatches" \
+            -d '{"ref":"main"}'
