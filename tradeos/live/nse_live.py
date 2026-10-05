@@ -60,7 +60,7 @@ def _parse_body(text: str) -> dict:
 
 
 class NseLive:
-    def __init__(self, url: str = LIVE_URL, timeout: float = 15, retries: int = 3, session: requests.Session | None = None):
+    def __init__(self, url: str = LIVE_URL, timeout=(4, 8), retries: int = 2, session: requests.Session | None = None):
         self.url, self.timeout, self.retries = url, timeout, retries
         self.http = session or requests.Session()
         self.sid: str | None = None
@@ -111,16 +111,20 @@ class NseLive:
                 return json.loads(text)
             except (requests.RequestException, NseLiveError, ValueError) as e:
                 last = e
-                if isinstance(e, requests.Timeout):
+                if isinstance(e, (requests.Timeout, requests.ConnectionError)):
+                    # the server sometimes stalls a connection for 20-60 s: drop it and start a fresh session
+                    self.http.close()
+                    self.http = requests.Session()
                     self.sid = None
-                time.sleep(1.5 * (attempt + 1))
+                time.sleep(0.5 * (attempt + 1))
         raise NseLiveError(f"{tool} failed after {self.retries} tries: {last}")
 
     # ---------------------------------------------------------------- data
-    def quotes(self, symbols: list[str], workers: int = 5) -> tuple[dict[str, Quote], str | None]:
+    def quotes(self, symbols: list[str], workers: int = 7, budget: float = 40) -> tuple[dict[str, Quote], str | None]:
         """Latest quotes for these symbols (EQ series only) and the server's crawl time (UTC ISO).
         One call per distinct first letter, `workers` at a time (each worker has its own MCP session);
-        a failed letter is skipped, so the caller sees missing symbols. Per-letter seconds go to self.timings."""
+        a failed letter is skipped, so the caller sees missing symbols. Letters not started within `budget` seconds
+        are skipped too, so one stalled minute can't delay the next poll. Per-letter seconds go to self.timings."""
         want = set(symbols)
         out: dict[str, Quote] = {}
         updated = None
@@ -128,11 +132,14 @@ class NseLive:
         if not hasattr(self, "_pool"):
             self._pool = [self] + [NseLive(self.url, self.timeout, self.retries) for _ in range(max(0, workers - 1))]
         self.timings: dict[str, float] = {}
+        start = time.monotonic()
 
         def fetch(i_letter):
             i, letter = i_letter
             client = self._pool[i % len(self._pool)]
             t0 = time.monotonic()
+            if t0 - start > budget:
+                return letter, None, -1.0  # out of time this minute
             try:
                 return letter, client.call("cm_get_equity_stocks", {"limit": 500, "symbolFilter": letter}), time.monotonic() - t0
             except NseLiveError as e:
