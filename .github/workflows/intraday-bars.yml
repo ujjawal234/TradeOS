@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["scripts/fetch_intraday_bars.py", ".github/workflows/intraday-bars.yml"]
+    paths: ["data/REQUEST_INTRADAY", "scripts/fetch_intraday_bars.py", ".github/workflows/intraday-bars.yml"]
   schedule:
     - cron: "0 11 * * 1-5"           # 16:30 IST on weekdays
 
