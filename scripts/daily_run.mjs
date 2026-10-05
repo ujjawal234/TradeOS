@@ -122,7 +122,8 @@ for (const a of agents) {
     const spec = E.normalize(a.version.spec, man.universes), frames = framesFor(spec);
     const stale = staleVerdict(spec, frames);
     if (stale) r.stale = stale;
-    if (a.paper.since >= lastDay) {
+    const lastSession = spec.type === "intraday" ? (man.intraday?.asof || lastDay) : lastDay;
+    if (a.paper.since >= lastSession) {
       const res = E.run(spec, frames, man.universes, { start: a.version.test?.start || "2012-01-01" });
       r.pending = true; r.signals = E.signals(spec, res);
     } else {

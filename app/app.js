@@ -302,7 +302,8 @@
     if (status === "paper") {
       const runs = (agent.paper_runs || []).slice();
       if (agent.paper) runs.push({ ...agent.paper, until: S.lastDay });
-      patch.paper = { version: agent.version, since: S.lastDay, by: S.uid, at: nowIso() }; patch.paper_runs = runs;
+      const il = agent.type === "intraday" ? intraRange(5)?.last : null; // intraday bars can be a session ahead of the daily data
+      patch.paper = { version: agent.version, since: il && il > S.lastDay ? il : S.lastDay, by: S.uid, at: nowIso() }; patch.paper_runs = runs;
     }
     if (status === "retired" && agent.paper) { patch.paper_runs = [...(agent.paper_runs || []), { ...agent.paper, until: S.lastDay }]; patch.paper = null; }
     await patchAgent(agent.id, patch);
@@ -320,7 +321,8 @@
     if (!vs.exists) return null;
     const v = vs.data(), spec = v.spec;
     let out;
-    if (agent.paper.since >= S.lastDay) {
+    const lastSession = spec.type === "intraday" ? (intraRange(spec.bar_minutes)?.last || S.lastDay) : S.lastDay;
+    if (agent.paper.since >= lastSession) {
       const full = await runSpec(spec, { start: v.test?.start || "2012-01-01" });
       out = { pending: true, signals: full.signals, since: agent.paper.since, version: agent.paper.version };
     } else {
