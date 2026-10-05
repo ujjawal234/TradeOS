@@ -154,6 +154,36 @@ def test_research_agent_reads_inbox():
     assert r2["signals"] == 0
 
 
+# ---------------------------------------------------------------- data: no half-day bars
+def test_drop_unfinished_session_bar():
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+
+    from tradeos.data.yahoo import drop_unfinished
+
+    ist = ZoneInfo("Asia/Kolkata")
+    df = pd.DataFrame({"open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 1.0},
+                      index=pd.DatetimeIndex(["2026-09-29", "2026-09-30"], name="date"))
+    at = lambda h, m, d=30: datetime(2026, 9, d, h, m, tzinfo=ist)  # noqa: E731
+    nse = {"exchangeTimezoneName": "Asia/Kolkata",
+           "currentTradingPeriod": {"regular": {"start": at(9, 15).timestamp(), "end": at(15, 30).timestamp()}}}
+    assert len(drop_unfinished(df, nse, at(12, 34))) == 1     # the 30 Sep incident: midday fetch -> today's bar dropped
+    assert len(drop_unfinished(df, nse, at(15, 40))) == 1     # closed, but inside the 15-minute grace
+    assert len(drop_unfinished(df, nse, at(16, 0))) == 2      # after the close: kept
+    assert len(drop_unfinished(df, None, at(12, 34))) == 1    # no metadata: Indian hours assumed
+    assert len(drop_unfinished(df, None, at(16, 0))) == 2
+    assert len(drop_unfinished(df, nse, datetime(2026, 10, 1, 10, 0, tzinfo=ist))) == 2  # yesterday's finished bar kept
+    rolled = {"exchangeTimezoneName": "Asia/Kolkata",
+              "currentTradingPeriod": {"regular": {"end": datetime(2026, 10, 1, 15, 30, tzinfo=ist).timestamp()}}}
+    assert len(drop_unfinished(df, rolled, at(20, 0))) == 2   # period already rolled to the next session
+    ny = ZoneInfo("America/New_York")
+    us = pd.DataFrame({"close": [1.0, 1.0]}, index=pd.DatetimeIndex(["2026-09-29", "2026-09-30"]))
+    us_meta = {"exchangeTimezoneName": "America/New_York",
+               "currentTradingPeriod": {"regular": {"end": datetime(2026, 9, 30, 16, 0, tzinfo=ny).timestamp()}}}
+    assert len(drop_unfinished(us, us_meta, datetime(2026, 9, 30, 15, 10, tzinfo=timezone.utc))) == 1  # 20:40 IST, US open
+    assert len(drop_unfinished(us, us_meta, datetime(2026, 9, 30, 20, 30, tzinfo=timezone.utc))) == 2  # after US close
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

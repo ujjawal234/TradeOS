@@ -18,7 +18,7 @@ import json
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -28,6 +28,7 @@ import yfinance as yf
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tradeos.data.universe import INDICES, NIFTY50, SECTORS, to_yahoo  # noqa: E402
+from tradeos.data.yahoo import drop_unfinished  # noqa: E402
 
 OUT = ROOT / "data" / "prices"
 UNIVERSE_FILE = ROOT / "data" / "universe.json"
@@ -138,13 +139,22 @@ def yahoo_history(ticker: str, start: str) -> pd.DataFrame:
     last = None
     for attempt in range(4):
         try:
-            df = yf.Ticker(ticker).history(start=start, auto_adjust=True, actions=False)
+            t = yf.Ticker(ticker)
+            df = t.history(start=start, auto_adjust=True, actions=False)
             if df is not None and not df.empty:
                 df = df.rename(columns=str.lower)[["open", "high", "low", "close", "volume"]]
                 idx = df.index.tz_localize(None) if df.index.tz is not None else df.index
                 df.index = pd.DatetimeIndex(idx).normalize()
                 df.index.name = "date"
                 df = df[~df.index.duplicated(keep="last")].dropna(subset=["close"])
+                try:
+                    meta = t.history_metadata
+                except Exception:
+                    meta = None
+                df = drop_unfinished(df, meta)  # a run during market hours must not store a half-day bar
+                if df.empty:
+                    last = "only an unfinished session"
+                    break
                 return df[df["close"] > 0].round(2)
             last = "empty"
         except Exception as e:
@@ -222,7 +232,10 @@ def main() -> None:
             manifest["symbols"][s] = {"yahoo": r["ticker"], "rows": len(df), "first": str(df.index[0].date()),
                                       "last": str(df.index[-1].date())}
             print(f"OK   {s:<14} {len(df):>5} rows ({r['mode']})")
-    manifest.update({"generated": date.today().isoformat(), "start": start15, "adjusted": True,
+    # fetched_at (UTC) tells the daily job whether this run happened after the Indian close (>= 10:20 UTC = 15:50 IST);
+    # "generated" alone can't, since a run at noon has today's date too
+    manifest.update({"generated": date.today().isoformat(), "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                     "start": start15, "adjusted": True,
                      "source": "Yahoo Finance", "failed": failed})
     manifest_path.write_text(json.dumps(manifest, indent=1))
     ok = len(symbols) - len(failed)

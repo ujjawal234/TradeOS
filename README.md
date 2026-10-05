@@ -4,11 +4,21 @@
 Open it from claude.ai → Artifacts → "TradeOS". Everything runs in the cloud; no local install needed.
 
 How it runs every weekday
-1. 16:00 IST — GitHub Actions `Fetch market data` refreshes 15 years of daily prices for all Nifty 200 + F&O stocks
-   and the NSE/BSE indices Yahoo carries (`data/`), plus official constituent lists and lot sizes from NSE.
-2. 16:45 IST — a scheduled Claude task rebuilds the app data, republishes it, runs every paper-trading agent with
-   `scripts/daily_run.mjs` (same engine as the app: `lab/engine.js`), writes results to the app database and
-   `paper/<date>.json`, updates `alerts/latest.json` (→ Telegram) and sends a phone push when there are buy/sell signals.
+1. 16:00 IST — GitHub Actions `Fetch market data` refreshes Yahoo prices (indices, VIX, world markets; stock fallback),
+   NSE index files, constituent lists and lot sizes. 19:00 IST — `Point-in-time universe` downloads NSE's bhavcopy,
+   which is the source of every stock price in the app. 19:10 IST — `Option prices` (NSE F&O bhavcopy).
+2. 20:38 IST — a scheduled Claude task makes sure all three are fresh (requesting a run if not), rebuilds and republishes
+   the app data, runs every paper-trading agent with `scripts/daily_run.mjs` (same engine as the app: `lab/engine.js`),
+   writes results to the app database and `paper/<date>.json`, updates `alerts/latest.json` (→ Telegram) and sends a
+   phone push when there are buy/sell signals.
+
+Data timing safeguards
+* A fetch while a market is open never stores that day's half-finished bar (`drop_unfinished` in
+  `tradeos/data/yahoo.py`); the bar is added by the next run after the close. `data/manifest.json` records `fetched_at`
+  (UTC) so the daily task can tell a post-close refresh from a midday one.
+* `daily_run.mjs` checks every series an agent uses against the latest session. If a source is late (e.g. NSE's stock
+  bhavcopy not published yet while index data is), that agent's signals are held back and the alert says why
+  (`data_check` in the output). A single late stock in a large universe (suspension, delisting) is only a warning.
 
 Telegram (optional): create a bot with @BotFather, then in this repo add Settings → Secrets and variables → Actions →
 `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
