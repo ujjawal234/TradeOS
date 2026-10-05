@@ -1,5 +1,5 @@
 {
- "asof": "2026-10-01",
+ "asof": "2026-10-05",
  "method": "At each March and September review (last trading day of the month), the NSE stocks (series EQ) with the highest average daily traded value over the previous 6 months, traded on at least 80% of those days and still trading. Uses only information available on the review date; members apply from the next trading day. Prices from NSE bhavcopy, adjusted for splits, bonuses and rights (price only, no dividends).",
  "universes": {
   "top500pit": [
