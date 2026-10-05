@@ -1,22 +1,18 @@
 {
  "oi": {
-  "days": 3649,
+  "days": 3650,
   "first": "2012-01-06",
-  "last": "2026-10-01",
-  "not_available": {
-   "http 404": 1
-  }
+  "last": "2026-10-05",
+  "not_available": {}
  },
  "vol": {
-  "days": 3653,
+  "days": 3654,
   "first": "2012-01-05",
-  "last": "2026-10-01",
-  "not_available": {
-   "http 404": 1
-  }
+  "last": "2026-10-05",
+  "not_available": {}
  },
  "fii_dii_cash": {
-  "days": 2,
-  "last": "2026-10-01"
+  "days": 3,
+  "last": "2026-10-05"
  }
 }
