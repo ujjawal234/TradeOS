@@ -1,10 +1,15 @@
 {
  "date": "2026-10-06",
- "done": true,
- "agents": {
-  "app_aintematrend1": {
-   "positions": {},
-   "trades": [
+ "agents": [
+  {
+   "id": "app_aintematrend1",
+   "name": "EMA 9/21 trend above VWAP (3-min)",
+   "trades": 8,
+   "wins": 2,
+   "open": 0,
+   "pnl": -252.78,
+   "return_pct": -0.025,
+   "trade_list": [
     {
      "sym": "TITAN",
      "side": "long",
@@ -101,24 +106,17 @@
      "pnl": -220.24,
      "pnl_pct": -0.007
     }
-   ],
-   "realized": -252.78149228672305,
-   "entries": {
-    "TITAN": 1,
-    "ICICIBANK": 1,
-    "BSE": 1,
-    "POWERGRID": 1,
-    "MARUTI": 1,
-    "KOTAKBANK": 1,
-    "DRREDDY": 1,
-    "RELIANCE": 1
-   },
-   "last_bar": "2026-10-06 15:12:00",
-   "squared_off": true
+   ]
   },
-  "app_aintorblong01": {
-   "positions": {},
-   "trades": [
+  {
+   "id": "app_aintorblong01",
+   "name": "Opening-range breakout long (5-min)",
+   "trades": 11,
+   "wins": 5,
+   "open": 0,
+   "pnl": 5235.73,
+   "return_pct": 0.524,
+   "trade_list": [
     {
      "sym": "TRENT",
      "side": "long",
@@ -251,27 +249,17 @@
      "pnl": -351.47,
      "pnl_pct": -0.081
     }
-   ],
-   "realized": 5235.729713693602,
-   "entries": {
-    "TRENT": 1,
-    "POWERGRID": 1,
-    "SUNPHARMA": 1,
-    "SBILIFE": 1,
-    "HDFCLIFE": 1,
-    "INDIGO": 1,
-    "TATASTEEL": 1,
-    "HDFCBANK": 1,
-    "ADANIPORTS": 1,
-    "MARUTI": 1,
-    "DRREDDY": 1
-   },
-   "last_bar": "2026-10-06 15:10:00",
-   "squared_off": true
+   ]
   },
-  "app_aintorbshort1": {
-   "positions": {},
-   "trades": [
+  {
+   "id": "app_aintorbshort1",
+   "name": "Opening-range breakdown short (5-min)",
+   "trades": 7,
+   "wins": 3,
+   "open": 0,
+   "pnl": 956.83,
+   "return_pct": 0.096,
+   "trade_list": [
     {
      "sym": "ITC",
      "side": "short",
@@ -356,19 +344,7 @@
      "pnl": -194.83,
      "pnl_pct": -0.018
     }
-   ],
-   "realized": 956.8328205914615,
-   "entries": {
-    "ONGC": 1,
-    "COALINDIA": 1,
-    "INFY": 1,
-    "ITC": 1,
-    "TCS": 1,
-    "HCLTECH": 1,
-    "TITAN": 1
-   },
-   "last_bar": "2026-10-06 15:10:00",
-   "squared_off": true
+   ]
   }
- }
+ ]
 }
