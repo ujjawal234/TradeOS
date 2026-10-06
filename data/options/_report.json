@@ -1,9 +1,9 @@
 {
- "asof": "2026-10-05",
- "days": 3905,
- "days_used": 3902,
+ "asof": "2026-10-06",
+ "days": 3906,
+ "days_used": 3903,
  "download": {
-  "new_files": 0,
+  "new_files": 1,
   "not_available": {}
  },
  "underlyings": 432,
@@ -14,16 +14,16 @@
   "NIFTY",
   "NIFTYNXT50"
  ],
- "bundle_bytes": 88155260,
+ "bundle_bytes": 88190555,
  "bundles": 20,
  "largest": [
   [
    "BANKNIFTY.c",
-   1288149
+   1288538
   ],
   [
    "NIFTY.c",
-   1065824
+   1066255
   ],
   [
    "MRF.c",
@@ -31,51 +31,51 @@
   ],
   [
    "MARUTI.c",
-   561390
+   561563
   ],
   [
    "ULTRACEMCO.c",
-   541955
+   542119
   ],
   [
    "BOSCHLTD.c",
-   518412
+   518610
   ],
   [
    "ASIANPAINT.c",
-   514738
+   514882
   ],
   [
    "DRREDDY.c",
-   513498
+   513638
   ],
   [
    "HEROMOTOCO.c",
-   507152
+   507299
   ],
   [
    "GRASIM.c",
-   506205
+   506338
   ],
   [
    "FINNIFTY.c",
-   504214
+   504527
   ],
   [
    "BAJAJ-AUTO.c",
-   503591
+   503767
   ],
   [
    "TCS.c",
-   493684
+   493837
   ],
   [
    "DIVISLAB.c",
-   489334
+   489486
   ],
   [
    "PAGEIND.c",
-   481768
+   481945
   ]
  ],
  "debug": {},
