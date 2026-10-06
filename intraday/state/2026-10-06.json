@@ -1,0 +1,367 @@
+{
+ "date": "2026-10-06",
+ "done": false,
+ "agents": {
+  "app_aintematrend1": {
+   "positions": {
+    "BSE": {
+     "sym": "BSE",
+     "qty": 101,
+     "entry": 3262.95,
+     "t_entry": "2026-10-06 11:09:00",
+     "stop": 3285.17,
+     "target": null,
+     "best": 3305.0,
+     "hi_seen": 3305.0,
+     "lo_seen": 3206.5
+    },
+    "DRREDDY": {
+     "sym": "DRREDDY",
+     "qty": 273,
+     "entry": 1207.24,
+     "t_entry": "2026-10-06 13:12:00",
+     "stop": 1205.42,
+     "target": null,
+     "best": 1212.7,
+     "hi_seen": 1212.7,
+     "lo_seen": 1195.0
+    },
+    "RELIANCE": {
+     "sym": "RELIANCE",
+     "qty": 271,
+     "entry": 1215.84,
+     "t_entry": "2026-10-06 14:03:00",
+     "stop": 1209.76,
+     "target": null,
+     "best": 1216.0,
+     "hi_seen": 1219.1,
+     "lo_seen": 1188.1
+    }
+   },
+   "trades": [
+    {
+     "sym": "TITAN",
+     "side": "long",
+     "qty": 72,
+     "entry": 4570.41,
+     "t_entry": "2026-10-06 11:06:00",
+     "exit": 4569.69,
+     "t_exit": "2026-10-06 11:09:00",
+     "reason": "exit rule",
+     "pnl": -249.56,
+     "pnl_pct": -0.016
+    },
+    {
+     "sym": "ICICIBANK",
+     "side": "long",
+     "qty": 247,
+     "entry": 1335.27,
+     "t_entry": "2026-10-06 11:06:00",
+     "exit": 1332.33,
+     "t_exit": "2026-10-06 11:48:00",
+     "reason": "exit rule",
+     "pnl": -922.99,
+     "pnl_pct": -0.22
+    },
+    {
+     "sym": "POWERGRID",
+     "side": "long",
+     "qty": 1279,
+     "entry": 257.9,
+     "t_entry": "2026-10-06 11:09:00",
+     "exit": 257.55,
+     "t_exit": "2026-10-06 11:57:00",
+     "reason": "exit rule",
+     "pnl": -647.37,
+     "pnl_pct": -0.136
+    },
+    {
+     "sym": "MARUTI",
+     "side": "long",
+     "qty": 28,
+     "entry": 11556.31,
+     "t_entry": "2026-10-06 11:51:00",
+     "exit": 11527.69,
+     "t_exit": "2026-10-06 13:06:00",
+     "reason": "exit rule",
+     "pnl": -995.15,
+     "pnl_pct": -0.248
+    },
+    {
+     "sym": "KOTAKBANK",
+     "side": "long",
+     "qty": 764,
+     "entry": 431.94,
+     "t_entry": "2026-10-06 12:00:00",
+     "exit": 432.61,
+     "t_exit": "2026-10-06 14:00:00",
+     "reason": "exit rule",
+     "pnl": 316.37,
+     "pnl_pct": 0.156
+    }
+   ],
+   "realized": -2795.298292210854,
+   "entries": {
+    "TITAN": 1,
+    "ICICIBANK": 1,
+    "BSE": 1,
+    "POWERGRID": 1,
+    "MARUTI": 1,
+    "KOTAKBANK": 1,
+    "DRREDDY": 1,
+    "RELIANCE": 1
+   },
+   "last_bar": "2026-10-06 14:30:00",
+   "squared_off": false
+  },
+  "app_aintorblong01": {
+   "positions": {
+    "INDIGO": {
+     "sym": "INDIGO",
+     "qty": 50,
+     "entry": 4980.8,
+     "t_entry": "2026-10-06 10:45:00",
+     "stop": 4945.93,
+     "target": 5050.53,
+     "best": 4980.79596,
+     "hi_seen": 5029.8,
+     "lo_seen": 4925.1
+    },
+    "HDFCBANK": {
+     "sym": "HDFCBANK",
+     "qty": 351,
+     "entry": 710.89,
+     "t_entry": "2026-10-06 12:15:00",
+     "stop": 705.92,
+     "target": 720.84,
+     "best": 710.89215,
+     "hi_seen": 714.7,
+     "lo_seen": 701.0
+    },
+    "MARUTI": {
+     "sym": "MARUTI",
+     "qty": 21,
+     "entry": 11563.31,
+     "t_entry": "2026-10-06 12:45:00",
+     "stop": 11482.37,
+     "target": 11725.2,
+     "best": 11563.3122,
+     "hi_seen": 11595.0,
+     "lo_seen": 11451.0
+    },
+    "DRREDDY": {
+     "sym": "DRREDDY",
+     "qty": 206,
+     "entry": 1208.24,
+     "t_entry": "2026-10-06 13:30:00",
+     "stop": 1199.78,
+     "target": 1225.16,
+     "best": 1208.2416,
+     "hi_seen": 1212.7,
+     "lo_seen": 1195.0
+    }
+   },
+   "trades": [
+    {
+     "sym": "TRENT",
+     "side": "long",
+     "qty": 87,
+     "entry": 2847.27,
+     "t_entry": "2026-10-06 09:35:00",
+     "exit": 2826.77,
+     "t_exit": "2026-10-06 09:37:26",
+     "reason": "stop",
+     "pnl": -1931.2,
+     "pnl_pct": -0.72
+    },
+    {
+     "sym": "HDFCLIFE",
+     "side": "long",
+     "qty": 462,
+     "entry": 540.56,
+     "t_entry": "2026-10-06 10:00:00",
+     "exit": 548.13,
+     "t_exit": "2026-10-06 10:32:26",
+     "reason": "target",
+     "pnl": 3346.45,
+     "pnl_pct": 1.4
+    },
+    {
+     "sym": "POWERGRID",
+     "side": "long",
+     "qty": 971,
+     "entry": 257.4,
+     "t_entry": "2026-10-06 09:35:00",
+     "exit": 257.05,
+     "t_exit": "2026-10-06 10:35:00",
+     "reason": "exit rule",
+     "pnl": -491.09,
+     "pnl_pct": -0.137
+    },
+    {
+     "sym": "SBILIFE",
+     "side": "long",
+     "qty": 144,
+     "entry": 1727.35,
+     "t_entry": "2026-10-06 09:45:00",
+     "exit": 1751.53,
+     "t_exit": "2026-10-06 12:17:26",
+     "reason": "target",
+     "pnl": 3331.63,
+     "pnl_pct": 1.4
+    },
+    {
+     "sym": "SUNPHARMA",
+     "side": "long",
+     "qty": 140,
+     "entry": 1778.36,
+     "t_entry": "2026-10-06 09:45:00",
+     "exit": 1780.44,
+     "t_exit": "2026-10-06 12:25:00",
+     "reason": "exit rule",
+     "pnl": 142.27,
+     "pnl_pct": 0.117
+    },
+    {
+     "sym": "ADANIPORTS",
+     "side": "long",
+     "qty": 140,
+     "entry": 1776.36,
+     "t_entry": "2026-10-06 12:25:00",
+     "exit": 1774.84,
+     "t_exit": "2026-10-06 12:35:00",
+     "reason": "exit rule",
+     "pnl": -361.26,
+     "pnl_pct": -0.085
+    },
+    {
+     "sym": "TATASTEEL",
+     "side": "long",
+     "qty": 1391,
+     "entry": 179.7,
+     "t_entry": "2026-10-06 10:50:00",
+     "exit": 178.63,
+     "t_exit": "2026-10-06 13:30:00",
+     "reason": "exit rule",
+     "pnl": -1631.97,
+     "pnl_pct": -0.593
+    }
+   ],
+   "realized": 2107.7517834615473,
+   "entries": {
+    "TRENT": 1,
+    "POWERGRID": 1,
+    "SUNPHARMA": 1,
+    "SBILIFE": 1,
+    "HDFCLIFE": 1,
+    "INDIGO": 1,
+    "TATASTEEL": 1,
+    "HDFCBANK": 1,
+    "ADANIPORTS": 1,
+    "MARUTI": 1,
+    "DRREDDY": 1
+   },
+   "last_bar": "2026-10-06 14:30:00",
+   "squared_off": false
+  },
+  "app_aintorbshort1": {
+   "positions": {
+    "INFY": {
+     "sym": "INFY",
+     "qty": -247,
+     "entry": 1009.6,
+     "t_entry": "2026-10-06 10:25:00",
+     "stop": 1016.67,
+     "target": 995.46,
+     "best": 1009.59804,
+     "hi_seen": 1020.5,
+     "lo_seen": 1003.15
+    },
+    "TCS": {
+     "sym": "TCS",
+     "qty": -119,
+     "entry": 2096.68,
+     "t_entry": "2026-10-06 11:40:00",
+     "stop": 2111.36,
+     "target": 2067.33,
+     "best": 2096.6805799999997,
+     "hi_seen": 2115.0,
+     "lo_seen": 2082.7
+    },
+    "TITAN": {
+     "sym": "TITAN",
+     "qty": -55,
+     "entry": 4540.09,
+     "t_entry": "2026-10-06 13:05:00",
+     "stop": 4571.87,
+     "target": 4476.53,
+     "best": 4540.0918,
+     "hi_seen": 4600.0,
+     "lo_seen": 4530.3
+    }
+   },
+   "trades": [
+    {
+     "sym": "ITC",
+     "side": "short",
+     "qty": 941,
+     "entry": 265.65,
+     "t_entry": "2026-10-06 10:25:00",
+     "exit": 267.56,
+     "t_exit": "2026-10-06 11:16:26",
+     "reason": "stop",
+     "pnl": -1951.13,
+     "pnl_pct": -0.72
+    },
+    {
+     "sym": "COALINDIA",
+     "side": "short",
+     "qty": 592,
+     "entry": 422.22,
+     "t_entry": "2026-10-06 10:25:00",
+     "exit": 416.3,
+     "t_exit": "2026-10-06 12:12:26",
+     "reason": "target",
+     "pnl": 3355.72,
+     "pnl_pct": 1.402
+    },
+    {
+     "sym": "ONGC",
+     "side": "short",
+     "qty": 1120,
+     "entry": 223.11,
+     "t_entry": "2026-10-06 09:50:00",
+     "exit": 222.64,
+     "t_exit": "2026-10-06 13:00:00",
+     "reason": "exit rule",
+     "pnl": 371.56,
+     "pnl_pct": 0.209
+    },
+    {
+     "sym": "HCLTECH",
+     "side": "short",
+     "qty": 209,
+     "entry": 1193.76,
+     "t_entry": "2026-10-06 12:15:00",
+     "exit": 1196.24,
+     "t_exit": "2026-10-06 13:35:00",
+     "reason": "exit rule",
+     "pnl": -668.01,
+     "pnl_pct": -0.208
+    }
+   ],
+   "realized": 883.5745586134324,
+   "entries": {
+    "ONGC": 1,
+    "COALINDIA": 1,
+    "INFY": 1,
+    "ITC": 1,
+    "TCS": 1,
+    "HCLTECH": 1,
+    "TITAN": 1
+   },
+   "last_bar": "2026-10-06 14:30:00",
+   "squared_off": false
+  }
+ }
+}
