@@ -1,5 +1,3 @@
-participant oi: 1 days to fetch
-  0/1
-participant vol: 1 days to fetch
-  0/1
+participant oi: 0 days to fetch
+participant vol: 0 days to fetch
 {"oi": {"days": 3651, "first": "2012-01-06", "last": "2026-10-06", "not_available": {}}, "vol": {"days": 3655, "first": "2012-01-05", "last": "2026-10-06", "not_available": {}}, "fii_dii_cash": {"days": 4, "last": "2026-10-06"}}
