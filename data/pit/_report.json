@@ -32,25 +32,25 @@
   "2026-03-30",
   "2026-09-30"
  ],
- "trading_days": 3905,
+ "trading_days": 3906,
  "first": "2011-01-03",
- "last": "2026-10-05",
+ "last": "2026-10-06",
  "download": {
-  "new_files": 0,
+  "new_files": 1,
   "not_available": {
    "http 404": 3
   }
  },
  "corporate_actions": {
-  "files": 3900,
-  "new": 0,
+  "files": 3901,
+  "new": 1,
   "not_available": {},
-  "records": 51519,
-  "dividends": 14633,
+  "records": 51523,
+  "dividends": 14638,
   "ratio_applied": 630,
   "inferred_splits": 13,
   "rights": 125,
-  "outside_data": 212,
+  "outside_data": 207,
   "demergers": 115,
   "ratio_rejected": 81
  },
@@ -1444,7 +1444,7 @@
  "gap_days": [],
  "symbol_change_rows_moved": 522944,
  "members": 1413,
- "members_no_longer_trading": 228,
+ "members_no_longer_trading": 230,
  "examples_no_longer_trading": [
   "3IINFOTECH",
   "ABGSHIP",
@@ -1475,6 +1475,7 @@
   "CAPF",
   "CASTEXTECH",
   "CASTROL",
+  "CEREBRAINT",
   "CHROMATIC",
   "CIGNITITEC",
   "CMAHENDRA",
@@ -1495,6 +1496,7 @@
   "DOLPHINOFF",
   "DRDATSONS",
   "EDSERV",
+  "EDUCOMP",
   "ELDERPHARM",
   "EQUITAS",
   "ERAINFRA",
@@ -1503,14 +1505,12 @@
   "ESSARPORTS",
   "ESSDEE",
   "EVERONN",
-  "EXCELCROP",
-  "FCONSUMER",
-  "FIRSTLEASE"
+  "EXCELCROP"
  ],
  "adjustments": {
   "tickers_adjusted": 839,
-  "events": 3090,
-  "small_events": 2024
+  "events": 3093,
+  "small_events": 2027
  },
  "adjustment_examples": {
   "20MICRONS": [
