@@ -1,11 +1,58 @@
-Bhavcopy: 4 weekdays to fetch (5759 calendar days since 2011-01-01)
-  0/4 scanned, 0 files
-Downloaded 1 new files; not available: {'http 404': 3}
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (0/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (5/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (10/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (15/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (20/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (25/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (30/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (35/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (40/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (45/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (50/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
+Today's bhavcopy (2026-10-08) isn't out yet; retrying in 5 minutes (55/60 min)
+Bhavcopy: 3 weekdays to fetch (5759 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
 Loaded 3907 trading days, 6,546,194 rows, 3,835 tickers
 Symbol changes: 1056
-Corporate actions: 1 price-report files to fetch
-  0/1 scanned, 1 files
-Corporate actions: 51,561 distinct records from 3902 files (new 1; not available {})
+Corporate actions: 0 price-report files to fetch
+Corporate actions: 51,561 distinct records from 3902 files (new 0; not available {})
 Gap days ignored for adjustments: 0 []
 Reviews: 31 (2011-09-30 … 2026-09-30); stocks ever in the top 200: 1413
 Breadth: 3720 days, members per day 499 (median)
