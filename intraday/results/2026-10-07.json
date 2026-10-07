@@ -1,10 +1,15 @@
 {
  "date": "2026-10-07",
- "done": true,
- "agents": {
-  "app_aintematrend1": {
-   "positions": {},
-   "trades": [
+ "agents": [
+  {
+   "id": "app_aintematrend1",
+   "name": "EMA 9/21 trend above VWAP (3-min)",
+   "trades": 16,
+   "wins": 4,
+   "open": 0,
+   "pnl": 1950.68,
+   "return_pct": 0.195,
+   "trade_list": [
     {
      "sym": "ADANIENT",
      "side": "long",
@@ -197,29 +202,17 @@
      "pnl": 719.1,
      "pnl_pct": 0.278
     }
-   ],
-   "realized": 1950.6768474303926,
-   "entries": {
-    "ADANIENT": 1,
-    "BAJAJFINSV": 2,
-    "JIOFIN": 1,
-    "DRREDDY": 1,
-    "BAJFINANCE": 2,
-    "NTPC": 1,
-    "POWERGRID": 1,
-    "BSE": 1,
-    "TITAN": 2,
-    "TRENT": 1,
-    "ICICIBANK": 1,
-    "KOTAKBANK": 1,
-    "COALINDIA": 1
-   },
-   "last_bar": "2026-10-07 15:12:00",
-   "squared_off": true
+   ]
   },
-  "app_aintorblong01": {
-   "positions": {},
-   "trades": [
+  {
+   "id": "app_aintorblong01",
+   "name": "Opening-range breakout long (5-min)",
+   "trades": 13,
+   "wins": 4,
+   "open": 0,
+   "pnl": -6511.6,
+   "return_pct": -0.651,
+   "trade_list": [
     {
      "sym": "KOTAKBANK",
      "side": "long",
@@ -376,29 +369,17 @@
      "pnl": -83.55,
      "pnl_pct": 0.026
     }
-   ],
-   "realized": -6511.597990734215,
-   "entries": {
-    "INDIGO": 1,
-    "KOTAKBANK": 1,
-    "AXISBANK": 1,
-    "SBIN": 1,
-    "APOLLOHOSP": 1,
-    "TCS": 1,
-    "TECHM": 1,
-    "BAJFINANCE": 1,
-    "BSE": 1,
-    "HDFCLIFE": 1,
-    "ICICIBANK": 1,
-    "MAXHEALTH": 1,
-    "BHARTIARTL": 1
-   },
-   "last_bar": "2026-10-07 15:10:00",
-   "squared_off": true
+   ]
   },
-  "app_aintorbshort1": {
-   "positions": {},
-   "trades": [
+  {
+   "id": "app_aintorbshort1",
+   "name": "Opening-range breakdown short (5-min)",
+   "trades": 12,
+   "wins": 3,
+   "open": 0,
+   "pnl": -3900.1,
+   "return_pct": -0.39,
+   "trade_list": [
     {
      "sym": "KOTAKBANK",
      "side": "short",
@@ -543,24 +524,7 @@
      "pnl": -1817.71,
      "pnl_pct": -0.67
     }
-   ],
-   "realized": -3900.102316566344,
-   "entries": {
-    "ONGC": 1,
-    "KOTAKBANK": 1,
-    "ASIANPAINT": 1,
-    "HINDALCO": 1,
-    "POWERGRID": 1,
-    "ADANIPORTS": 1,
-    "BAJAJ-AUTO": 1,
-    "JSWSTEEL": 1,
-    "SUNPHARMA": 1,
-    "WIPRO": 1,
-    "ADANIENT": 1,
-    "NESTLEIND": 1
-   },
-   "last_bar": "2026-10-07 15:10:00",
-   "squared_off": true
+   ]
   }
- }
+ ]
 }
