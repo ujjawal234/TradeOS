@@ -37,8 +37,7 @@ CATALOG = {
     "IN_FX_RESERVES": ("fred", "TRESEGINM052N", "India FX reserves excl. gold (US$ bn)", "US$ bn", "M", "level_bn", 40, "india"),
     "IN_EXPORTS_YOY": ("fred", "XTEXVA01INM667S", "India goods exports (y/y)", "%", "M", "yoy", 20, "india"),
     "IN_IMPORTS_YOY": ("fred", "XTIMVA01INM667S", "India goods imports (y/y)", "%", "M", "yoy", 20, "india"),
-    "IN_M3_YOY": ("fred", "MABMM301INM189S", "India broad money M3 (y/y)", "%", "M", "yoy", 30, "india"),
-    "IN_CLI": ("oecd_cli", "IND", "India composite leading indicator (OECD, 100 = trend)", "index", "M", "level", 40, "india"),
+    "IN_CLI": ("oecd_cli", "IND", "India composite leading indicator (OECD, 100 = trend)", "index", "M", "level", 8, "india"),
     "USDINR_REF": ("fred", "DEXINUS", "Rupees per US dollar (Fed H.10 noon rate)", "₹", "D", "level", 1, "india"),
     "IN_GDP_ANNUAL": ("wb", "NY.GDP.MKTP.KD.ZG", "India real GDP growth (annual, World Bank)", "%", "A", "level", 200, "india"),
     "IN_CAD_GDP": ("wb", "BN.CAB.XOKA.GD.ZS", "India current account balance (% of GDP, annual)", "%", "A", "level", 200, "india"),
@@ -66,7 +65,6 @@ CATALOG = {
     "ECB_RATE": ("fred", "ECBDFR", "ECB deposit rate", "%", "D", "level", 1, "global"),
     "JP_10Y": ("fred", "IRLTLT01JPM156N", "Japan 10-year yield (monthly)", "%", "M", "level", 5, "global"),
     "DE_10Y": ("fred", "IRLTLT01DEM156N", "Germany 10-year yield (monthly)", "%", "M", "level", 5, "global"),
-    "CN_CPI_YOY": ("fred", "CHNCPIALLMINMEI", "China CPI (y/y)", "%", "M", "yoy", 15, "global"),
     "COPPER_USD": ("fred", "PCOPPUSDM", "Copper price (US$/tonne, monthly)", "US$", "M", "level", 10, "global"),
     "US_INIT_CLAIMS": ("fred", "ICSA", "US initial jobless claims (thousands)", "k", "W", "level_k", 5, "global"),
 }
@@ -186,6 +184,39 @@ def mospi(kind: str) -> pd.Series:
     return pd.Series(vals).sort_index()
 
 
+def mospi_debug() -> None:
+    """raw samples of MoSPI's API (which parameters return what) -> data/macro/_debug_mospi.json"""
+    s = requests.Session()
+    s.mount("https://", _Legacy())
+    out = {}
+    for name, url in [
+        ("cpi_y2024", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&year=2024&limit=5&Format=JSON"),
+        ("cpi_noyear", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&limit=5&Format=JSON"),
+        ("cpi_series", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&series=Current&limit=5&Format=JSON"),
+        ("cpi_item", "https://api.mospi.gov.in/api/cpi/getItemIndex?base_year=2012&year=2025&limit=5&Format=JSON"),
+        ("cpi_inflation", "https://api.mospi.gov.in/api/cpi/getCPIInflation?base_year=2012&year=2025&limit=5&Format=JSON"),
+        ("cpi_2024base", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2024&limit=5&Format=JSON"),
+        ("iip_2026", "https://api.mospi.gov.in/api/iip/getIIPMonthly?base_year=2011-12&year=2026&type=General&limit=40&Format=JSON"),
+        ("iip_2027", "https://api.mospi.gov.in/api/iip/getIIPMonthly?base_year=2011-12&year=2027&type=General&limit=40&Format=JSON"),
+        ("iip_2022base", "https://api.mospi.gov.in/api/iip/getIIPMonthly?base_year=2022-23&year=2026&type=General&limit=40&Format=JSON"),
+        ("wpi", "https://api.mospi.gov.in/api/wpi/getWpiRecords?year=2026&limit=5&Format=JSON"),
+        ("gdp", "https://api.mospi.gov.in/api/nas/getNASData?base_year=2011-12&series=Current&frequency=Quarterly&limit=5&Format=JSON"),
+        ("plfs", "https://api.mospi.gov.in/api/plfs/getData?limit=3&Format=JSON"),
+        ("swagger", "https://api.mospi.gov.in/api/docs"),
+    ]:
+        try:
+            r = s.get(url, headers=UA, timeout=40)
+            try:
+                js = r.json()
+                out[name] = {"status": r.status_code, "keys": list(js.keys()) if isinstance(js, dict) else None, "n": len(js.get("data") or []) if isinstance(js, dict) else None,
+                             "sample": (js.get("data") or [])[:6] if isinstance(js, dict) else None, "msg": js.get("msg") if isinstance(js, dict) else None}
+            except ValueError:
+                out[name] = {"status": r.status_code, "text": r.text[:400]}
+        except Exception as e:  # noqa: BLE001
+            out[name] = {"error": str(e)[:200]}
+    (OUT / "_debug_mospi.json").write_text(json.dumps(out, indent=1, ensure_ascii=False))
+
+
 def transform(s: pd.Series, how: str, freq: str) -> pd.Series:
     if how.startswith("level"):
         k = {"level_bn": 1 / 1000, "level_trn_from_mn": 1 / 1e6, "level_k": 1 / 1000}.get(how, 1)
@@ -200,6 +231,10 @@ def transform(s: pd.Series, how: str, freq: str) -> pd.Series:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
+    try:
+        mospi_debug()
+    except Exception as e:  # noqa: BLE001
+        print(f"mospi debug failed: {e}")
     old = json.loads((OUT / "catalog.json").read_text()) if (OUT / "catalog.json").exists() else {}
     cat, errors = {}, {}
     for key, (src, sid, name, unit, freq, how, lag, group) in CATALOG.items():
@@ -218,6 +253,8 @@ def main() -> None:
                 raw = mospi("iip")
             else:
                 raise ValueError(src)
+            if raw is None or len(raw) == 0:
+                raise RuntimeError("no data returned")
             s = transform(raw.sort_index(), how, freq)
             s = s[s.index >= "2005-01-01"].round(4)
             if s.empty:
