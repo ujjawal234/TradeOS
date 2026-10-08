@@ -36,14 +36,14 @@
  "first": "2011-01-03",
  "last": "2026-10-08",
  "download": {
-  "new_files": 1,
+  "new_files": 0,
   "not_available": {
    "http 404": 3
   }
  },
  "corporate_actions": {
   "files": 3903,
-  "new": 1,
+  "new": 0,
   "not_available": {},
   "records": 51595,
   "dividends": 14672,
