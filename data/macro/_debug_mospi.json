@@ -497,7 +497,7 @@
   "msg": null
  },
  "plfs": {
-  "status": 200,
+  "status": 500,
   "keys": [
    "error"
   ],
@@ -505,8 +505,200 @@
   "sample": [],
   "msg": null
  },
- "swagger": {
+ "swagger_json1": {
   "status": 200,
   "text": "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title>Ministry of Statistics and Program Implementation | Government Of India</title><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.24.2/swagger-ui.css\"><link rel=\"icon\" href=\"../public/favicon.ico\" type=\"image/x-icon\"><script defer=\"defer\" src=\"/static/js/main.addddd18.js\"></script><link href=\"/static/cs"
+ },
+ "swagger_json2": {
+  "status": 200,
+  "text": "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title>Ministry of Statistics and Program Implementation | Government Of India</title><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.24.2/swagger-ui.css\"><link rel=\"icon\" href=\"../public/favicon.ico\" type=\"image/x-icon\"><script defer=\"defer\" src=\"/static/js/main.addddd18.js\"></script><link href=\"/static/cs"
+ },
+ "swagger_json3": {
+  "status": 200,
+  "text": "\n<!-- HTML for static distribution bundle build -->\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  \n  <title>Swagger UI</title>\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"./swagger-ui.css\" >\n  <link rel=\"icon\" type=\"image/png\" href=\"./favicon-32x32.png\" sizes=\"32x32\" /><link rel=\"icon\" type=\"image/png\" href=\"./favicon-16x16.png\" sizes=\"16x16\" />\n  <style>\n    html\n    {\n   "
+ },
+ "swagger_json4": {
+  "status": 200,
+  "text": "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title>Ministry of Statistics and Program Implementation | Government Of India</title><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.24.2/swagger-ui.css\"><link rel=\"icon\" href=\"../public/favicon.ico\" type=\"image/x-icon\"><script defer=\"defer\" src=\"/static/js/main.addddd18.js\"></script><link href=\"/static/cs"
+ },
+ "cpi_codes": {
+  "status": 200,
+  "keys": [
+   "data",
+   "meta_data",
+   "msg",
+   "statusCode"
+  ],
+  "n": 12,
+  "sample": [
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "December",
+    "state": "All India",
+    "sector": "Combined",
+    "group": "General",
+    "subgroup": "General-Overall",
+    "index": "198.0",
+    "inflation": "1.33",
+    "status": "F"
+   },
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "November",
+    "state": "All India",
+    "sector": "Combined",
+    "group": "General",
+    "subgroup": "General-Overall",
+    "index": "197.9",
+    "inflation": "0.71",
+    "status": "F"
+   },
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "October",
+    "state": "All India",
+    "sector": "Combined",
+    "group": "General",
+    "subgroup": "General-Overall",
+    "index": "197.3",
+    "inflation": "0.25",
+    "status": "F"
+   },
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "September",
+    "state": "All India",
+    "sector": "Combined",
+    "group": "General",
+    "subgroup": "General-Overall",
+    "index": "197.0",
+    "inflation": "1.44",
+    "status": "F"
+   },
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "August",
+    "state": "All India",
+    "sector": "Combined",
+    "group": "General",
+    "subgroup": "General-Overall",
+    "index": "197.0",
+    "inflation": "2.07",
+    "status": "F"
+   },
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "July",
+    "state": "All India",
+    "sector": "Combined",
+    "group": "General",
+    "subgroup": "General-Overall",
+    "index": "196.1",
+    "inflation": "1.61",
+    "status": "F"
+   }
+  ],
+  "msg": "Data fetched successfully"
+ },
+ "cpi_names": {
+  "status": 200,
+  "keys": [
+   "data",
+   "meta_data",
+   "msg",
+   "statusCode"
+  ],
+  "n": 20,
+  "sample": [
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "December",
+    "state": "All India",
+    "sector": "Rural",
+    "group": "Consumer Food Price",
+    "subgroup": "Consumer Food Price-Overall",
+    "index": "198.5",
+    "inflation": "-3.03",
+    "status": "F"
+   },
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "December",
+    "state": "All India",
+    "sector": "Rural",
+    "group": "Miscellaneous",
+    "subgroup": "Household Goods and Services",
+    "index": "189.8",
+    "inflation": "1.50",
+    "status": "F"
+   },
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "December",
+    "state": "All India",
+    "sector": "Rural",
+    "group": "Miscellaneous",
+    "subgroup": "Transport and Communication",
+    "index": "178.5",
+    "inflation": "1.02",
+    "status": "F"
+   },
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "December",
+    "state": "All India",
+    "sector": "Rural",
+    "group": "Miscellaneous",
+    "subgroup": "Miscellaneous-Overall",
+    "index": "203.4",
+    "inflation": "6.60",
+    "status": "F"
+   },
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "December",
+    "state": "All India",
+    "sector": "Rural",
+    "group": "Miscellaneous",
+    "subgroup": "Education",
+    "index": "197.8",
+    "inflation": "2.91",
+    "status": "F"
+   },
+   {
+    "baseyear": "2012",
+    "year": 2025,
+    "month": "December",
+    "state": "All India",
+    "sector": "Rural",
+    "group": "Miscellaneous",
+    "subgroup": "Personal Care and Effects",
+    "index": "265.3",
+    "inflation": "28.60",
+    "status": "F"
+   }
+  ],
+  "msg": "Data fetched successfully"
+ },
+ "bundle": {
+  "cpi_strings": [
+   "/cpi",
+   "/cpialrl"
+  ],
+  "param_names": [
+   "string"
+  ],
+  "context": []
  }
 }

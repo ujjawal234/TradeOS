@@ -1,8 +1,5 @@
 {
- "asof": "2026-10-08T12:18",
- "ok": 36,
- "errors": {
-  "IN_CPI_YOY": "no data returned",
-  "IN_IIP_YOY": "no data returned"
- }
+ "asof": "2026-10-08T12:22",
+ "ok": 38,
+ "errors": {}
 }

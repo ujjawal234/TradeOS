@@ -15,6 +15,22 @@
   "chg_12m": -0.25,
   "n": 5829
  },
+ "IN_CPI_YOY": {
+  "name": "India CPI inflation (combined, y/y)",
+  "unit": "%",
+  "freq": "M",
+  "source": "MoSPI",
+  "group": "india",
+  "lag_days": 13,
+  "first": "2013-01-01",
+  "last_period": "2025-12-01",
+  "last_known": "2026-01-13",
+  "last": 1.33,
+  "prev": 0.71,
+  "chg_3m": -0.11,
+  "chg_12m": -3.89,
+  "n": 147
+ },
  "IN_IIP_YOY": {
   "name": "India industrial production (IIP, y/y)",
   "unit": "%",
@@ -23,14 +39,13 @@
   "group": "india",
   "lag_days": 29,
   "first": "2013-01-01",
-  "last_period": "2026-03-01",
-  "last_known": "2026-04-29",
-  "last": 4.1,
-  "prev": 5.1,
-  "chg_3m": -3.9,
-  "chg_12m": 0.2,
-  "n": 158,
-  "stale": true
+  "last_period": "2026-08-01",
+  "last_known": "2026-09-29",
+  "last": 8.0,
+  "prev": 7.4,
+  "chg_3m": 3.0,
+  "chg_12m": 3.3,
+  "n": 163
  },
  "IN_GDP_YOY": {
   "name": "India real GDP growth (y/y, quarterly)",
