@@ -171,6 +171,24 @@ def mospi(kind: str) -> pd.Series:
     return pd.Series(out).sort_index()
 
 
+def oecd_cpi(area: str = "IND") -> pd.Series:
+    """CPI y/y % from OECD's prices database (covers India monthly)"""
+    for key in (f"{area}.M.N.CPI.PA._T.N.GY", f"{area}.M.N.CPI._Z._T.N.GY", f"{area}.M.N.CPI.IX._T.N._Z"):
+        try:
+            r = get(f"https://sdmx.oecd.org/public/rest/data/OECD.SDD.TPS,DSD_PRICES@DF_PRICES_ALL,1.0/{key}?startPeriod=2013-01&format=csvfilewithlabels", tries=2)
+        except RuntimeError:
+            continue
+        df = pd.read_csv(io.StringIO(r.text))
+        if df.empty or "OBS_VALUE" not in df:
+            continue
+        sr = pd.Series(pd.to_numeric(df["OBS_VALUE"], errors="coerce").values, index=pd.to_datetime(df["TIME_PERIOD"])).dropna().sort_index()
+        if key.endswith("._Z"):  # index level -> y/y
+            sr = (sr / sr.shift(12) - 1).dropna() * 100
+        if len(sr):
+            return sr
+    return pd.Series(dtype=float)
+
+
 def mospi_debug() -> None:
     """raw samples of MoSPI's API (which parameters return what) -> data/macro/_debug_mospi.json"""
     s = requests.Session()
@@ -229,10 +247,7 @@ def transform(s: pd.Series, how: str, freq: str) -> pd.Series:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    try:
-        mospi_debug()
-    except Exception as e:  # noqa: BLE001
-        print(f"mospi debug failed: {e}")
+
     old = json.loads((OUT / "catalog.json").read_text()) if (OUT / "catalog.json").exists() else {}
     cat, errors = {}, {}
     for key, (src, sid, name, unit, freq, how, lag, group) in CATALOG.items():
@@ -247,6 +262,14 @@ def main() -> None:
                 raw = worldbank(sid)
             elif src == "mospi_cpi":
                 raw = mospi("cpi")
+                try:  # MoSPI's API stops at the 2012-base series (Dec 2025); OECD carries the new series on
+                    o = oecd_cpi("IND")
+                    newer = o[o.index > (raw.index.max() if len(raw) else pd.Timestamp("2000-01-01"))]
+                    if len(newer):
+                        raw = pd.concat([raw, newer]).sort_index()
+                        print(f"  CPI: {len(newer)} newer months from OECD", flush=True)
+                except Exception as e:  # noqa: BLE001
+                    print(f"  OECD CPI failed: {e}", flush=True)
             elif src == "mospi_iip":
                 raw = mospi("iip")
             else:
