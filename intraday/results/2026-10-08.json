@@ -1,10 +1,15 @@
 {
  "date": "2026-10-08",
- "done": true,
- "agents": {
-  "app_aintematrend1": {
-   "positions": {},
-   "trades": [
+ "agents": [
+  {
+   "id": "app_aintematrend1",
+   "name": "EMA 9/21 trend above VWAP (3-min)",
+   "trades": 7,
+   "wins": 0,
+   "open": 0,
+   "pnl": -7052.56,
+   "return_pct": -0.705,
+   "trade_list": [
     {
      "sym": "TECHM",
      "side": "long",
@@ -89,22 +94,17 @@
      "pnl": -1514.18,
      "pnl_pct": -0.401
     }
-   ],
-   "realized": -7052.558530349714,
-   "entries": {
-    "TECHM": 1,
-    "LT": 1,
-    "WIPRO": 1,
-    "KOTAKBANK": 2,
-    "NTPC": 1,
-    "GRASIM": 1
-   },
-   "last_bar": "2026-10-08 15:12:00",
-   "squared_off": true
+   ]
   },
-  "app_aintorblong01": {
-   "positions": {},
-   "trades": [
+  {
+   "id": "app_aintorblong01",
+   "name": "Opening-range breakout long (5-min)",
+   "trades": 8,
+   "wins": 0,
+   "open": 0,
+   "pnl": -6410.69,
+   "return_pct": -0.641,
+   "trade_list": [
     {
      "sym": "TRENT",
      "side": "long",
@@ -201,24 +201,17 @@
      "pnl": -789.14,
      "pnl_pct": -0.257
     }
-   ],
-   "realized": -6410.6856504225725,
-   "entries": {
-    "DRREDDY": 1,
-    "TRENT": 1,
-    "HDFCLIFE": 1,
-    "TITAN": 1,
-    "AXISBANK": 1,
-    "NESTLEIND": 1,
-    "WIPRO": 1,
-    "ICICIBANK": 1
-   },
-   "last_bar": "2026-10-08 15:10:00",
-   "squared_off": true
+   ]
   },
-  "app_aintorbshort1": {
-   "positions": {},
-   "trades": [
+  {
+   "id": "app_aintorbshort1",
+   "name": "Opening-range breakdown short (5-min)",
+   "trades": 10,
+   "wins": 8,
+   "open": 0,
+   "pnl": 16384.9,
+   "return_pct": 1.638,
+   "trade_list": [
     {
      "sym": "POWERGRID",
      "side": "short",
@@ -339,22 +332,7 @@
      "pnl": 1884.74,
      "pnl_pct": 0.814
     }
-   ],
-   "realized": 16384.902905721447,
-   "entries": {
-    "POWERGRID": 1,
-    "BHARTIARTL": 1,
-    "NTPC": 1,
-    "ADANIPORTS": 1,
-    "LT": 1,
-    "ADANIENT": 1,
-    "APOLLOHOSP": 1,
-    "MARUTI": 1,
-    "SBIN": 1,
-    "TATASTEEL": 1
-   },
-   "last_bar": "2026-10-08 15:10:00",
-   "squared_off": true
+   ]
   }
- }
+ ]
 }
