@@ -96,7 +96,7 @@ def parse_xbrl(text: str, to_date: date) -> dict:
     if not quarter:
         quarter = [c for c, (a, b) in ctx.items() if b == to_date]
     if not quarter:  # some 2018-19 filings use "OneD" without defining it; trust it if its reporting period matches
-        m = re.search(r'DateOfEndOfReportingPeriod contextRef="OneD"[^>]*>([^<]+)<', text)
+        m = re.search(r'DateOfEndOfReportingPeriod contextRef="OneD"[^>]*>([^<]+)<', text)  # (either prefix)
         if m and m.group(1).strip()[:10] == to_date.isoformat():
             quarter = ["OneD"]
         else:
@@ -104,7 +104,7 @@ def parse_xbrl(text: str, to_date: date) -> dict:
     quarter.sort(key=lambda c: (c != "OneD", (ctx[c][1] - ctx[c][0]).days if c in ctx else 0))
     cq = set(quarter[:1])
     vals = {}
-    for tag, cref, v in re.findall(r'<in-bse-fin:([A-Za-z]+) contextRef="([^"]+)"[^>]*>([^<]*)<', text):
+    for tag, cref, v in re.findall(r'<(?:in-bse-fin|in-capmkt):([A-Za-z]+) contextRef="([^"]+)"[^>]*>([^<]*)<', text):
         if cref in cq and tag not in vals:
             vals[tag] = v
     out = {}
@@ -135,7 +135,7 @@ def update_symbol(sym: str, cache_dir: Path, refresh_days: int, force: bool, dea
     c = json.loads(f.read_text()) if f.exists() else {"recs": {}, "bad": []}
     today = date.today().isoformat()
     stats = {"sym": sym, "new": 0, "err": None}
-    if force or not c.get("list_at") or (date.fromisoformat(c["list_at"]) + timedelta(days=refresh_days)).isoformat() <= today:
+    if force or c.get("lv") != 2 or not c.get("list_at") or (date.fromisoformat(c["list_at"]) + timedelta(days=refresh_days)).isoformat() <= today:
         try:
             lst = fetch(f"{NSE}/corporates-financial-results?index=equities&symbol={requests.utils.quote(sym)}&period=Quarterly")
         except Exception as e:  # noqa: BLE001
@@ -143,7 +143,24 @@ def update_symbol(sym: str, cache_dir: Path, refresh_days: int, force: bool, dea
             return stats
         items = [e for e in (lst or []) if str(e.get("xbrl", "")).endswith(".xml") and e.get("cumulative", "Non-cumulative") != "Cumulative" and e.get("toDate")]
         c["list"] = [{k: e.get(k) for k in ("toDate", "fromDate", "consolidated", "broadCastDate", "filingDate", "xbrl", "bank", "audited")} for e in items]
+        # since early 2025 results are filed as "Integrated Filing - Financials" (same figures, in-capmkt XBRL) on a separate list
+        try:
+            il = fetch(f"{NSE}/integrated-filing-results?index=equities&type=Integrated%20Filing-%20Financials&symbol={requests.utils.quote(sym)}")
+            rows = il.get("data", []) if isinstance(il, dict) else (il or [])
+        except Exception as e:  # noqa: BLE001
+            rows = []
+            stats["err"] = f"integrated list {e}"
+        for x in rows:
+            xb, qe = str(x.get("xbrl") or ""), str(x.get("qe_Date") or "").title()
+            if not xb.endswith(".xml") or not qe or str(x.get("type_Sub", "")).lower().startswith("withdraw"):
+                continue
+            bc = str(x.get("broadcast_Date") or x.get("creation_Date") or "")
+            c["list"].append({"toDate": qe, "fromDate": None, "consolidated": "Consolidated" if x.get("consolidated") == "Consolidated" else "Non-Consolidated",
+                              "broadCastDate": bc, "filingDate": bc[:17], "xbrl": xb, "bank": "B" if "BANKING" in xb.upper() else "N", "audited": x.get("audited")})
+            if not c.get("company"):
+                c["company"] = x.get("cmName")
         c["list_at"] = today
+        c["lv"] = 2
         c["company"] = (lst or [{}])[0].get("companyName") if lst else c.get("company")
     items = c.get("list") or []
     if not items:
