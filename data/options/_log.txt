@@ -1,20 +1,21 @@
-F&O bhavcopy: 0 trading days to fetch of 3907
-Downloaded 0 new F&O files; not available: {}
+F&O bhavcopy: 1 trading days to fetch of 3908
+  0/1 scanned, 1 files, 1s
+Downloaded 1 new F&O files; not available: {}
 Symbol changes: 1056
-  built 0/3907 days (2011-01-03), 225 underlyings, 0s
-  built 250/3907 days (2012-01-05), 238 underlyings, 30s
-  built 500/3907 days (2013-01-03), 240 underlyings, 56s
-  built 750/3907 days (2014-01-03), 245 underlyings, 79s
-  built 1000/3907 days (2015-01-13), 256 underlyings, 102s
-  built 1250/3907 days (2016-01-15), 273 underlyings, 128s
-  built 1500/3907 days (2017-01-19), 281 underlyings, 157s
-  built 1750/3907 days (2018-01-22), 309 underlyings, 192s
-  built 2000/3907 days (2019-01-28), 309 underlyings, 226s
-  built 2250/3907 days (2020-02-03), 309 underlyings, 255s
-  built 2500/3907 days (2021-02-03), 319 underlyings, 281s
-  built 2750/3907 days (2022-02-07), 361 underlyings, 317s
-  built 3000/3907 days (2023-02-08), 361 underlyings, 356s
-  built 3250/3907 days (2024-02-13), 361 underlyings, 396s
-  built 3500/3907 days (2025-02-12), 397 underlyings, 434s
-  built 3750/3907 days (2026-02-17), 420 underlyings, 475s
-Options: 432 underlyings, 88.2 MB gzip in 20 bundles
+  built 0/3908 days (2011-01-03), 225 underlyings, 0s
+  built 250/3908 days (2012-01-05), 238 underlyings, 14s
+  built 500/3908 days (2013-01-03), 240 underlyings, 27s
+  built 750/3908 days (2014-01-03), 245 underlyings, 37s
+  built 1000/3908 days (2015-01-13), 256 underlyings, 48s
+  built 1250/3908 days (2016-01-15), 273 underlyings, 61s
+  built 1500/3908 days (2017-01-19), 281 underlyings, 75s
+  built 1750/3908 days (2018-01-22), 309 underlyings, 92s
+  built 2000/3908 days (2019-01-28), 309 underlyings, 110s
+  built 2250/3908 days (2020-02-03), 309 underlyings, 124s
+  built 2500/3908 days (2021-02-03), 319 underlyings, 138s
+  built 2750/3908 days (2022-02-07), 361 underlyings, 156s
+  built 3000/3908 days (2023-02-08), 361 underlyings, 179s
+  built 3250/3908 days (2024-02-13), 361 underlyings, 201s
+  built 3500/3908 days (2025-02-12), 397 underlyings, 222s
+  built 3750/3908 days (2026-02-17), 420 underlyings, 245s
+Options: 432 underlyings, 88.3 MB gzip in 20 bundles
