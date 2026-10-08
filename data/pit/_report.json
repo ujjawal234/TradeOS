@@ -32,25 +32,25 @@
   "2026-03-30",
   "2026-09-30"
  ],
- "trading_days": 3907,
+ "trading_days": 3908,
  "first": "2011-01-03",
- "last": "2026-10-07",
+ "last": "2026-10-08",
  "download": {
-  "new_files": 0,
+  "new_files": 1,
   "not_available": {
    "http 404": 3
   }
  },
  "corporate_actions": {
-  "files": 3902,
-  "new": 0,
+  "files": 3903,
+  "new": 1,
   "not_available": {},
-  "records": 51561,
-  "dividends": 14664,
+  "records": 51595,
+  "dividends": 14672,
   "ratio_applied": 630,
   "inferred_splits": 13,
   "rights": 125,
-  "outside_data": 180,
+  "outside_data": 172,
   "demergers": 115,
   "ratio_rejected": 82
  },
@@ -1509,8 +1509,8 @@
  ],
  "adjustments": {
   "tickers_adjusted": 839,
-  "events": 3095,
-  "small_events": 2027
+  "events": 3097,
+  "small_events": 2028
  },
  "adjustment_examples": {
   "20MICRONS": [
