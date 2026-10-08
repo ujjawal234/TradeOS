@@ -177,24 +177,15 @@ def mospi_debug() -> None:
     s.mount("https://", _Legacy())
     out = {}
     for name, url in [
-        ("cpi_y2024", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&year=2024&limit=5&Format=JSON"),
-        ("cpi_noyear", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&limit=5&Format=JSON"),
-        ("cpi_series", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&series=Current&limit=5&Format=JSON"),
-        ("cpi_item", "https://api.mospi.gov.in/api/cpi/getItemIndex?base_year=2012&year=2025&limit=5&Format=JSON"),
-        ("cpi_inflation", "https://api.mospi.gov.in/api/cpi/getCPIInflation?base_year=2012&year=2025&limit=5&Format=JSON"),
-        ("cpi_2024base", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2024&limit=5&Format=JSON"),
-        ("iip_2026", "https://api.mospi.gov.in/api/iip/getIIPMonthly?base_year=2011-12&year=2026&type=General&limit=40&Format=JSON"),
-        ("iip_2027", "https://api.mospi.gov.in/api/iip/getIIPMonthly?base_year=2011-12&year=2027&type=General&limit=40&Format=JSON"),
-        ("iip_2022base", "https://api.mospi.gov.in/api/iip/getIIPMonthly?base_year=2022-23&year=2026&type=General&limit=40&Format=JSON"),
-        ("wpi", "https://api.mospi.gov.in/api/wpi/getWpiRecords?year=2026&limit=5&Format=JSON"),
-        ("gdp", "https://api.mospi.gov.in/api/nas/getNASData?base_year=2011-12&series=Current&frequency=Quarterly&limit=5&Format=JSON"),
-        ("plfs", "https://api.mospi.gov.in/api/plfs/getData?limit=3&Format=JSON"),
-        ("swagger_json1", "https://api.mospi.gov.in/swagger.json"),
-        ("swagger_json2", "https://api.mospi.gov.in/api/swagger.json"),
-        ("swagger_json3", "https://api.mospi.gov.in/api-docs"),
-        ("swagger_json4", "https://api.mospi.gov.in/api/docs/swagger.json"),
-        ("cpi_codes", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&year=2025&state_code=99&sector_code=3&group_code=0&limit=20&Format=JSON"),
-        ("cpi_names", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&year=2025&state=All%20India&sector=Combined&group=General&limit=20&Format=JSON"),
+        ("cpi24_a", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2024&year=2026&state_code=99&sector_code=3&group_code=0&limit=20&Format=JSON"),
+        ("cpi24_b", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2024&year=2026&limit=5&Format=JSON"),
+        ("cpi24_c", "https://api.mospi.gov.in/api/cpi/getCPIIndex?series=New&year=2026&limit=5&Format=JSON"),
+        ("cpi24_d", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&year=2026&limit=5&Format=JSON"),
+        ("cpi24_e", "https://api.mospi.gov.in/api/cpi/getCPIIndex?year=2026&limit=5&Format=JSON"),
+        ("cpi_newseries", "https://api.mospi.gov.in/api/cpi/getCPIIndexNew?year=2026&limit=5&Format=JSON"),
+        ("cpi2024_ep", "https://api.mospi.gov.in/api/cpi2024/getCPIIndex?year=2026&limit=5&Format=JSON"),
+        ("apidocs_json", "https://api.mospi.gov.in/api-docs/swagger.json"),
+        ("apidocs_init", "https://api.mospi.gov.in/api-docs/swagger-ui-init.js"),
     ]:
         try:
             r = s.get(url, headers=UA, timeout=40)
@@ -203,7 +194,9 @@ def mospi_debug() -> None:
                 out[name] = {"status": r.status_code, "keys": list(js.keys()) if isinstance(js, dict) else None, "n": len(js.get("data") or []) if isinstance(js, dict) else None,
                              "sample": (js.get("data") or [])[:6] if isinstance(js, dict) else None, "msg": js.get("msg") if isinstance(js, dict) else None}
             except ValueError:
-                out[name] = {"status": r.status_code, "text": r.text[:400]}
+                t = r.text
+                cpi = [t[m.start() - 200: m.start() + 1500] for m in re.finditer(r"cpi", t, re.I)][:6] if "swagger" in name or "apidocs" in name else []
+                out[name] = {"status": r.status_code, "text": t[:400], "cpi_context": cpi, "len": len(t)}
         except Exception as e:  # noqa: BLE001
             out[name] = {"error": str(e)[:200]}
     try:  # parameter names live in the API explorer's script bundle
