@@ -1,14 +1,14 @@
 {
- "generated": "2026-10-05",
- "start": "2011-10-01",
+ "generated": "2026-10-08",
+ "start": "2011-10-04",
  "adjusted": true,
  "source": "Yahoo Finance",
  "symbols": {
   "NIFTY": {
    "yahoo": "^NSEI",
-   "rows": 3684,
+   "rows": 3688,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BANKNIFTY": {
    "yahoo": "^NSEBANK",
@@ -18,9 +18,9 @@
   },
   "SENSEX": {
    "yahoo": "^BSESN",
-   "rows": 3687,
+   "rows": 3691,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIFTYFIN": {
    "yahoo": "NIFTY_FIN_SERVICE.NS",
@@ -30,27 +30,27 @@
   },
   "INDIAVIX": {
    "yahoo": "^INDIAVIX",
-   "rows": 3681,
+   "rows": 3685,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIFTYBANK": {
    "yahoo": "^NSEBANK",
-   "rows": 3697,
+   "rows": 3701,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIFTYIT": {
    "yahoo": "^CNXIT",
-   "rows": 3697,
+   "rows": 3701,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIFTYPHARMA": {
    "yahoo": "^CNXPHARMA",
-   "rows": 3696,
+   "rows": 3700,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIFTYFMCG": {
    "yahoo": "^CNXFMCG",
@@ -102,1023 +102,1023 @@
   },
   "ADANIENT": {
    "yahoo": "ADANIENT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ADANIPORTS": {
    "yahoo": "ADANIPORTS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "APOLLOHOSP": {
    "yahoo": "APOLLOHOSP.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ASIANPAINT": {
    "yahoo": "ASIANPAINT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AXISBANK": {
    "yahoo": "AXISBANK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BAJAJ-AUTO": {
    "yahoo": "BAJAJ-AUTO.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BAJFINANCE": {
    "yahoo": "BAJFINANCE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BAJAJFINSV": {
    "yahoo": "BAJAJFINSV.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BEL": {
    "yahoo": "BEL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BHARTIARTL": {
    "yahoo": "BHARTIARTL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CIPLA": {
    "yahoo": "CIPLA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "COALINDIA": {
    "yahoo": "COALINDIA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DRREDDY": {
    "yahoo": "DRREDDY.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "EICHERMOT": {
    "yahoo": "EICHERMOT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ETERNAL": {
    "yahoo": "ETERNAL.NS",
-   "rows": 1289,
+   "rows": 1294,
    "first": "2021-07-23",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GRASIM": {
    "yahoo": "GRASIM.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HCLTECH": {
    "yahoo": "HCLTECH.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HDFCBANK": {
    "yahoo": "HDFCBANK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HDFCLIFE": {
    "yahoo": "HDFCLIFE.NS",
-   "rows": 2196,
+   "rows": 2201,
    "first": "2017-11-17",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HEROMOTOCO": {
    "yahoo": "HEROMOTOCO.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HINDALCO": {
    "yahoo": "HINDALCO.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HINDUNILVR": {
    "yahoo": "HINDUNILVR.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ICICIBANK": {
    "yahoo": "ICICIBANK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "INDUSINDBK": {
    "yahoo": "INDUSINDBK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "INFY": {
    "yahoo": "INFY.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ITC": {
    "yahoo": "ITC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JIOFIN": {
    "yahoo": "JIOFIN.NS",
-   "rows": 774,
+   "rows": 779,
    "first": "2023-08-21",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JSWSTEEL": {
    "yahoo": "JSWSTEEL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KOTAKBANK": {
    "yahoo": "KOTAKBANK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LT": {
    "yahoo": "LT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "M&M": {
    "yahoo": "M&M.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MARUTI": {
    "yahoo": "MARUTI.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NESTLEIND": {
    "yahoo": "NESTLEIND.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NTPC": {
    "yahoo": "NTPC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ONGC": {
    "yahoo": "ONGC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "POWERGRID": {
    "yahoo": "POWERGRID.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RELIANCE": {
    "yahoo": "RELIANCE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SBILIFE": {
    "yahoo": "SBILIFE.NS",
-   "rows": 2228,
+   "rows": 2233,
    "first": "2017-10-03",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SBIN": {
    "yahoo": "SBIN.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SHRIRAMFIN": {
    "yahoo": "SHRIRAMFIN.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SUNPHARMA": {
    "yahoo": "SUNPHARMA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TATACONSUM": {
    "yahoo": "TATACONSUM.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TMPV": {
    "yahoo": "TMPV.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TATASTEEL": {
    "yahoo": "TATASTEEL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TCS": {
    "yahoo": "TCS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TECHM": {
    "yahoo": "TECHM.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TITAN": {
    "yahoo": "TITAN.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TRENT": {
    "yahoo": "TRENT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ULTRACEMCO": {
    "yahoo": "ULTRACEMCO.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "WIPRO": {
    "yahoo": "WIPRO.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "360ONE": {
    "yahoo": "360ONE.NS",
-   "rows": 1745,
+   "rows": 1750,
    "first": "2019-09-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ABB": {
    "yahoo": "ABB.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ABCAPITAL": {
    "yahoo": "ABCAPITAL.NS",
-   "rows": 2249,
+   "rows": 2254,
    "first": "2017-09-01",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ADANIENSOL": {
    "yahoo": "ADANIENSOL.NS",
-   "rows": 2762,
+   "rows": 2767,
    "first": "2015-07-31",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ADANIGREEN": {
    "yahoo": "ADANIGREEN.NS",
-   "rows": 2052,
+   "rows": 2057,
    "first": "2018-06-18",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ADANIPOWER": {
    "yahoo": "ADANIPOWER.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ALKEM": {
    "yahoo": "ALKEM.NS",
-   "rows": 2665,
+   "rows": 2669,
    "first": "2015-12-23",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AMBER": {
    "yahoo": "AMBER.NS",
-   "rows": 2146,
+   "rows": 2150,
    "first": "2018-01-30",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AMBUJACEM": {
    "yahoo": "AMBUJACEM.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ANANDRATHI": {
    "yahoo": "ANANDRATHI.NS",
-   "rows": 1192,
+   "rows": 1197,
    "first": "2021-12-14",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ANGELONE": {
    "yahoo": "ANGELONE.NS",
-   "rows": 1488,
+   "rows": 1493,
    "first": "2020-10-05",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "APLAPOLLO": {
    "yahoo": "APLAPOLLO.NS",
-   "rows": 3656,
+   "rows": 3661,
    "first": "2011-12-14",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ASHOKLEY": {
    "yahoo": "ASHOKLEY.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ASTRAL": {
    "yahoo": "ASTRAL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ATGL": {
    "yahoo": "ATGL.NS",
-   "rows": 1958,
+   "rows": 1963,
    "first": "2018-11-05",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ATHERENERG": {
    "yahoo": "ATHERENERG.NS",
-   "rows": 356,
+   "rows": 361,
    "first": "2025-05-06",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AUBANK": {
    "yahoo": "AUBANK.NS",
-   "rows": 2285,
+   "rows": 2290,
    "first": "2017-07-11",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AUROPHARMA": {
    "yahoo": "AUROPHARMA.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BAJAJHLDNG": {
    "yahoo": "BAJAJHLDNG.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BANDHANBNK": {
    "yahoo": "BANDHANBNK.NS",
-   "rows": 2108,
+   "rows": 2113,
    "first": "2018-03-27",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BANKBARODA": {
    "yahoo": "BANKBARODA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BANKINDIA": {
    "yahoo": "BANKINDIA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BDL": {
    "yahoo": "BDL.NS",
-   "rows": 2110,
+   "rows": 2115,
    "first": "2018-03-23",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BHARATFORG": {
    "yahoo": "BHARATFORG.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BHEL": {
    "yahoo": "BHEL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BIOCON": {
    "yahoo": "BIOCON.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BLUESTARCO": {
    "yahoo": "BLUESTARCO.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BOSCHLTD": {
    "yahoo": "BOSCHLTD.NS",
-   "rows": 3705,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BPCL": {
    "yahoo": "BPCL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BRITANNIA": {
    "yahoo": "BRITANNIA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BSE": {
    "yahoo": "BSE.NS",
-   "rows": 2391,
+   "rows": 2396,
    "first": "2017-02-03",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CAMS": {
    "yahoo": "CAMS.NS",
-   "rows": 1488,
+   "rows": 1493,
    "first": "2020-10-05",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CANBK": {
    "yahoo": "CANBK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CDSL": {
    "yahoo": "CDSL.NS",
-   "rows": 2292,
+   "rows": 2297,
    "first": "2017-06-30",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CGPOWER": {
    "yahoo": "CGPOWER.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CHOLAFIN": {
    "yahoo": "CHOLAFIN.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "COCHINSHIP": {
    "yahoo": "COCHINSHIP.NS",
-   "rows": 2262,
+   "rows": 2267,
    "first": "2017-08-11",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "COFORGE": {
    "yahoo": "COFORGE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "COLPAL": {
    "yahoo": "COLPAL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CONCOR": {
    "yahoo": "CONCOR.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "COROMANDEL": {
    "yahoo": "COROMANDEL.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CROMPTON": {
    "yahoo": "CROMPTON.NS",
-   "rows": 2572,
+   "rows": 2577,
    "first": "2016-05-13",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CUMMINSIND": {
    "yahoo": "CUMMINSIND.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DABUR": {
    "yahoo": "DABUR.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DELHIVERY": {
    "yahoo": "DELHIVERY.NS",
-   "rows": 1083,
+   "rows": 1088,
    "first": "2022-05-24",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DIVISLAB": {
    "yahoo": "DIVISLAB.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DIXON": {
    "yahoo": "DIXON.NS",
-   "rows": 2238,
+   "rows": 2243,
    "first": "2017-09-18",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DLF": {
    "yahoo": "DLF.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DMART": {
    "yahoo": "DMART.NS",
-   "rows": 2361,
+   "rows": 2366,
    "first": "2017-03-21",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ENRIN": {
    "yahoo": "ENRIN.NS",
-   "rows": 324,
+   "rows": 329,
    "first": "2025-06-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "EXIDEIND": {
    "yahoo": "EXIDEIND.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "FEDERALBNK": {
    "yahoo": "FEDERALBNK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "FORCEMOT": {
    "yahoo": "FORCEMOT.NS",
-   "rows": 1726,
+   "rows": 1731,
    "first": "2019-08-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "FORTIS": {
    "yahoo": "FORTIS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GAIL": {
    "yahoo": "GAIL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GLENMARK": {
    "yahoo": "GLENMARK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GMRAIRPORT": {
    "yahoo": "GMRAIRPORT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GODFRYPHLP": {
    "yahoo": "GODFRYPHLP.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GODREJCP": {
    "yahoo": "GODREJCP.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GODREJPROP": {
    "yahoo": "GODREJPROP.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GROWW": {
    "yahoo": "GROWW.NS",
-   "rows": 225,
+   "rows": 230,
    "first": "2025-11-12",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GVT&D": {
    "yahoo": "GVT&D.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HAL": {
    "yahoo": "HAL.NS",
-   "rows": 2106,
+   "rows": 2111,
    "first": "2018-04-02",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HAVELLS": {
    "yahoo": "HAVELLS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HDFCAMC": {
    "yahoo": "HDFCAMC.NS",
-   "rows": 2017,
+   "rows": 2022,
    "first": "2018-08-06",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HINDPETRO": {
    "yahoo": "HINDPETRO.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HINDZINC": {
    "yahoo": "HINDZINC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HUDCO": {
    "yahoo": "HUDCO.NS",
-   "rows": 2321,
+   "rows": 2326,
    "first": "2017-05-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HYUNDAI": {
    "yahoo": "HYUNDAI.NS",
-   "rows": 487,
+   "rows": 492,
    "first": "2024-10-22",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ICICIAMC": {
    "yahoo": "ICICIAMC.NS",
-   "rows": 198,
+   "rows": 203,
    "first": "2025-12-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ICICIGI": {
    "yahoo": "ICICIGI.NS",
-   "rows": 2231,
+   "rows": 2236,
    "first": "2017-09-27",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ICICIPRULI": {
    "yahoo": "ICICIPRULI.NS",
-   "rows": 2477,
+   "rows": 2481,
    "first": "2016-09-29",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IDEA": {
    "yahoo": "IDEA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IDFCFIRSTB": {
    "yahoo": "IDFCFIRSTB.NS",
-   "rows": 2696,
+   "rows": 2701,
    "first": "2015-11-06",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IEX": {
    "yahoo": "IEX.NS",
-   "rows": 2215,
+   "rows": 2220,
    "first": "2017-10-23",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "INDHOTEL": {
    "yahoo": "INDHOTEL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "INDIANB": {
    "yahoo": "INDIANB.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "INDIGO": {
    "yahoo": "INDIGO.NS",
-   "rows": 2693,
+   "rows": 2698,
    "first": "2015-11-10",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "INDUSTOWER": {
    "yahoo": "INDUSTOWER.NS",
-   "rows": 3400,
+   "rows": 3405,
    "first": "2012-12-28",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "INOXWIND": {
    "yahoo": "INOXWIND.NS",
-   "rows": 2841,
+   "rows": 2846,
    "first": "2015-04-09",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IOC": {
    "yahoo": "IOC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IRCTC": {
    "yahoo": "IRCTC.NS",
-   "rows": 1731,
+   "rows": 1736,
    "first": "2019-10-14",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IREDA": {
    "yahoo": "IREDA.NS",
-   "rows": 707,
+   "rows": 712,
    "first": "2023-11-29",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IRFC": {
    "yahoo": "IRFC.NS",
-   "rows": 1407,
+   "rows": 1412,
    "first": "2021-01-29",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JINDALSTEL": {
    "yahoo": "JINDALSTEL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JSWENERGY": {
    "yahoo": "JSWENERGY.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JUBLFOOD": {
    "yahoo": "JUBLFOOD.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KALYANKJIL": {
    "yahoo": "KALYANKJIL.NS",
-   "rows": 1368,
+   "rows": 1373,
    "first": "2021-03-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KAYNES": {
    "yahoo": "KAYNES.NS",
-   "rows": 959,
+   "rows": 964,
    "first": "2022-11-22",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KEI": {
    "yahoo": "KEI.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KFINTECH": {
    "yahoo": "KFINTECH.NS",
-   "rows": 932,
+   "rows": 937,
    "first": "2022-12-29",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KPITTECH": {
    "yahoo": "KPITTECH.NS",
-   "rows": 1847,
+   "rows": 1852,
    "first": "2019-04-22",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LAURUSLABS": {
    "yahoo": "LAURUSLABS.NS",
-   "rows": 2424,
+   "rows": 2429,
    "first": "2016-12-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LENSKART": {
    "yahoo": "LENSKART.NS",
-   "rows": 227,
+   "rows": 232,
    "first": "2025-11-10",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LGEINDIA": {
    "yahoo": "LGEINDIA.NS",
-   "rows": 244,
+   "rows": 249,
    "first": "2025-10-14",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LICHSGFIN": {
    "yahoo": "LICHSGFIN.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LICI": {
    "yahoo": "LICI.NS",
-   "rows": 1088,
+   "rows": 1093,
    "first": "2022-05-17",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LODHA": {
    "yahoo": "LODHA.NS",
-   "rows": 1355,
+   "rows": 1360,
    "first": "2021-04-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LTF": {
    "yahoo": "LTF.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LTM": {
    "yahoo": "LTM.NS",
-   "rows": 2524,
+   "rows": 2529,
    "first": "2016-07-21",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LUPIN": {
    "yahoo": "LUPIN.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "M&MFIN": {
    "yahoo": "M&MFIN.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MAHABANK": {
    "yahoo": "MAHABANK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MANAPPURAM": {
    "yahoo": "MANAPPURAM.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MANKIND": {
    "yahoo": "MANKIND.NS",
-   "rows": 845,
+   "rows": 850,
    "first": "2023-05-09",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MARICO": {
    "yahoo": "MARICO.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MAXHEALTH": {
    "yahoo": "MAXHEALTH.NS",
-   "rows": 1518,
+   "rows": 1523,
    "first": "2020-08-21",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MAZDOCK": {
    "yahoo": "MAZDOCK.NS",
-   "rows": 1483,
+   "rows": 1488,
    "first": "2020-10-12",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MCX": {
    "yahoo": "MCX.NS",
-   "rows": 3597,
+   "rows": 3602,
    "first": "2012-03-09",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MFSL": {
    "yahoo": "MFSL.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MOTHERSON": {
    "yahoo": "MOTHERSON.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MOTILALOFS": {
    "yahoo": "MOTILALOFS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MPHASIS": {
    "yahoo": "MPHASIS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MRF": {
    "yahoo": "MRF.NS",
-   "rows": 3706,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MUTHOOTFIN": {
    "yahoo": "MUTHOOTFIN.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NAM-INDIA": {
    "yahoo": "NAM-INDIA.NS",
-   "rows": 2205,
+   "rows": 2210,
    "first": "2017-11-06",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NATIONALUM": {
    "yahoo": "NATIONALUM.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NAUKRI": {
    "yahoo": "NAUKRI.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NBCC": {
    "yahoo": "NBCC.NS",
-   "rows": 3575,
+   "rows": 3580,
    "first": "2012-04-12",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NHPC": {
    "yahoo": "NHPC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NMDC": {
    "yahoo": "NMDC.NS",
@@ -1128,375 +1128,375 @@
   },
   "NYKAA": {
    "yahoo": "NYKAA.NS",
-   "rows": 1215,
+   "rows": 1220,
    "first": "2021-11-10",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "OBEROIRLTY": {
    "yahoo": "OBEROIRLTY.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "OFSS": {
    "yahoo": "OFSS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "OIL": {
    "yahoo": "OIL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PAGEIND": {
    "yahoo": "PAGEIND.NS",
-   "rows": 3705,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PATANJALI": {
    "yahoo": "PATANJALI.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PAYTM": {
    "yahoo": "PAYTM.NS",
-   "rows": 1209,
+   "rows": 1214,
    "first": "2021-11-18",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PERSISTENT": {
    "yahoo": "PERSISTENT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PETRONET": {
    "yahoo": "PETRONET.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PFC": {
    "yahoo": "PFC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PGEL": {
    "yahoo": "PGEL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PHOENIXLTD": {
    "yahoo": "PHOENIXLTD.NS",
-   "rows": 3705,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PIDILITIND": {
    "yahoo": "PIDILITIND.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PIIND": {
    "yahoo": "PIIND.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PNB": {
    "yahoo": "PNB.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PNBHOUSING": {
    "yahoo": "PNBHOUSING.NS",
-   "rows": 2453,
+   "rows": 2458,
    "first": "2016-11-07",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "POLICYBZR": {
    "yahoo": "POLICYBZR.NS",
-   "rows": 1211,
+   "rows": 1216,
    "first": "2021-11-15",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "POLYCAB": {
    "yahoo": "POLYCAB.NS",
-   "rows": 1849,
+   "rows": 1854,
    "first": "2019-04-16",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "POWERINDIA": {
    "yahoo": "POWERINDIA.NS",
-   "rows": 1616,
+   "rows": 1621,
    "first": "2020-03-30",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PREMIERENE": {
    "yahoo": "PREMIERENE.NS",
-   "rows": 521,
+   "rows": 526,
    "first": "2024-09-03",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PRESTIGE": {
    "yahoo": "PRESTIGE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RADICO": {
    "yahoo": "RADICO.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RBLBANK": {
    "yahoo": "RBLBANK.NS",
-   "rows": 2496,
+   "rows": 2501,
    "first": "2016-08-31",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RECLTD": {
    "yahoo": "RECLTD.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RVNL": {
    "yahoo": "RVNL.NS",
-   "rows": 1852,
+   "rows": 1857,
    "first": "2019-04-11",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SAGILITY": {
    "yahoo": "SAGILITY.NS",
-   "rows": 472,
+   "rows": 477,
    "first": "2024-11-12",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SAIL": {
    "yahoo": "SAIL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SBICARD": {
    "yahoo": "SBICARD.NS",
-   "rows": 1626,
+   "rows": 1631,
    "first": "2020-03-16",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SHREECEM": {
    "yahoo": "SHREECEM.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SIEMENS": {
    "yahoo": "SIEMENS.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SOLARINDS": {
    "yahoo": "SOLARINDS.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SONACOMS": {
    "yahoo": "SONACOMS.NS",
-   "rows": 1309,
+   "rows": 1314,
    "first": "2021-06-24",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SRF": {
    "yahoo": "SRF.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SUPREMEIND": {
    "yahoo": "SUPREMEIND.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SUZLON": {
    "yahoo": "SUZLON.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SWIGGY": {
    "yahoo": "SWIGGY.NS",
-   "rows": 471,
+   "rows": 476,
    "first": "2024-11-13",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TATACAP": {
    "yahoo": "TATACAP.NS",
-   "rows": 245,
+   "rows": 250,
    "first": "2025-10-13",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TATACOMM": {
    "yahoo": "TATACOMM.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TATAELXSI": {
    "yahoo": "TATAELXSI.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TATAINVEST": {
    "yahoo": "TATAINVEST.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TATAPOWER": {
    "yahoo": "TATAPOWER.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TIINDIA": {
    "yahoo": "TIINDIA.NS",
-   "rows": 2207,
+   "rows": 2212,
    "first": "2017-11-02",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TMCV": {
    "yahoo": "TMCV.NS",
-   "rows": 225,
+   "rows": 230,
    "first": "2025-11-12",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TORNTPHARM": {
    "yahoo": "TORNTPHARM.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TVSMOTOR": {
    "yahoo": "TVSMOTOR.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "UJJIVANSFB": {
    "yahoo": "UJJIVANSFB.NS",
-   "rows": 1690,
+   "rows": 1695,
    "first": "2019-12-12",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "UNIONBANK": {
    "yahoo": "UNIONBANK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "UNITDSPR": {
    "yahoo": "UNITDSPR.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "UNOMINDA": {
    "yahoo": "UNOMINDA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "UPL": {
    "yahoo": "UPL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "VBL": {
    "yahoo": "VBL.NS",
-   "rows": 2452,
+   "rows": 2457,
    "first": "2016-11-08",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "VEDL": {
    "yahoo": "VEDL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "VMM": {
    "yahoo": "VMM.NS",
-   "rows": 448,
+   "rows": 453,
    "first": "2024-12-18",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "VOLTAS": {
    "yahoo": "VOLTAS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "WAAREEENER": {
    "yahoo": "WAAREEENER.NS",
-   "rows": 483,
+   "rows": 488,
    "first": "2024-10-28",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "YESBANK": {
    "yahoo": "YESBANK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ZYDUSLIFE": {
    "yahoo": "ZYDUSLIFE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIFTYNEXT50": {
    "yahoo": "^NSMIDCP",
-   "rows": 3697,
+   "rows": 3701,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIFTY100": {
    "yahoo": "^CNX100",
-   "rows": 3691,
+   "rows": 3695,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIFTY200": {
    "yahoo": "^CNX200",
-   "rows": 3696,
+   "rows": 3700,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIFTY500": {
    "yahoo": "^CRSLDX",
-   "rows": 3691,
+   "rows": 3695,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIFTYMIDCAP50": {
    "yahoo": "^NSEMDCP50",
-   "rows": 3656,
+   "rows": 3660,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIFTYMIDCAP100": {
    "yahoo": "NIFTY_MIDCAP_100.NS",
@@ -1584,69 +1584,69 @@
   },
   "BSE100": {
    "yahoo": "BSE-100.BO",
-   "rows": 3679,
+   "rows": 3683,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BSE500": {
    "yahoo": "BSE-500.BO",
-   "rows": 3680,
+   "rows": 3684,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "APARINDS": {
    "yahoo": "APARINDS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HINDCOPPER": {
    "yahoo": "HINDCOPPER.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MEESHO": {
    "yahoo": "MEESHO.NS",
-   "rows": 205,
+   "rows": 210,
    "first": "2025-12-10",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NLCINDIA": {
    "yahoo": "NLCINDIA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "VAML": {
    "yahoo": "VAML.NS",
-   "rows": 79,
+   "rows": 84,
    "first": "2026-06-15",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SPX": {
    "yahoo": "^GSPC",
-   "rows": 3776,
+   "rows": 3780,
    "first": "2011-09-27",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "NASDAQ": {
    "yahoo": "^IXIC",
-   "rows": 3776,
+   "rows": 3780,
    "first": "2011-09-27",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "DOWJONES": {
    "yahoo": "^DJI",
-   "rows": 3776,
+   "rows": 3780,
    "first": "2011-09-27",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "RUSSELL2000": {
    "yahoo": "^RUT",
-   "rows": 3775,
+   "rows": 3778,
    "first": "2011-09-28",
-   "last": "2026-10-02"
+   "last": "2026-10-07"
   },
   "USVIX": {
    "yahoo": "^VIX",
@@ -1656,99 +1656,99 @@
   },
   "NIKKEI": {
    "yahoo": "^N225",
-   "rows": 3673,
+   "rows": 3677,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "HANGSENG": {
    "yahoo": "^HSI",
-   "rows": 3694,
+   "rows": 3698,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "SHANGHAI": {
    "yahoo": "000001.SS",
-   "rows": 3643,
+   "rows": 3644,
    "first": "2011-09-26",
-   "last": "2026-09-30"
+   "last": "2026-10-08"
   },
   "KOSPI": {
    "yahoo": "^KS11",
-   "rows": 3687,
+   "rows": 3690,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "TAIWAN": {
    "yahoo": "^TWII",
-   "rows": 3661,
+   "rows": 3665,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "FTSE100": {
    "yahoo": "^FTSE",
-   "rows": 3794,
+   "rows": 3798,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "DAX": {
    "yahoo": "^GDAXI",
-   "rows": 3808,
+   "rows": 3812,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "CAC40": {
    "yahoo": "^FCHI",
-   "rows": 3840,
+   "rows": 3844,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "EUROSTOXX50": {
    "yahoo": "^STOXX50E",
-   "rows": 3765,
+   "rows": 3769,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "MSCI_EM": {
    "yahoo": "EEM",
-   "rows": 3775,
+   "rows": 3779,
    "first": "2011-09-28",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "US10Y": {
    "yahoo": "^TNX",
-   "rows": 3774,
+   "rows": 3778,
    "first": "2011-09-28",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "US2Y": {
    "yahoo": "^IRX",
-   "rows": 3767,
+   "rows": 3771,
    "first": "2011-09-28",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "DXY": {
    "yahoo": "DX-Y.NYB",
-   "rows": 3778,
+   "rows": 3782,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "USDINR": {
    "yahoo": "INR=X",
-   "rows": 3911,
+   "rows": 3915,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "EURINR": {
    "yahoo": "EURINR=X",
-   "rows": 3913,
+   "rows": 3917,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "GBPINR": {
    "yahoo": "GBPINR=X",
-   "rows": 3912,
+   "rows": 3916,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "JPYINR": {
    "yahoo": "JPYINR=X",
@@ -1758,15 +1758,15 @@
   },
   "GOLD": {
    "yahoo": "GC=F",
-   "rows": 3777,
+   "rows": 3781,
    "first": "2011-09-26",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "SILVER": {
    "yahoo": "SI=F",
-   "rows": 3774,
+   "rows": 3778,
    "first": "2011-09-28",
-   "last": "2026-10-02"
+   "last": "2026-10-08"
   },
   "CRUDE": {
    "yahoo": "CL=F",
@@ -1806,1630 +1806,1637 @@
   },
   "AADHARHFC": {
    "yahoo": "AADHARHFC.NS",
-   "rows": 596,
+   "rows": 601,
    "first": "2024-05-15",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AARTIIND": {
    "yahoo": "AARTIIND.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AAVAS": {
    "yahoo": "AAVAS.NS",
-   "rows": 1977,
+   "rows": 1981,
    "first": "2018-10-08",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ABBOTINDIA": {
    "yahoo": "ABBOTINDIA.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ABDL": {
    "yahoo": "ABDL.NS",
-   "rows": 563,
+   "rows": 568,
    "first": "2024-07-02",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ABREL": {
    "yahoo": "ABREL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ABSLAMC": {
    "yahoo": "ABSLAMC.NS",
-   "rows": 1235,
+   "rows": 1240,
    "first": "2021-10-11",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ACC": {
    "yahoo": "ACC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ACE": {
    "yahoo": "ACE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ACMESOLAR": {
    "yahoo": "ACMESOLAR.NS",
-   "rows": 471,
+   "rows": 476,
    "first": "2024-11-13",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ACUTAAS": {
    "yahoo": "ACUTAAS.NS",
-   "rows": 1254,
+   "rows": 1259,
    "first": "2021-09-14",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AEGISLOG": {
    "yahoo": "AEGISLOG.NS",
-   "rows": 3705,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AEGISVOPAK": {
    "yahoo": "AEGISVOPAK.NS",
-   "rows": 337,
+   "rows": 342,
    "first": "2025-06-02",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AETHER": {
    "yahoo": "AETHER.NS",
-   "rows": 1075,
+   "rows": 1080,
    "first": "2022-06-03",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AFCONS": {
    "yahoo": "AFCONS.NS",
-   "rows": 478,
+   "rows": 483,
    "first": "2024-11-04",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AFFLE": {
    "yahoo": "AFFLE.NS",
-   "rows": 1772,
+   "rows": 1777,
    "first": "2019-08-08",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AIAENG": {
    "yahoo": "AIAENG.NS",
-   "rows": 3704,
+   "rows": 3708,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AIIL": {
    "yahoo": "AIIL.NS",
-   "rows": 611,
+   "rows": 616,
    "first": "2024-04-23",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AJANTPHARM": {
    "yahoo": "AJANTPHARM.NS",
-   "rows": 3706,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ANANTRAJ": {
    "yahoo": "ANANTRAJ.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ANTHEM": {
    "yahoo": "ANTHEM.NS",
-   "rows": 302,
+   "rows": 307,
    "first": "2025-07-21",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ANURAS": {
    "yahoo": "ANURAS.NS",
-   "rows": 1369,
+   "rows": 1374,
    "first": "2021-03-24",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "APOLLOTYRE": {
    "yahoo": "APOLLOTYRE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "APTUS": {
    "yahoo": "APTUS.NS",
-   "rows": 1268,
+   "rows": 1273,
    "first": "2021-08-24",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ARE&M": {
    "yahoo": "ARE&M.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ASAHIINDIA": {
    "yahoo": "ASAHIINDIA.NS",
-   "rows": 3710,
+   "rows": 3715,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ASTERDM": {
    "yahoo": "ASTERDM.NS",
-   "rows": 2128,
+   "rows": 2133,
    "first": "2018-02-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ATUL": {
    "yahoo": "ATUL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AVANTIFEED": {
    "yahoo": "AVANTIFEED.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AWL": {
    "yahoo": "AWL.NS",
-   "rows": 1153,
+   "rows": 1158,
    "first": "2022-02-08",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "AZAD": {
    "yahoo": "AZAD.NS",
-   "rows": 687,
+   "rows": 692,
    "first": "2023-12-28",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BAJAJHFL": {
    "yahoo": "BAJAJHFL.NS",
-   "rows": 512,
+   "rows": 517,
    "first": "2024-09-16",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BALKRISIND": {
    "yahoo": "BALKRISIND.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BALRAMCHIN": {
    "yahoo": "BALRAMCHIN.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BATAINDIA": {
    "yahoo": "BATAINDIA.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BBOX": {
    "yahoo": "BBOX.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BELRISE": {
    "yahoo": "BELRISE.NS",
-   "rows": 340,
+   "rows": 345,
    "first": "2025-05-28",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BEML": {
    "yahoo": "BEML.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BERGEPAINT": {
    "yahoo": "BERGEPAINT.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BHARATCOAL": {
    "yahoo": "BHARATCOAL.NS",
-   "rows": 178,
+   "rows": 183,
    "first": "2026-01-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BHARTIHEXA": {
    "yahoo": "BHARTIHEXA.NS",
-   "rows": 617,
+   "rows": 622,
    "first": "2024-04-12",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BIRET": {
    "yahoo": "BIRET.NS",
-   "rows": 1393,
+   "rows": 1397,
    "first": "2021-02-16",
-   "last": "2026-10-01"
+   "last": "2026-10-07"
   },
   "BLS": {
    "yahoo": "BLS.NS",
-   "rows": 2549,
+   "rows": 2554,
    "first": "2016-06-15",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BRIGADE": {
    "yahoo": "BRIGADE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "BSOFT": {
    "yahoo": "BSOFT.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CANFINHOME": {
    "yahoo": "CANFINHOME.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CANHLIFE": {
    "yahoo": "CANHLIFE.NS",
-   "rows": 241,
+   "rows": 245,
    "first": "2025-10-17",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CAPLIPOINT": {
    "yahoo": "CAPLIPOINT.NS",
-   "rows": 3032,
+   "rows": 3037,
    "first": "2014-06-23",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CARBORUNIV": {
    "yahoo": "CARBORUNIV.NS",
-   "rows": 3706,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CARTRADE": {
    "yahoo": "CARTRADE.NS",
-   "rows": 1270,
+   "rows": 1275,
    "first": "2021-08-20",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CASTROLIND": {
    "yahoo": "CASTROLIND.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CCL": {
    "yahoo": "CCL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CEATLTD": {
    "yahoo": "CEATLTD.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CEMPRO": {
    "yahoo": "CEMPRO.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CENTRALBK": {
    "yahoo": "CENTRALBK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CESC": {
    "yahoo": "CESC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CGCL": {
    "yahoo": "CGCL.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CHAMBLFERT": {
    "yahoo": "CHAMBLFERT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CHENNPETRO": {
    "yahoo": "CHENNPETRO.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CHOICEIN": {
    "yahoo": "CHOICEIN.NS",
-   "rows": 1111,
+   "rows": 1115,
    "first": "2022-04-08",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CHOLAHLDNG": {
    "yahoo": "CHOLAHLDNG.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CIEINDIA": {
    "yahoo": "CIEINDIA.NS",
-   "rows": 3705,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CLEAN": {
    "yahoo": "CLEAN.NS",
-   "rows": 1292,
+   "rows": 1296,
    "first": "2021-07-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CLEANMAX": {
    "yahoo": "CLEANMAX.NS",
-   "rows": 148,
+   "rows": 152,
    "first": "2026-03-02",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CMPDI": {
    "yahoo": "CMPDI.NS",
-   "rows": 131,
+   "rows": 136,
    "first": "2026-03-30",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "COHANCE": {
    "yahoo": "COHANCE.NS",
-   "rows": 1630,
+   "rows": 1634,
    "first": "2020-03-09",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CONCORDBIO": {
    "yahoo": "CONCORDBIO.NS",
-   "rows": 775,
+   "rows": 780,
    "first": "2023-08-18",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CPPLUS": {
    "yahoo": "CPPLUS.NS",
-   "rows": 291,
+   "rows": 296,
    "first": "2025-08-05",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CRAFTSMAN": {
    "yahoo": "CRAFTSMAN.NS",
-   "rows": 1367,
+   "rows": 1372,
    "first": "2021-03-25",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CREDITACC": {
    "yahoo": "CREDITACC.NS",
-   "rows": 2006,
+   "rows": 2011,
    "first": "2018-08-23",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CRISIL": {
    "yahoo": "CRISIL.NS",
-   "rows": 3706,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CUB": {
    "yahoo": "CUB.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CUPID": {
    "yahoo": "CUPID.NS",
-   "rows": 2486,
+   "rows": 2491,
    "first": "2016-09-16",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "CYIENT": {
    "yahoo": "CYIENT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DALBHARAT": {
    "yahoo": "DALBHARAT.NS",
-   "rows": 1925,
+   "rows": 1929,
    "first": "2018-12-21",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DATAPATTNS": {
    "yahoo": "DATAPATTNS.NS",
-   "rows": 1184,
+   "rows": 1189,
    "first": "2021-12-24",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DEEPAKFERT": {
    "yahoo": "DEEPAKFERT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DEEPAKNTR": {
    "yahoo": "DEEPAKNTR.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DEVYANI": {
    "yahoo": "DEVYANI.NS",
-   "rows": 1273,
+   "rows": 1278,
    "first": "2021-08-16",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "DOMS": {
    "yahoo": "DOMS.NS",
-   "rows": 690,
+   "rows": 694,
    "first": "2023-12-20",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ECLERX": {
    "yahoo": "ECLERX.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "EIDPARRY": {
    "yahoo": "EIDPARRY.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "EIHOTEL": {
    "yahoo": "EIHOTEL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ELECON": {
    "yahoo": "ELECON.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ELGIEQUIP": {
    "yahoo": "ELGIEQUIP.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "EMAMILTD": {
    "yahoo": "EMAMILTD.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "EMBASSY": {
    "yahoo": "EMBASSY.NS",
-   "rows": 1859,
+   "rows": 1863,
    "first": "2019-04-01",
-   "last": "2026-10-01"
+   "last": "2026-10-07"
   },
   "EMCURE": {
    "yahoo": "EMCURE.NS",
-   "rows": 557,
+   "rows": 562,
    "first": "2024-07-10",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "EMMVEE": {
    "yahoo": "EMMVEE.NS",
-   "rows": 221,
+   "rows": 226,
    "first": "2025-11-18",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ENDURANCE": {
    "yahoo": "ENDURANCE.NS",
-   "rows": 2465,
+   "rows": 2469,
    "first": "2016-10-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ENGINERSIN": {
    "yahoo": "ENGINERSIN.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ESCORTS": {
    "yahoo": "ESCORTS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "FACT": {
    "yahoo": "FACT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "FINCABLES": {
    "yahoo": "FINCABLES.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "FIRSTCRY": {
    "yahoo": "FIRSTCRY.NS",
-   "rows": 535,
+   "rows": 540,
    "first": "2024-08-13",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "FIVESTAR": {
    "yahoo": "FIVESTAR.NS",
-   "rows": 959,
+   "rows": 964,
    "first": "2022-11-21",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "FLUOROCHEM": {
    "yahoo": "FLUOROCHEM.NS",
-   "rows": 1729,
+   "rows": 1734,
    "first": "2019-10-16",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "FRACTAL": {
    "yahoo": "FRACTAL.NS",
-   "rows": 159,
+   "rows": 164,
    "first": "2026-02-16",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "FSL": {
    "yahoo": "FSL.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GABRIEL": {
    "yahoo": "GABRIEL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GALLANTT": {
    "yahoo": "GALLANTT.NS",
-   "rows": 3706,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GESHIP": {
    "yahoo": "GESHIP.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GICRE": {
    "yahoo": "GICRE.NS",
-   "rows": 2213,
+   "rows": 2218,
    "first": "2017-10-25",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GILLETTE": {
    "yahoo": "GILLETTE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GLAND": {
    "yahoo": "GLAND.NS",
-   "rows": 1453,
+   "rows": 1458,
    "first": "2020-11-20",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GLAXO": {
    "yahoo": "GLAXO.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GMDCLTD": {
    "yahoo": "GMDCLTD.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GODREJIND": {
    "yahoo": "GODREJIND.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GPIL": {
    "yahoo": "GPIL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GRANULES": {
    "yahoo": "GRANULES.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GRAPHITE": {
    "yahoo": "GRAPHITE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GRAVITA": {
    "yahoo": "GRAVITA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "GRSE": {
    "yahoo": "GRSE.NS",
-   "rows": 1966,
+   "rows": 1971,
    "first": "2018-10-24",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HBLENGINE": {
    "yahoo": "HBLENGINE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HDBFS": {
    "yahoo": "HDBFS.NS",
-   "rows": 315,
+   "rows": 320,
    "first": "2025-07-02",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HEGAM": {
    "yahoo": "HEGAM.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HEXT": {
    "yahoo": "HEXT.NS",
-   "rows": 402,
+   "rows": 407,
    "first": "2025-02-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HFCL": {
    "yahoo": "HFCL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HOMEFIRST": {
    "yahoo": "HOMEFIRST.NS",
-   "rows": 1403,
+   "rows": 1408,
    "first": "2021-02-03",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HONASA": {
    "yahoo": "HONASA.NS",
-   "rows": 719,
+   "rows": 724,
    "first": "2023-11-07",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HONAUT": {
    "yahoo": "HONAUT.NS",
-   "rows": 3704,
+   "rows": 3708,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "HSCL": {
    "yahoo": "HSCL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IDBI": {
    "yahoo": "IDBI.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IFCI": {
    "yahoo": "IFCI.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IGIL": {
    "yahoo": "IGIL.NS",
-   "rows": 440,
+   "rows": 445,
    "first": "2024-12-30",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IGL": {
    "yahoo": "IGL.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-27",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IIFL": {
    "yahoo": "IIFL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IKS": {
    "yahoo": "IKS.NS",
-   "rows": 446,
+   "rows": 450,
    "first": "2024-12-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "INDIACEM": {
    "yahoo": "INDIACEM.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "INDIAMART": {
    "yahoo": "INDIAMART.NS",
-   "rows": 1797,
+   "rows": 1802,
    "first": "2019-07-04",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "INOXINDIA": {
    "yahoo": "INOXINDIA.NS",
-   "rows": 690,
+   "rows": 695,
    "first": "2023-12-21",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "INTELLECT": {
    "yahoo": "INTELLECT.NS",
-   "rows": 2915,
+   "rows": 2920,
    "first": "2014-12-18",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IOB": {
    "yahoo": "IOB.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IPCALAB": {
    "yahoo": "IPCALAB.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IRB": {
    "yahoo": "IRB.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "IRCON": {
    "yahoo": "IRCON.NS",
-   "rows": 1982,
+   "rows": 1987,
    "first": "2018-09-28",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ITCHOTELS": {
    "yahoo": "ITCHOTELS.NS",
-   "rows": 418,
+   "rows": 423,
    "first": "2025-01-29",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ITI": {
    "yahoo": "ITI.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "J&KBANK": {
    "yahoo": "J&KBANK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JAINREC": {
    "yahoo": "JAINREC.NS",
-   "rows": 250,
+   "rows": 255,
    "first": "2025-10-06",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JBMA": {
    "yahoo": "JBMA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JINDALSAW": {
    "yahoo": "JINDALSAW.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JKCEMENT": {
    "yahoo": "JKCEMENT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JKTYRE": {
    "yahoo": "JKTYRE.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JMFINANCIL": {
    "yahoo": "JMFINANCIL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JPPOWER": {
    "yahoo": "JPPOWER.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JSL": {
    "yahoo": "JSL.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JSWCEMENT": {
    "yahoo": "JSWCEMENT.NS",
-   "rows": 284,
+   "rows": 289,
    "first": "2025-08-14",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JSWINFRA": {
    "yahoo": "JSWINFRA.NS",
-   "rows": 745,
+   "rows": 750,
    "first": "2023-10-03",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JUBLINGREA": {
    "yahoo": "JUBLINGREA.NS",
-   "rows": 1373,
+   "rows": 1378,
    "first": "2021-03-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JWL": {
    "yahoo": "JWL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "JYOTICNC": {
    "yahoo": "JYOTICNC.NS",
-   "rows": 674,
+   "rows": 679,
    "first": "2024-01-16",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KAJARIACER": {
    "yahoo": "KAJARIACER.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KARURVYSYA": {
    "yahoo": "KARURVYSYA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KEC": {
    "yahoo": "KEC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KIMS": {
    "yahoo": "KIMS.NS",
-   "rows": 1307,
+   "rows": 1312,
    "first": "2021-06-28",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KIRLOSBROS": {
    "yahoo": "KIRLOSBROS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KIRLOSENG": {
    "yahoo": "KIRLOSENG.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KPIL": {
    "yahoo": "KPIL.NS",
-   "rows": 3706,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KPRMILL": {
    "yahoo": "KPRMILL.NS",
-   "rows": 3706,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "KSB": {
    "yahoo": "KSB.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LALPATHLAB": {
    "yahoo": "LALPATHLAB.NS",
-   "rows": 2666,
+   "rows": 2670,
    "first": "2015-12-23",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LEMONTREE": {
    "yahoo": "LEMONTREE.NS",
-   "rows": 2101,
+   "rows": 2106,
    "first": "2018-04-09",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LINDEINDIA": {
    "yahoo": "LINDEINDIA.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LLOYDSME": {
    "yahoo": "LLOYDSME.NS",
-   "rows": 798,
+   "rows": 803,
    "first": "2023-07-17",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LTFOODS": {
    "yahoo": "LTFOODS.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "LTTS": {
    "yahoo": "LTTS.NS",
-   "rows": 2481,
+   "rows": 2486,
    "first": "2016-09-23",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MEDANTA": {
    "yahoo": "MEDANTA.NS",
-   "rows": 959,
+   "rows": 964,
    "first": "2022-11-18",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MGL": {
    "yahoo": "MGL.NS",
-   "rows": 2536,
+   "rows": 2541,
    "first": "2016-07-01",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MINDACORP": {
    "yahoo": "MINDACORP.NS",
-   "rows": 3590,
+   "rows": 3595,
    "first": "2012-03-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MMTC": {
    "yahoo": "MMTC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MRPL": {
    "yahoo": "MRPL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MSUMI": {
    "yahoo": "MSUMI.NS",
-   "rows": 1121,
+   "rows": 1126,
    "first": "2022-03-28",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "MTARTECH": {
    "yahoo": "MTARTECH.NS",
-   "rows": 1377,
+   "rows": 1382,
    "first": "2021-03-15",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NATCOPHARM": {
    "yahoo": "NATCOPHARM.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-27",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NAVA": {
    "yahoo": "NAVA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NAVINFLUOR": {
    "yahoo": "NAVINFLUOR.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NCC": {
    "yahoo": "NCC.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NETWEB": {
    "yahoo": "NETWEB.NS",
-   "rows": 790,
+   "rows": 795,
    "first": "2023-07-27",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NEULANDLAB": {
    "yahoo": "NEULANDLAB.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NH": {
    "yahoo": "NH.NS",
-   "rows": 2657,
+   "rows": 2662,
    "first": "2016-01-06",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NIACL": {
    "yahoo": "NIACL.NS",
-   "rows": 2200,
+   "rows": 2205,
    "first": "2017-11-13",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NSLNISP": {
    "yahoo": "NSLNISP.NS",
-   "rows": 896,
+   "rows": 901,
    "first": "2023-02-20",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NTPCGREEN": {
    "yahoo": "NTPCGREEN.NS",
-   "rows": 463,
+   "rows": 468,
    "first": "2024-11-27",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NUVAMA": {
    "yahoo": "NUVAMA.NS",
-   "rows": 749,
+   "rows": 753,
    "first": "2023-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "NUVOCO": {
    "yahoo": "NUVOCO.NS",
-   "rows": 1269,
+   "rows": 1273,
    "first": "2021-08-23",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "OLAELEC": {
    "yahoo": "OLAELEC.NS",
-   "rows": 537,
+   "rows": 542,
    "first": "2024-08-09",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "OLECTRA": {
    "yahoo": "OLECTRA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ONESOURCE": {
    "yahoo": "ONESOURCE.NS",
-   "rows": 422,
+   "rows": 426,
    "first": "2025-01-24",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PARADEEP": {
    "yahoo": "PARADEEP.NS",
-   "rows": 1080,
+   "rows": 1085,
    "first": "2022-05-27",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PCBL": {
    "yahoo": "PCBL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PFOCUS": {
    "yahoo": "PFOCUS.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PINELABS": {
    "yahoo": "PINELABS.NS",
-   "rows": 223,
+   "rows": 228,
    "first": "2025-11-14",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PIRAMALFIN": {
    "yahoo": "PIRAMALFIN.NS",
-   "rows": 228,
+   "rows": 232,
    "first": "2025-11-07",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "POLYMED": {
    "yahoo": "POLYMED.NS",
-   "rows": 3661,
+   "rows": 3666,
    "first": "2011-12-07",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "POONAWALLA": {
    "yahoo": "POONAWALLA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PPLPHARMA": {
    "yahoo": "PPLPHARMA.NS",
-   "rows": 981,
+   "rows": 986,
    "first": "2022-10-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PRIVISCL": {
    "yahoo": "PRIVISCL.NS",
-   "rows": 2820,
+   "rows": 2824,
    "first": "2015-05-08",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PTCIL": {
    "yahoo": "PTCIL.NS",
-   "rows": 822,
+   "rows": 826,
    "first": "2023-06-09",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PVRINOX": {
    "yahoo": "PVRINOX.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "PWL": {
    "yahoo": "PWL.NS",
-   "rows": 221,
+   "rows": 226,
    "first": "2025-11-18",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RAILTEL": {
    "yahoo": "RAILTEL.NS",
-   "rows": 1387,
+   "rows": 1392,
    "first": "2021-02-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RAINBOW": {
    "yahoo": "RAINBOW.NS",
-   "rows": 1091,
+   "rows": 1095,
    "first": "2022-05-10",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RAMCOCEM": {
    "yahoo": "RAMCOCEM.NS",
-   "rows": 3705,
+   "rows": 3709,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "REDINGTON": {
    "yahoo": "REDINGTON.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RHIM": {
    "yahoo": "RHIM.NS",
-   "rows": 3595,
+   "rows": 3600,
    "first": "2012-03-12",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RITES": {
    "yahoo": "RITES.NS",
-   "rows": 2041,
+   "rows": 2046,
    "first": "2018-07-03",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RKFORGE": {
    "yahoo": "RKFORGE.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RPOWER": {
    "yahoo": "RPOWER.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RRKABEL": {
    "yahoo": "RRKABEL.NS",
-   "rows": 751,
+   "rows": 756,
    "first": "2023-09-20",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "RUBICON": {
    "yahoo": "RUBICON.NS",
-   "rows": 240,
+   "rows": 245,
    "first": "2025-10-16",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SAILIFE": {
    "yahoo": "SAILIFE.NS",
-   "rows": 448,
+   "rows": 453,
    "first": "2024-12-18",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SAMMAANCAP": {
    "yahoo": "SAMMAANCAP.NS",
-   "rows": 3258,
+   "rows": 3263,
    "first": "2013-07-23",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SANSERA": {
    "yahoo": "SANSERA.NS",
-   "rows": 1246,
+   "rows": 1251,
    "first": "2021-09-24",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SARDAEN": {
    "yahoo": "SARDAEN.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SCHAEFFLER": {
    "yahoo": "SCHAEFFLER.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SCHNEIDER": {
    "yahoo": "SCHNEIDER.NS",
-   "rows": 3590,
+   "rows": 3595,
    "first": "2012-03-20",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SCI": {
    "yahoo": "SCI.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SHRIPISTON": {
    "yahoo": "SHRIPISTON.NS",
-   "rows": 2552,
+   "rows": 2557,
    "first": "2016-06-09",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SHYAMMETL": {
    "yahoo": "SHYAMMETL.NS",
-   "rows": 1309,
+   "rows": 1314,
    "first": "2021-06-24",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SIGNATURE": {
    "yahoo": "SIGNATURE.NS",
-   "rows": 745,
+   "rows": 750,
    "first": "2023-09-27",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SJVN": {
    "yahoo": "SJVN.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SOBHA": {
    "yahoo": "SOBHA.NS",
-   "rows": 3706,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "STARHEALTH": {
    "yahoo": "STARHEALTH.NS",
-   "rows": 1194,
+   "rows": 1199,
    "first": "2021-12-10",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "STLTECH": {
    "yahoo": "STLTECH.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SUMICHEM": {
    "yahoo": "SUMICHEM.NS",
-   "rows": 1659,
+   "rows": 1664,
    "first": "2020-01-27",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SUNDARMFIN": {
    "yahoo": "SUNDARMFIN.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SUNTV": {
    "yahoo": "SUNTV.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SWANCORP": {
    "yahoo": "SWANCORP.NS",
-   "rows": 3543,
+   "rows": 3548,
    "first": "2012-05-29",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SYNGENE": {
    "yahoo": "SYNGENE.NS",
-   "rows": 2755,
+   "rows": 2760,
    "first": "2015-08-11",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "SYRMA": {
    "yahoo": "SYRMA.NS",
-   "rows": 1017,
+   "rows": 1022,
    "first": "2022-08-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TARIL": {
    "yahoo": "TARIL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TATACHEM": {
    "yahoo": "TATACHEM.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TATATECH": {
    "yahoo": "TATATECH.NS",
-   "rows": 706,
+   "rows": 711,
    "first": "2023-11-30",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TBOTEK": {
    "yahoo": "TBOTEK.NS",
-   "rows": 595,
+   "rows": 600,
    "first": "2024-05-15",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TDPOWERSYS": {
    "yahoo": "TDPOWERSYS.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TECHNOE": {
    "yahoo": "TECHNOE.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TEGA": {
    "yahoo": "TEGA.NS",
-   "rows": 1192,
+   "rows": 1196,
    "first": "2021-12-13",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TEJASNET": {
    "yahoo": "TEJASNET.NS",
-   "rows": 2295,
+   "rows": 2300,
    "first": "2017-06-27",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TENNIND": {
    "yahoo": "TENNIND.NS",
-   "rows": 220,
+   "rows": 225,
    "first": "2025-11-19",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "THANGAMAYL": {
    "yahoo": "THANGAMAYL.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "THERMAX": {
    "yahoo": "THERMAX.NS",
-   "rows": 3706,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TIMKEN": {
    "yahoo": "TIMKEN.NS",
-   "rows": 3706,
+   "rows": 3710,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TITAGARH": {
    "yahoo": "TITAGARH.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TORNTPOWER": {
    "yahoo": "TORNTPOWER.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TRIDENT": {
    "yahoo": "TRIDENT.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TRITURBINE": {
    "yahoo": "TRITURBINE.NS",
-   "rows": 3686,
+   "rows": 3690,
    "first": "2011-10-28",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "TTML": {
    "yahoo": "TTML.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "UBL": {
    "yahoo": "UBL.NS",
-   "rows": 3707,
+   "rows": 3711,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "UCOBANK": {
    "yahoo": "UCOBANK.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "URBANCO": {
    "yahoo": "URBANCO.NS",
-   "rows": 262,
+   "rows": 267,
    "first": "2025-09-17",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "USHAMART": {
    "yahoo": "USHAMART.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "UTIAMC": {
    "yahoo": "UTIAMC.NS",
-   "rows": 1482,
+   "rows": 1487,
    "first": "2020-10-13",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "VEDPOWER": {
    "yahoo": "VEDPOWER.NS",
-   "rows": 79,
+   "rows": 84,
    "first": "2026-06-15",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "VIJAYA": {
    "yahoo": "VIJAYA.NS",
-   "rows": 1253,
+   "rows": 1258,
    "first": "2021-09-14",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "VISL": {
    "yahoo": "VISL.NS",
-   "rows": 79,
+   "rows": 84,
    "first": "2026-06-15",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "VOGL": {
    "yahoo": "VOGL.NS",
-   "rows": 79,
+   "rows": 84,
    "first": "2026-06-15",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "VTL": {
    "yahoo": "VTL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "WELCORP": {
    "yahoo": "WELCORP.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "WELSPUNLIV": {
    "yahoo": "WELSPUNLIV.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "WHIRLPOOL": {
    "yahoo": "WHIRLPOOL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "WOCKPHARMA": {
    "yahoo": "WOCKPHARMA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ZEEL": {
    "yahoo": "ZEEL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ZENSARTECH": {
    "yahoo": "ZENSARTECH.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ZENTEC": {
    "yahoo": "ZENTEC.NS",
-   "rows": 2847,
+   "rows": 2852,
    "first": "2015-03-30",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ZFCVINDIA": {
    "yahoo": "ZFCVINDIA.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   },
   "ZYDUSWELL": {
    "yahoo": "ZYDUSWELL.NS",
-   "rows": 3707,
+   "rows": 3712,
    "first": "2011-09-26",
-   "last": "2026-10-01"
+   "last": "2026-10-08"
   }
  },
  "failed": {
+  "BANKNIFTY": "no data",
+  "NIFTYFIN": "no data",
+  "NIFTYFMCG": "no data",
+  "NIFTYAUTO": "no data",
+  "NIFTYMETAL": "no data",
+  "NIFTYREALTY": "no data",
+  "NIFTYENERGY": "no data",
+  "NIFTYPSUBANK": "no data",
+  "NIFTYMEDIA": "no data",
+  "NIFTYINFRA": "no data",
+  "NIFTYMIDCAP100": "no data",
+  "NIFTYMIDSELECT": "no data",
+  "NIFTYSMALLCAP100": "no data",
+  "NIFTYPSE": "no data",
+  "NIFTYMNC": "no data",
+  "NIFTYCONSUMPTION": "no data",
+  "NIFTYCOMMODITIES": "no data",
+  "NIFTYSERVICES": "no data",
+  "NIFTYPVTBANK": "no data",
+  "NIFTYHEALTHCARE": "no data",
+  "NIFTYOILGAS": "no data",
+  "NIFTYCONSDURABLES": "no data",
+  "NIFTYCPSE": "no data",
   "NIFTYDIVOPPS50": "no data",
+  "BANKEX": "no data",
   "BSEMIDCAP": "no data",
   "BSESMALLCAP": "no data",
-  "SPX": "no data",
-  "NASDAQ": "no data",
-  "DOWJONES": "no data",
-  "RUSSELL2000": "no data",
   "USVIX": "no data",
-  "FTSE100": "no data",
-  "DAX": "no data",
-  "CAC40": "no data",
-  "EUROSTOXX50": "no data",
-  "MSCI_EM": "no data",
-  "US10Y": "no data",
-  "US2Y": "no data",
-  "DXY": "no data",
-  "USDINR": "no data",
-  "EURINR": "no data",
-  "GBPINR": "no data",
   "JPYINR": "no data",
-  "GOLD": "no data",
-  "SILVER": "no data",
   "CRUDE": "no data",
   "BRENT": "no data",
   "NATGAS": "no data",
@@ -3437,7 +3444,8 @@
   "BITCOIN": "no data",
   "ETHEREUM": "no data",
   "BAGMANE": "no data",
-  "DUMMYHEG": "no data"
+  "DUMMYHEG": "no data",
+  "NMDC": "no data"
  },
- "fetched_at": "2026-10-05T19:35:25Z"
+ "fetched_at": "2026-10-08T14:35:52Z"
 }
