@@ -197,6 +197,9 @@ def mospi_debug() -> None:
                 t = r.text
                 cpi = [t[m.start() - 200: m.start() + 1500] for m in re.finditer(r"cpi", t, re.I)][:6] if "swagger" in name or "apidocs" in name else []
                 out[name] = {"status": r.status_code, "text": t[:400], "cpi_context": cpi, "len": len(t)}
+                if name == "apidocs_init":
+                    paths = re.findall(r'"(/api/[^"]+)"\s*:', t)
+                    (OUT / "_debug_api_paths.json").write_text(json.dumps(sorted(set(paths)), indent=0))
         except Exception as e:  # noqa: BLE001
             out[name] = {"error": str(e)[:200]}
     try:  # parameter names live in the API explorer's script bundle
