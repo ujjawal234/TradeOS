@@ -1644,9 +1644,9 @@
   },
   "RUSSELL2000": {
    "yahoo": "^RUT",
-   "rows": 3778,
+   "rows": 3779,
    "first": "2011-09-28",
-   "last": "2026-10-07"
+   "last": "2026-10-08"
   },
   "USVIX": {
    "yahoo": "^VIX",
@@ -1656,33 +1656,33 @@
   },
   "NIKKEI": {
    "yahoo": "^N225",
-   "rows": 3677,
+   "rows": 3676,
    "first": "2011-09-26",
-   "last": "2026-10-08"
+   "last": "2026-10-07"
   },
   "HANGSENG": {
    "yahoo": "^HSI",
-   "rows": 3698,
+   "rows": 3697,
    "first": "2011-09-26",
-   "last": "2026-10-08"
+   "last": "2026-10-07"
   },
   "SHANGHAI": {
    "yahoo": "000001.SS",
-   "rows": 3644,
+   "rows": 3643,
    "first": "2011-09-26",
-   "last": "2026-10-08"
+   "last": "2026-09-30"
   },
   "KOSPI": {
    "yahoo": "^KS11",
-   "rows": 3690,
+   "rows": 3689,
    "first": "2011-09-26",
-   "last": "2026-10-08"
+   "last": "2026-10-07"
   },
   "TAIWAN": {
    "yahoo": "^TWII",
-   "rows": 3665,
+   "rows": 3664,
    "first": "2011-09-26",
-   "last": "2026-10-08"
+   "last": "2026-10-07"
   },
   "FTSE100": {
    "yahoo": "^FTSE",
@@ -3435,7 +3435,13 @@
   "BANKEX": "no data",
   "BSEMIDCAP": "no data",
   "BSESMALLCAP": "no data",
+  "SPX": "no data",
+  "NASDAQ": "no data",
   "USVIX": "no data",
+  "DAX": "no data",
+  "EUROSTOXX50": "no data",
+  "MSCI_EM": "no data",
+  "US10Y": "no data",
   "JPYINR": "no data",
   "CRUDE": "no data",
   "BRENT": "no data",
@@ -3447,5 +3453,5 @@
   "DUMMYHEG": "no data",
   "NMDC": "no data"
  },
- "fetched_at": "2026-10-08T14:35:52Z"
+ "fetched_at": "2026-10-08T17:35:41Z"
 }
