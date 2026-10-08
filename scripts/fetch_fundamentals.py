@@ -236,7 +236,18 @@ def pack(c: dict) -> dict | None:
     for key, r in recs:
         q.append(days(key)); k.append(days(r["filed"]) + 1); b.append(1 if r.get("b") == "C" else 0)
         face, paid = r.get("face"), r.get("paid")
-        sh.append(round(paid * 1e7 / face / 1e6, 3) if face and paid and face > 0 else None)  # shares, millions
+        x = round(paid * 1e7 / face / 1e6, 3) if face and paid and face > 0 else None  # shares, millions
+        # a mis-scaled paid-up capital (some filings report it in other units) shows up as a share count that agrees
+        # neither with profit / EPS nor with the previous quarter; then carry the previous count (or use the implied one)
+        pat_, eps_ = r.get("pat"), r.get("eps")
+        implied = pat_ * 10 / eps_ if pat_ and eps_ and abs(eps_) > 0.01 and pat_ / eps_ > 0 else None
+        prev = next((v for v in reversed(sh) if v), None)
+        near = lambda a, b_: a and b_ and 0.5 < a / b_ < 2  # noqa: E731
+        if x and implied and not near(x, implied) and (prev is None or not near(x, prev)):
+            x = prev if prev and near(prev, implied) else round(implied, 3)
+        elif not x and prev:
+            x = prev
+        sh.append(x)
         for f in cols:
             v = r.get(f)
             if f in ("gnpa", "nnpa") and v is not None and v < 0.2:
