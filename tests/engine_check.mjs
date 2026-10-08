@@ -30,7 +30,11 @@ function loadOpt(Eng, syms, kind) {
   for (const x of syms) { if (!U[x] || !U[x][kind] || optDone[kind].has(x)) continue;
     for (const [y, p] of Object.entries(readJ(path.join(dir, "data", "opt", `${U[x][kind]}.json`)))) { kind === "c" ? Eng.setOptions(y, p) : Eng.setOptionSummary(y, p); optDone[kind].add(y); } }
 }
+const fundDone = new Set();
+function loadFund(syms) { const C = (man.fund && man.fund.companies) || {};
+  for (const k of new Set(syms.filter((s) => C[s] && !fundDone.has(s)).map((s) => C[s].f))) for (const [s, p] of Object.entries(readJ(path.join(dir, "data", "fund", `${k}.json`)))) { E.setFundamentals(s, p); fundDone.add(s); } }
 function framesFor(Eng, spec) {
+  if (man.fund && Eng === E) { const ex = spec.type === "rule" ? [spec.entry, spec.exit, spec.rank_by] : spec.type === "rotation" ? E.exprsOf(spec) : [spec.entry, spec.exit]; if (ex.some(E.usesFundVars)) loadFund(E.symbolsNeeded(spec, man.universes)); }
   if (U && Eng === E) {
     if (spec.type === "option_selling") loadOpt(E, [spec.underlying], "c");
     const ex = spec.type === "rule" ? [spec.entry, spec.exit, spec.rank_by] : spec.type === "rotation" ? E.exprsOf(spec) : [spec.entry, spec.exit];
@@ -48,6 +52,8 @@ const EXPECT_ERR = /^(bad expr|bad ref|no exit)$/;
 for (const [label, raw, opt] of JSON.parse(fs.readFileSync(path.join(here, "engine_cases.json")))) {
   if (label.startsWith("mkt ") && !U) { console.log(`skip ${label} (no option data in this build)`); continue; }
   if (label.startsWith("pit ") && !hasPit) { console.log(`skip ${label} (no point-in-time data in this build)`); continue; }
+  if (label.startsWith("fund ") && !man.fund) { console.log(`skip ${label} (no company results in this build)`); continue; }
+  if (label.startsWith("macro ") && !man.symbols.US_10Y_YIELD) { console.log(`skip ${label} (no macro data in this build)`); continue; }
   try {
     const spec = E.normalize(raw, man.universes), r = E.run(spec, framesFor(E, spec), man.universes, opt || { start: "2012-01-01" }), m = r.metrics, sig = E.signals(spec, r);
     const ok = r.days.length > 1 && Number.isFinite(m.end_equity) && sig.length > 0 && !EXPECT_ERR.test(label);

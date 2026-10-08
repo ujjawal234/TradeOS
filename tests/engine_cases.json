@@ -1,583 +1,641 @@
 [
- [
-  "nse_momentum 30 semiannual",
-  {
-   "type": "rotation",
-   "universe": "nifty200",
-   "score": "nse_momentum",
-   "skip": 0,
-   "top_n": 30,
-   "rebalance_months": [
-    6,
-    12
-   ],
-   "trend_filter": null,
-   "min_score": null,
-   "weighting": "score",
-   "max_weight_pct": 5,
-   "benchmark": "NIFTY200_MOMENTUM_30"
-  },
-  {
-   "start": "2020-09-01"
-  }
- ],
- [
-  "multi-factor z",
-  {
-   "type": "rotation",
-   "universe": "nifty200",
-   "factors": [
-    {
-     "name": "momentum",
-     "lookback": 252,
-     "skip": 21
-    },
-    {
-     "name": "low_vol",
-     "lookback": 126
-    },
-    "trend"
-   ],
-   "top_n": 20,
-   "rebalance": "quarterly",
-   "trend_filter": null,
-   "min_score": null,
-   "weighting": "inverse_vol"
-  }
- ],
- [
-  "expr score + filters + buffer",
-  {
-   "type": "rotation",
-   "universe": "fno",
-   "score": "roc(close,126)/volatility(close,126)",
-   "filters": [
-    "close > sma(close,200)",
-    "sma(close*volume,63) > 5e8"
-   ],
-   "top_n": 15,
-   "buffer_rank": 25,
-   "max_per_sector": 3,
-   "rebalance": "biweekly",
-   "trend_filter": null,
-   "min_score": null
-  }
- ],
- [
-  "regime defensive gsec",
-  {
-   "type": "rotation",
-   "universe": "nifty50",
-   "lookback": 126,
-   "top_n": 10,
-   "trend_filter": null,
-   "regime": "close > sma(close,200)",
-   "regime_action": "defensive",
-   "defensive": "GSEC",
-   "cash_symbol": "CASH"
-  }
- ],
- [
-  "regime reduce + vol target",
-  {
-   "type": "rotation",
-   "universe": "nifty200",
-   "lookback": 252,
-   "skip": 21,
-   "top_n": 20,
-   "trend_filter": null,
-   "regime": {
-    "symbol": "NIFTY",
-    "expr": "close > ema(close,100)"
-   },
-   "regime_action": "reduce",
-   "regime_exposure_pct": 30,
-   "target_vol_pct": 14,
-   "cash_yield_pct": 6
-  }
- ],
- [
-  "long-short F&O",
-  {
-   "type": "rotation",
-   "universe": "fno",
-   "lookback": 126,
-   "skip": 21,
-   "top_n": 10,
-   "short_n": 10,
-   "trend_filter": null,
-   "min_score": null,
-   "rebalance": "monthly"
-  }
- ],
- [
-  "sector indices annual",
-  {
-   "type": "rotation",
-   "universe": "sectors",
-   "lookback": 252,
-   "top_n": 3,
-   "rebalance": "annual",
-   "trend_filter": null
-  }
- ],
- [
-  "top_pct daily rank weights",
-  {
-   "type": "rotation",
-   "universe": "nifty50",
-   "lookback": 63,
-   "skip": 5,
-   "top_pct": 10,
-   "rebalance": "daily",
-   "weighting": "rank",
-   "trend_filter": null,
-   "min_score": null
-  }
- ],
- [
-  "mcap weighting",
-  {
-   "type": "rotation",
-   "universe": "nifty50",
-   "lookback": 252,
-   "top_n": 50,
-   "trend_filter": null,
-   "min_score": null,
-   "weighting": "mcap",
-   "rebalance": "quarterly"
-  }
- ],
- [
-  "rule portfolio 5 slots",
-  {
-   "type": "rule",
-   "symbols": [
-    "nifty200"
-   ],
-   "entry": "close > shift(highest(high,55),1) and ref(\"NIFTY\", close > sma(close,200))",
-   "exit": "close < lowest(low,20)",
-   "max_positions": 5,
-   "rank_by": "roc(close,126)",
-   "trailing_stop_pct": 12
-  }
- ],
- [
-  "rule atr stops + time",
-  {
-   "type": "rule",
-   "symbols": [
-    "banks"
-   ],
-   "entry": "adx(14) > 25 and plus_di(14) > minus_di(14) and close > supertrend(10,3)",
-   "exit": "",
-   "stop_atr_mult": 2,
-   "target_atr_mult": 4,
-   "max_hold_days": 30
-  }
- ],
- [
-  "rule oscillators",
-  {
-   "type": "rule",
-   "symbols": [
-    "NIFTY",
-    "BANKNIFTY"
-   ],
-   "entry": "stoch_k(14) < 20 and cci(20) < -100 and mfi(14) < 30 and williams_r(14) < -80",
-   "exit": "rsi(close,14) > 60",
-   "stop_loss_pct": 5
-  }
- ],
- [
-  "rule misc funcs",
-  {
-   "type": "rule",
-   "symbols": [
-    "RELIANCE"
-   ],
-   "entry": "pct_rank(close,252) > 90 and slope(close,20) > 0 and drawdown(close) > -5 and days_since(cross_above(close, sma(close,50))) < 10 and corr(ret(close,1), ref(\"NIFTY\", ret(close,1)), 63) < 0.9 and month != 3",
-   "exit": "close < vwap(20) or close < keltner_lower(20,2)",
-   "max_hold_days": 40
-  }
- ],
- [
-  "index valuation",
-  {
-   "type": "rule",
-   "symbols": [
-    "NIFTY"
-   ],
-   "entry": "pe < 20 and iff(dy > 1.3, 1, 0) == 1",
-   "exit": "pe > 25",
-   "benchmark": "NIFTY_500"
-  }
- ],
- [
-  "options still ok",
-  {
-   "type": "option_selling",
-   "underlying": "NIFTY",
-   "structure": "strangle",
-   "delta": 15
-  }
- ],
- [
-  "weighting expr + underfill",
-  {
-   "type": "rotation",
-   "universe": "sectors",
-   "lookback": 126,
-   "top_n": 5,
-   "weighting": "1/volatility(close,63)",
-   "underfill": "spread",
-   "min_score": 0.5,
-   "trend_filter": null
-  }
- ],
- [
-  "huge lookback",
-  {
-   "type": "rotation",
-   "universe": "nifty50",
-   "factors": [
-    {
-     "name": "momentum",
-     "lookback": 3000
-    }
-   ],
-   "top_n": 5,
-   "trend_filter": null
-  }
- ],
- [
-  "filters nothing passes",
-  {
-   "type": "rotation",
-   "universe": "nifty50",
-   "lookback": 63,
-   "filters": [
-    "close < 0"
-   ],
-   "top_n": 5,
-   "trend_filter": null
-  }
- ],
- [
-  "debt rotation",
-  {
-   "type": "rotation",
-   "universe": "debt",
-   "lookback": 63,
-   "skip": 0,
-   "top_n": 2,
-   "trend_filter": null,
-   "min_score": null,
-   "benchmark": "CASH"
-  }
- ],
- [
-  "equity/gilt/cash switch",
-  {
-   "type": "rotation",
-   "universe": [
-    "NIFTY",
-    "GSEC",
-    "CASH",
-    "NIFTY_MIDCAP_150"
-   ],
-   "lookback": 126,
-   "skip": 0,
-   "top_n": 1,
-   "trend_filter": null,
-   "min_score": null
-  }
- ],
- [
-  "liquidity factor + lowvol",
-  {
-   "type": "rotation",
-   "universe": "fno",
-   "factors": [
-    "low_vol",
-    {
-     "name": "liquidity",
-     "weight": 0.5
-    }
-   ],
-   "top_n": 20,
-   "rebalance": "quarterly",
-   "trend_filter": null,
-   "min_score": null,
-   "max_weight_pct": 6
-  }
- ],
- [
-  "bad expr",
-  {
-   "type": "rotation",
-   "universe": "nifty50",
-   "score": "foo(close)",
-   "top_n": 5
-  }
- ],
- [
-  "bad ref",
-  {
-   "type": "rule",
-   "symbols": [
-    "TCS"
-   ],
-   "entry": "ref(NIFTY, close>1)",
-   "exit": "close<1"
-  }
- ],
- [
-  "no exit",
-  {
-   "type": "rule",
-   "symbols": [
-    "TCS"
-   ],
-   "entry": "close>1"
-  }
- ],
- [
-  "time exit only",
-  {
-   "type": "rule",
-   "symbols": [
-    "TCS",
-    "INFY"
-   ],
-   "entry": "dow == 0",
-   "max_hold_days": 3,
-   "max_positions": 1
-  }
- ],
- [
-  "short portfolio",
-  {
-   "type": "rule",
-   "symbols": [
-    "fno"
-   ],
-   "side": "short",
-   "entry": "close < lowest(low,20) and ref('NIFTY', close < sma(close,200))",
-   "exit": "close > sma(close,20)",
-   "max_positions": 10,
-   "rank_by": "-roc(close,20)",
-   "stop_loss_pct": 8
-  }
- ],
- [
-  "split window",
-  {
-   "type": "rotation",
-   "universe": "nifty200",
-   "score": "nse_momentum",
-   "top_n": 30,
-   "rebalance": "semiannual",
-   "trend_filter": null,
-   "min_score": null
-  },
-  {
-   "start": "2015-01-01",
-   "end": "2019-12-31"
-  }
- ],
- [
-  "pit rotation 12-1 top200",
-  {
-   "type": "rotation",
-   "universe": "top200pit",
-   "lookback": 252,
-   "skip": 21,
-   "top_n": 10,
-   "rebalance": "monthly"
-  },
-  null
- ],
- [
-  "pit rule breakout top100",
-  {
-   "type": "rule",
-   "symbols": [
-    "top100pit"
-   ],
-   "entry": "close > shift(highest(close,55),1)",
-   "exit": "close < sma(close,50)",
-   "max_positions": 10
-  },
-  null
- ],
- [
-  "opt long straddle vix>sma20",
-  {
-   "type": "options",
-   "underlying": "NIFTY",
-   "structure": "long straddle",
-   "entry": "vix > sma(vix,20)",
-   "lots": 1
-  }
- ],
- [
-  "opt long strangle 25d tgt",
-  {
-   "type": "options",
-   "underlying": "NIFTY",
-   "structure": "long_strangle",
-   "delta": 25,
-   "profit_target_pct": 100,
-   "stop_loss_pct": 50
-  }
- ],
- [
-  "opt bull call spread",
-  {
-   "type": "options",
-   "underlying": "BANKNIFTY",
-   "structure": "bull call spread",
-   "wing_width": 500,
-   "entry": "close > sma(close,50)"
-  }
- ],
- [
-  "opt bear put spread exit",
-  {
-   "type": "options",
-   "underlying": "NIFTY",
-   "structure": "bear_put_spread",
-   "wing_pct": 2,
-   "entry": "close < sma(close,50)",
-   "exit": "close > sma(close,20)"
-  }
- ],
- [
-  "opt iron butterfly",
-  {
-   "type": "options",
-   "underlying": "NIFTY",
-   "structure": "iron butterfly",
-   "wing_width": 400
-  }
- ],
- [
-  "opt custom ratio",
-  {
-   "type": "options",
-   "underlying": "NIFTY",
-   "legs": [
-    {
-     "side": "buy",
-     "type": "CE",
-     "strike": "atm"
-    },
-    {
-     "side": "sell",
-     "type": "CE",
-     "strike": "ATM+2%",
-     "lots": 2
-    }
-   ],
-   "max_hold_days": 5
-  }
- ],
- [
-  "opt long put hold",
-  {
-   "type": "options",
-   "underlying": "NIFTY",
-   "structure": "long put",
-   "otm_pct": 2,
-   "entry": "ref(\"INDIAVIX\", close) > 20",
-   "expiry": "monthly"
-  }
- ],
- [
-  "mkt nifty long straddle",
-  {
-   "type": "options",
-   "underlying": "NIFTY",
-   "structure": "long straddle",
-   "entry": "vix > sma(vix,20)"
-  },
-  {
-   "start": "2018-01-01"
-  }
- ],
- [
-  "mkt reliance covered strangle",
-  {
-   "type": "options",
-   "underlying": "RELIANCE",
-   "structure": "short strangle",
-   "otm_pct": 5
-  }
- ],
- [
-  "mkt banknifty bull put",
-  {
-   "type": "options",
-   "underlying": "BANKNIFTY",
-   "structure": "bull put spread",
-   "delta": 0.25,
-   "wing_pct": 2,
-   "expiry": "monthly"
-  }
- ],
- [
-  "mkt iv rule",
-  {
-   "type": "rule",
-   "symbols": [
-    "NIFTY",
-    "RELIANCE"
-   ],
-   "entry": "iv < pct_rank(iv,252) + 10 and pcr > 1",
-   "exit": "iv > 25",
-   "stop_loss_pct": 6
-  }
- ],
- [
-  "mkt iv rotation",
-  {
-   "type": "rotation",
-   "universe": "fno",
-   "factors": [
-    "momentum",
-    {
-     "name": "iv",
-     "invert": true
-    }
-   ],
-   "lookback": 126,
-   "skip": 21,
-   "top_n": 10
-  }
- ],
- [
-  "flows breadth rule",
-  {
-   "type": "rule",
-   "symbols": [
-    "NIFTY"
-   ],
-   "entry": "ref(\"BREADTH_ABOVE200\", close) > 60",
-   "exit": "ref(\"BREADTH_ABOVE200\", close) < 40",
-   "stop_loss_pct": 8
-  }
- ],
- [
-  "global ref rule",
-  {
-   "type": "rule",
-   "symbols": [
-    "NIFTY"
-   ],
-   "entry": "ref(\"SPX\", close > sma(close,200)) and ref(\"USDINR\", roc(close,20)) < 1",
-   "exit": "ref(\"SPX\", close < sma(close,200))",
-   "stop_loss_pct": 8
-  }
- ]
+[
+"nse_momentum 30 semiannual",
+{
+"type": "rotation",
+"universe": "nifty200",
+"score": "nse_momentum",
+"skip": 0,
+"top_n": 30,
+"rebalance_months": [
+6,
+12
+],
+"trend_filter": null,
+"min_score": null,
+"weighting": "score",
+"max_weight_pct": 5,
+"benchmark": "NIFTY200_MOMENTUM_30"
+},
+{
+"start": "2020-09-01"
+}
+],
+[
+"multi-factor z",
+{
+"type": "rotation",
+"universe": "nifty200",
+"factors": [
+{
+"name": "momentum",
+"lookback": 252,
+"skip": 21
+},
+{
+"name": "low_vol",
+"lookback": 126
+},
+"trend"
+],
+"top_n": 20,
+"rebalance": "quarterly",
+"trend_filter": null,
+"min_score": null,
+"weighting": "inverse_vol"
+}
+],
+[
+"expr score + filters + buffer",
+{
+"type": "rotation",
+"universe": "fno",
+"score": "roc(close,126)/volatility(close,126)",
+"filters": [
+"close > sma(close,200)",
+"sma(close*volume,63) > 5e8"
+],
+"top_n": 15,
+"buffer_rank": 25,
+"max_per_sector": 3,
+"rebalance": "biweekly",
+"trend_filter": null,
+"min_score": null
+}
+],
+[
+"regime defensive gsec",
+{
+"type": "rotation",
+"universe": "nifty50",
+"lookback": 126,
+"top_n": 10,
+"trend_filter": null,
+"regime": "close > sma(close,200)",
+"regime_action": "defensive",
+"defensive": "GSEC",
+"cash_symbol": "CASH"
+}
+],
+[
+"regime reduce + vol target",
+{
+"type": "rotation",
+"universe": "nifty200",
+"lookback": 252,
+"skip": 21,
+"top_n": 20,
+"trend_filter": null,
+"regime": {
+"symbol": "NIFTY",
+"expr": "close > ema(close,100)"
+},
+"regime_action": "reduce",
+"regime_exposure_pct": 30,
+"target_vol_pct": 14,
+"cash_yield_pct": 6
+}
+],
+[
+"long-short F&O",
+{
+"type": "rotation",
+"universe": "fno",
+"lookback": 126,
+"skip": 21,
+"top_n": 10,
+"short_n": 10,
+"trend_filter": null,
+"min_score": null,
+"rebalance": "monthly"
+}
+],
+[
+"sector indices annual",
+{
+"type": "rotation",
+"universe": "sectors",
+"lookback": 252,
+"top_n": 3,
+"rebalance": "annual",
+"trend_filter": null
+}
+],
+[
+"top_pct daily rank weights",
+{
+"type": "rotation",
+"universe": "nifty50",
+"lookback": 63,
+"skip": 5,
+"top_pct": 10,
+"rebalance": "daily",
+"weighting": "rank",
+"trend_filter": null,
+"min_score": null
+}
+],
+[
+"mcap weighting",
+{
+"type": "rotation",
+"universe": "nifty50",
+"lookback": 252,
+"top_n": 50,
+"trend_filter": null,
+"min_score": null,
+"weighting": "mcap",
+"rebalance": "quarterly"
+}
+],
+[
+"rule portfolio 5 slots",
+{
+"type": "rule",
+"symbols": [
+"nifty200"
+],
+"entry": "close > shift(highest(high,55),1) and ref(\"NIFTY\", close > sma(close,200))",
+"exit": "close < lowest(low,20)",
+"max_positions": 5,
+"rank_by": "roc(close,126)",
+"trailing_stop_pct": 12
+}
+],
+[
+"rule atr stops + time",
+{
+"type": "rule",
+"symbols": [
+"banks"
+],
+"entry": "adx(14) > 25 and plus_di(14) > minus_di(14) and close > supertrend(10,3)",
+"exit": "",
+"stop_atr_mult": 2,
+"target_atr_mult": 4,
+"max_hold_days": 30
+}
+],
+[
+"rule oscillators",
+{
+"type": "rule",
+"symbols": [
+"NIFTY",
+"BANKNIFTY"
+],
+"entry": "stoch_k(14) < 20 and cci(20) < -100 and mfi(14) < 30 and williams_r(14) < -80",
+"exit": "rsi(close,14) > 60",
+"stop_loss_pct": 5
+}
+],
+[
+"rule misc funcs",
+{
+"type": "rule",
+"symbols": [
+"RELIANCE"
+],
+"entry": "pct_rank(close,252) > 90 and slope(close,20) > 0 and drawdown(close) > -5 and days_since(cross_above(close, sma(close,50))) < 10 and corr(ret(close,1), ref(\"NIFTY\", ret(close,1)), 63) < 0.9 and month != 3",
+"exit": "close < vwap(20) or close < keltner_lower(20,2)",
+"max_hold_days": 40
+}
+],
+[
+"index valuation",
+{
+"type": "rule",
+"symbols": [
+"NIFTY"
+],
+"entry": "pe < 20 and iff(dy > 1.3, 1, 0) == 1",
+"exit": "pe > 25",
+"benchmark": "NIFTY_500"
+}
+],
+[
+"options still ok",
+{
+"type": "option_selling",
+"underlying": "NIFTY",
+"structure": "strangle",
+"delta": 15
+}
+],
+[
+"weighting expr + underfill",
+{
+"type": "rotation",
+"universe": "sectors",
+"lookback": 126,
+"top_n": 5,
+"weighting": "1/volatility(close,63)",
+"underfill": "spread",
+"min_score": 0.5,
+"trend_filter": null
+}
+],
+[
+"huge lookback",
+{
+"type": "rotation",
+"universe": "nifty50",
+"factors": [
+{
+"name": "momentum",
+"lookback": 3000
+}
+],
+"top_n": 5,
+"trend_filter": null
+}
+],
+[
+"filters nothing passes",
+{
+"type": "rotation",
+"universe": "nifty50",
+"lookback": 63,
+"filters": [
+"close < 0"
+],
+"top_n": 5,
+"trend_filter": null
+}
+],
+[
+"debt rotation",
+{
+"type": "rotation",
+"universe": "debt",
+"lookback": 63,
+"skip": 0,
+"top_n": 2,
+"trend_filter": null,
+"min_score": null,
+"benchmark": "CASH"
+}
+],
+[
+"equity/gilt/cash switch",
+{
+"type": "rotation",
+"universe": [
+"NIFTY",
+"GSEC",
+"CASH",
+"NIFTY_MIDCAP_150"
+],
+"lookback": 126,
+"skip": 0,
+"top_n": 1,
+"trend_filter": null,
+"min_score": null
+}
+],
+[
+"liquidity factor + lowvol",
+{
+"type": "rotation",
+"universe": "fno",
+"factors": [
+"low_vol",
+{
+"name": "liquidity",
+"weight": 0.5
+}
+],
+"top_n": 20,
+"rebalance": "quarterly",
+"trend_filter": null,
+"min_score": null,
+"max_weight_pct": 6
+}
+],
+[
+"bad expr",
+{
+"type": "rotation",
+"universe": "nifty50",
+"score": "foo(close)",
+"top_n": 5
+}
+],
+[
+"bad ref",
+{
+"type": "rule",
+"symbols": [
+"TCS"
+],
+"entry": "ref(NIFTY, close>1)",
+"exit": "close<1"
+}
+],
+[
+"no exit",
+{
+"type": "rule",
+"symbols": [
+"TCS"
+],
+"entry": "close>1"
+}
+],
+[
+"time exit only",
+{
+"type": "rule",
+"symbols": [
+"TCS",
+"INFY"
+],
+"entry": "dow == 0",
+"max_hold_days": 3,
+"max_positions": 1
+}
+],
+[
+"short portfolio",
+{
+"type": "rule",
+"symbols": [
+"fno"
+],
+"side": "short",
+"entry": "close < lowest(low,20) and ref('NIFTY', close < sma(close,200))",
+"exit": "close > sma(close,20)",
+"max_positions": 10,
+"rank_by": "-roc(close,20)",
+"stop_loss_pct": 8
+}
+],
+[
+"split window",
+{
+"type": "rotation",
+"universe": "nifty200",
+"score": "nse_momentum",
+"top_n": 30,
+"rebalance": "semiannual",
+"trend_filter": null,
+"min_score": null
+},
+{
+"start": "2015-01-01",
+"end": "2019-12-31"
+}
+],
+[
+"pit rotation 12-1 top200",
+{
+"type": "rotation",
+"universe": "top200pit",
+"lookback": 252,
+"skip": 21,
+"top_n": 10,
+"rebalance": "monthly"
+},
+null
+],
+[
+"pit rule breakout top100",
+{
+"type": "rule",
+"symbols": [
+"top100pit"
+],
+"entry": "close > shift(highest(close,55),1)",
+"exit": "close < sma(close,50)",
+"max_positions": 10
+},
+null
+],
+[
+"opt long straddle vix>sma20",
+{
+"type": "options",
+"underlying": "NIFTY",
+"structure": "long straddle",
+"entry": "vix > sma(vix,20)",
+"lots": 1
+}
+],
+[
+"opt long strangle 25d tgt",
+{
+"type": "options",
+"underlying": "NIFTY",
+"structure": "long_strangle",
+"delta": 25,
+"profit_target_pct": 100,
+"stop_loss_pct": 50
+}
+],
+[
+"opt bull call spread",
+{
+"type": "options",
+"underlying": "BANKNIFTY",
+"structure": "bull call spread",
+"wing_width": 500,
+"entry": "close > sma(close,50)"
+}
+],
+[
+"opt bear put spread exit",
+{
+"type": "options",
+"underlying": "NIFTY",
+"structure": "bear_put_spread",
+"wing_pct": 2,
+"entry": "close < sma(close,50)",
+"exit": "close > sma(close,20)"
+}
+],
+[
+"opt iron butterfly",
+{
+"type": "options",
+"underlying": "NIFTY",
+"structure": "iron butterfly",
+"wing_width": 400
+}
+],
+[
+"opt custom ratio",
+{
+"type": "options",
+"underlying": "NIFTY",
+"legs": [
+{
+"side": "buy",
+"type": "CE",
+"strike": "atm"
+},
+{
+"side": "sell",
+"type": "CE",
+"strike": "ATM+2%",
+"lots": 2
+}
+],
+"max_hold_days": 5
+}
+],
+[
+"opt long put hold",
+{
+"type": "options",
+"underlying": "NIFTY",
+"structure": "long put",
+"otm_pct": 2,
+"entry": "ref(\"INDIAVIX\", close) > 20",
+"expiry": "monthly"
+}
+],
+[
+"mkt nifty long straddle",
+{
+"type": "options",
+"underlying": "NIFTY",
+"structure": "long straddle",
+"entry": "vix > sma(vix,20)"
+},
+{
+"start": "2018-01-01"
+}
+],
+[
+"mkt reliance covered strangle",
+{
+"type": "options",
+"underlying": "RELIANCE",
+"structure": "short strangle",
+"otm_pct": 5
+}
+],
+[
+"mkt banknifty bull put",
+{
+"type": "options",
+"underlying": "BANKNIFTY",
+"structure": "bull put spread",
+"delta": 0.25,
+"wing_pct": 2,
+"expiry": "monthly"
+}
+],
+[
+"mkt iv rule",
+{
+"type": "rule",
+"symbols": [
+"NIFTY",
+"RELIANCE"
+],
+"entry": "iv < pct_rank(iv,252) + 10 and pcr > 1",
+"exit": "iv > 25",
+"stop_loss_pct": 6
+}
+],
+[
+"mkt iv rotation",
+{
+"type": "rotation",
+"universe": "fno",
+"factors": [
+"momentum",
+{
+"name": "iv",
+"invert": true
+}
+],
+"lookback": 126,
+"skip": 21,
+"top_n": 10
+}
+],
+[
+"flows breadth rule",
+{
+"type": "rule",
+"symbols": [
+"NIFTY"
+],
+"entry": "ref(\"BREADTH_ABOVE200\", close) > 60",
+"exit": "ref(\"BREADTH_ABOVE200\", close) < 40",
+"stop_loss_pct": 8
+}
+],
+[
+"global ref rule",
+{
+"type": "rule",
+"symbols": [
+"NIFTY"
+],
+"entry": "ref(\"SPX\", close > sma(close,200)) and ref(\"USDINR\", roc(close,20)) < 1",
+"exit": "ref(\"SPX\", close < sma(close,200))",
+"stop_loss_pct": 8
+}
+],
+[
+"macro ref rule",
+{
+"type": "rule",
+"symbols": [
+"NIFTY"
+],
+"entry": "ref(\"US_10Y_YIELD\", change(close,21)) < 0 and ref(\"IN_REPO\", close) <= ref(\"IN_REPO\", shift(close,126))",
+"exit": "ref(\"US_10Y_YIELD\", change(close,21)) > 0.3",
+"stop_loss_pct": 10
+}
+],
+[
+"fund value growth rotation",
+{
+"type": "rotation",
+"universe": "top200pit",
+"factors": [
+{
+"name": "earnings_yield"
+},
+{
+"name": "profit_growth_ttm"
+},
+{
+"name": "momentum",
+"lookback": 126,
+"skip": 21
+}
+],
+"filters": [
+"pe > 0",
+"profit_ttm > 0"
+],
+"top_n": 15,
+"rebalance": "monthly"
+},
+{
+"start": "2019-06-01"
+}
+],
+[
+"fund results drift rule",
+{
+"type": "rule",
+"symbols": [
+"nifty50"
+],
+"entry": "result_day == 1 and profit_growth > 20 and sales_growth > 10",
+"exit": "",
+"max_hold_days": 40,
+"max_positions": 5,
+"rank_by": "profit_growth"
+},
+{
+"start": "2019-06-01"
+}
+]
 ]
