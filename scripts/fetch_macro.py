@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import ssl
 import time
 from datetime import date, datetime, timedelta
@@ -135,11 +136,11 @@ def mospi(kind: str) -> pd.Series:
     for base, y0 in bases:
         for y in range(y0, date.today().year + 1):
             if kind == "iip":
-                url = f"https://api.mospi.gov.in/api/iip/getIIPMonthly?base_year={base}&year={y}&type=General&limit=1000&Format=JSON"
+                url = f"https://api.mospi.gov.in/api/iip/getIIPMonthly?base_year={base}&year={y}&type=General&limit=100&Format=JSON"
             else:
-                url = f"https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year={base}&year={y}&limit=100000&Format=JSON"
+                url = f"https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year={base}&year={y}&state_code=99&sector_code=3&group_code=0&limit=100&Format=JSON"
             try:
-                rows = get(url, session=s, tries=2, timeout=90).json().get("data") or []
+                rows = get(url, session=s, tries=2, timeout=60).json().get("data") or []
             except Exception as e:  # noqa: BLE001
                 print(f"  mospi {kind} {base} {y}: {e}", flush=True)
                 continue
@@ -188,7 +189,12 @@ def mospi_debug() -> None:
         ("wpi", "https://api.mospi.gov.in/api/wpi/getWpiRecords?year=2026&limit=5&Format=JSON"),
         ("gdp", "https://api.mospi.gov.in/api/nas/getNASData?base_year=2011-12&series=Current&frequency=Quarterly&limit=5&Format=JSON"),
         ("plfs", "https://api.mospi.gov.in/api/plfs/getData?limit=3&Format=JSON"),
-        ("swagger", "https://api.mospi.gov.in/api/docs"),
+        ("swagger_json1", "https://api.mospi.gov.in/swagger.json"),
+        ("swagger_json2", "https://api.mospi.gov.in/api/swagger.json"),
+        ("swagger_json3", "https://api.mospi.gov.in/api-docs"),
+        ("swagger_json4", "https://api.mospi.gov.in/api/docs/swagger.json"),
+        ("cpi_codes", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&year=2025&state_code=99&sector_code=3&group_code=0&limit=20&Format=JSON"),
+        ("cpi_names", "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&year=2025&state=All%20India&sector=Combined&group=General&limit=20&Format=JSON"),
     ]:
         try:
             r = s.get(url, headers=UA, timeout=40)
@@ -200,6 +206,17 @@ def mospi_debug() -> None:
                 out[name] = {"status": r.status_code, "text": r.text[:400]}
         except Exception as e:  # noqa: BLE001
             out[name] = {"error": str(e)[:200]}
+    try:  # parameter names live in the API explorer's script bundle
+        home = s.get("https://api.mospi.gov.in/", headers=UA, timeout=40).text
+        js = re.findall(r'src="(/static/js/main[^"]+\.js)"', home)
+        if js:
+            b = s.get("https://api.mospi.gov.in" + js[0], headers=UA, timeout=60).text
+            hits = sorted(set(re.findall(r'[\w/]*cpi[\w/]*', b, re.I)))[:80]
+            params = sorted(set(re.findall(r'name:"([a-z_]+)"', b)))[:200]
+            ctx = [b[m.start() - 300: m.start() + 600] for m in re.finditer(r"getCPIIndex", b)][:3]
+            out["bundle"] = {"cpi_strings": hits, "param_names": params, "context": ctx}
+    except Exception as e:  # noqa: BLE001
+        out["bundle"] = {"error": str(e)[:200]}
     (OUT / "_debug_mospi.json").write_text(json.dumps(out, indent=1, ensure_ascii=False))
 
 
