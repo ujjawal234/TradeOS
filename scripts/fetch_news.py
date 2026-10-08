@@ -37,8 +37,9 @@ REF = {"Referer": "https://www.nseindia.com/"}
 def rss(name: str, url: str) -> list[dict]:
     r = requests.get(url, headers=UA, timeout=30)
     r.raise_for_status()
+    text = r.content.decode("utf-8-sig", errors="replace")
     out = []
-    for item in re.findall(r"<item>(.*?)</item>", r.text, re.S):
+    for item in re.findall(r"<item>(.*?)</item>", text, re.S):
         def tag(t):
             m = re.search(rf"<{t}>(.*?)</{t}>", item, re.S)
             if not m:
@@ -50,7 +51,9 @@ def rss(name: str, url: str) -> list[dict]:
         if not title:
             continue
         try:
-            t = parsedate_to_datetime(pub).astimezone(IST).strftime("%Y-%m-%d %H:%M")
+            dt = parsedate_to_datetime(pub)
+            # RBI stamps Indian time but labels it GMT
+            t = (dt.replace(tzinfo=None) if name == "RBI" else dt.astimezone(IST)).strftime("%Y-%m-%d %H:%M")
         except (TypeError, ValueError):
             t = datetime.now(IST).strftime("%Y-%m-%d %H:%M")
         out.append({"t": t, "src": name, "title": re.sub(r"\s+", " ", title)[:220], "link": link[:400]})
@@ -78,8 +81,11 @@ def company_index() -> list[tuple[str, re.Pattern]]:
         words = nm.split()
         if not words:
             continue
-        short = " ".join(words[:2]) if len(words[0]) < 5 and len(words) > 1 else words[0]
-        if len(short) < 4:
+        common = {"urban", "indian", "bharat", "global", "general", "national", "capital", "power", "finance", "steel", "energy", "infra", "life", "home", "prime",
+                  "star", "united", "great", "first", "new", "city", "credit", "central", "union", "metro", "gold", "green", "future", "aditya", "bajaj", "tata", "adani", "mahindra",
+                  "birla", "hindustan", "state", "south", "eastern", "western", "northern", "max", "sun", "best", "allied", "premier", "standard", "supreme", "jindal", "godrej"}
+        short = " ".join(words[:2]) if (len(words[0]) < 5 or words[0].lower() in common) and len(words) > 1 else words[0]
+        if len(short) < 4 or short.lower() in common:
             continue
         out.append((s, re.compile(rf"\b({re.escape(short)}|{re.escape(s)})\b", re.I)))
     return out
@@ -112,7 +118,7 @@ def main() -> None:
             rep[name] = f"error {e.__class__.__name__}"
     idx = company_index()
     for x in new:
-        x["syms"] = [s for s, rx in idx if rx.search(x["title"])][:4]
+        x["syms"] = [] if x["src"] == "RBI" else [s for s, rx in idx if rx.search(x["title"])][:4]
     items = merge(old, new, lambda x: x["title"].lower()[:120], 45)
     (OUT / "headlines.json").write_text(json.dumps({"asof": datetime.now(IST).strftime("%Y-%m-%d %H:%M"), "items": items}, ensure_ascii=False, separators=(",", ":")))
     # ---- NSE filings (last 3 days each run) and event calendar
