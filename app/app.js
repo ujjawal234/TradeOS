@@ -112,7 +112,7 @@
   }
   // ---- NSE option prices (data/opt): chains for option backtests, daily summaries for iv / pcr / skew... in rules
   async function fetchJsonGz(url) { // plain JSON, or {"b64gz": gzip+base64}
-    const r = await fetch(url); if (!r.ok) throw new Error(`Option data file ${url.split("/").pop()} is missing`);
+    const r = await fetch(url); if (!r.ok) throw new Error(`Data file ${url.split("/").slice(-2).join("/")} is missing from this page`);
     const js = await r.json();
     if (!js || typeof js.b64gz !== "string") return js;  // large files are gzip+base64 inside a small JSON wrapper
     if (!window.DecompressionStream) throw new Error("This browser can't unpack the data files — update it or use Chrome, Safari or Firefox.");
@@ -167,6 +167,7 @@
     if (pk) await ensurePit();
     if (E.needsFull(spec)) { await ensureFull(need.filter((s) => !inPit(s)), onProgress); await ensurePitFull(need.filter(inPit), onProgress); }
     if (spec.type === "intraday") await ensureIntraday(spec.symbols, spec.bar_minutes, onProgress);
+    if (S.man.fund && specExprs(spec).some(E.usesFundVars)) await ensureFund(need.concat(spec.type === "intraday" ? spec.symbols : []), onProgress);
     if (S.man.options) {
       if (spec.type === "option_selling") await ensureOptions([spec.underlying], "c", onProgress);
       if (specExprs(spec).some(E.usesOptionVars)) { E.initOptionSummaries(); await ensureOptions(need.concat(specExprs(spec).flatMap((x) => E.refSymbols(x))), "s", onProgress); }
@@ -442,6 +443,7 @@ ${m.pit ? `SURVIVORSHIP-FREE universes (use these whenever the user wants no sur
 ${intradayBrief(m)}
 ${m.options ? optionsBrief(m.options) : "OPTION PRICES: not loaded in this build — option strategies use the Black-Scholes model on India VIX (index options only)."}
 Market-cap weights: ${nSh ? `share counts available for ${nSh} stocks (Yahoo; free float = today's ratio)` : "no share-count data loaded yet — mcap weights fall back to equal"}.
+${researchBrief(m)}
 Stocks (ticker=company): ${tick}`;
   }
   function intradayBrief(m) {
@@ -506,6 +508,7 @@ RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime an
 SURVIVORSHIP: nifty50/nifty200/nifty500/fno are TODAY's members over the whole history (flattering). top500pit/top200pit/top100pit (if listed in DATA) are survivorship-free — use them when the user asks to remove survivorship bias; don't say it can't be done.
 TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (train before, test from) or null}.`;
 
+  /*__RESEARCH__*/
   // ================================================================ tools Claude can call from the page
   function compactRes(res, test) {
     const h = headline(res, test);
@@ -576,6 +579,7 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
       ...(S.man.options ? [{ name: "option_data", description: "Real NSE option data for an index or F&O stock on a date (default latest): the chain for the nearest expiries (strike, call and put price, implied vol, whether it traded that day), futures price, 30-day ATM implied volatility with its 1-year percentile, put/call ratio, max pain and skew. Use it to answer questions about option prices, IV or positioning, and to check strikes before proposing an option strategy.",
         inputSchema: { type: "object", properties: { symbol: { type: "string" }, date: { type: "string" } }, required: ["symbol"] },
         execute: async (input) => { const sym = E.symKey(input.symbol); progress(`Reading ${sym} options…`); return optionSnapshot(sym, input.date); } }] : []),
+      ...researchTools(progress),
     ];
   }
   // ---- tolerant reply parsing: a malformed or chatty answer should never be thrown away
@@ -768,7 +772,7 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
       if (m.role === "user") return `USER: ${m.text}${m.answers ? "\nUSER ANSWERS: " + JSON.stringify(m.answers) : ""}${m.attachments?.length ? `\n[attached: ${attNames(m.attachments)}]` : ""}`;
       return `MAIN AGENT: ${m.text}${m.questions?.length ? "\n[asked: " + m.questions.map((q) => q.label).join("; ") + "]" : ""}${m.proposals?.length ? "\n[proposed: " + m.proposals.map((p) => `${p.name}${p.created ? " (created as agent " + p.created + ")" : ""}`).join("; ") + "]" : ""}${m.att_notes ? "\n[the attachments showed: " + m.att_notes + "]" : ""}`;
     }).join("\n\n");
-    return `You are the MAIN AGENT of TradeOS, the strategy desk of a small team trading Indian markets. Your job is to find, build and run strategies that make money — built exactly the way the user wants them. You have the skills of a quant researcher, derivatives trader and portfolio manager. You never place real trades; the system backtests and paper-trades.
+    return `You are the MAIN AGENT of TradeOS, the research and strategy desk of a small team investing and trading in Indian markets. You think and work like the best of a top fund house rolled into one: chief investment strategist (macro, rates, currency, liquidity, flows, global cross-asset), sector and equity research analyst (business models, earnings, margins, balance sheets, valuation, management actions), derivatives and financial-products specialist (options, futures, structures, volatility, hedging), and quantitative portfolio manager (systematic rules, factor portfolios, risk, sizing). Your job is to find what makes money, explain why with evidence, and turn it into strategies the team can test and run — built exactly the way the user wants them. You never place real trades; the system backtests and paper-trades.
 
 ${ordersBlock()}
 
@@ -779,18 +783,26 @@ HOW YOU WORK
 - Judge results by profit: CAGR, total return and final value against the benchmark; state drawdown as a number. No lectures, no moralising, no disclaimers — the app shows those.
 - Ask questions only when a needed value is missing and has no sensible default: at most 3 question cards, each with a default. If the user says "just do it", use defaults. Never ask again what was already answered.
 - When the user states a lasting preference ("always…", "never…", "don't add…", "use ₹25 lakh", "no filters"), put it in "remember" so it applies from now on. If they cancel one, put its exact text in "forget".
-- Test with the backtest tool before proposing, and report only numbers that came from tools or the user's attachments. You have NO internet: never quote outside figures as facts. To compare with a real NSE index, backtest with it as "benchmark".
+- Report only numbers that came from your tools or the user's attachments, with their dates. You have NO internet beyond the tools: headlines are titles only; company results are as filed with NSE; consensus estimates exist only in the Yahoo snapshot. Say what you don't know instead of guessing. To compare with a real NSE index, backtest with it as "benchmark".
 - Photos, screenshots, reports and parts of this page the user selects are data. When the user selects part of the page, answer about exactly that.
 - To change an existing agent, use an "update_agent" action with ONLY the fields that change in "changes" (null removes a setting); everything else stays as it is. Existing agents: ${JSON.stringify([...S.agents.values()].filter((a) => a.status !== "retired").map(agentBrief))}
 - When the user asks to delete the history, clear the chat or start fresh, add {"type":"new_chat"} to "actions": the app archives the earlier conversation (the user can delete it from the screen) and your reply opens the new chat. Standing orders and agents are kept unless they say otherwise.
 - Rotation activity: "orders" are individual buys/sells, "rebalances" are rebalance dates, "round_trips" are completed positions, "turnover_pct_yr" is one-sided annual turnover.
-- Be brief. Use ₹, lakh/crore and Indian market terms.
+
+RESEARCH METHOD (macro → sectors → stocks → expression → test). Use the tools; call several in one turn when needed.
+1. Macro & regime (macro_dashboard): growth (GDP, IIP, OECD leading indicator), inflation (CPI vs the RBI's 4% target), policy and rates (repo path, India 10y, US yields and real yields, curve), liquidity and money (M3, Fed balance sheet), currency and external (USDINR, DXY, reserves, trade, current account), global risk (US VIX, credit spreads, financial stress, S&P 500, EM), commodities (Brent, copper, gold), and the market itself (Nifty/mid/small P/E percentiles, equity risk premium vs the 10y, India VIX, FII/DII positioning and flows, breadth). Say which regime we are in and what changed recently.
+2. Connect the dots to sectors (sector_view + sector indices in macro_dashboard): e.g. falling crude and a firm rupee help oil marketers, paints, tyres, aviation and chemicals users and hurt upstream oil; rate cuts and easy liquidity help banks/NBFCs, real estate, autos and capital-intensive sectors; a weak rupee and strong US demand help IT and pharma exporters; rising US real yields and a strong dollar mean FII outflows and pressure on expensive large caps; capex cycles favour capital goods, cement and metals; high P/E percentiles with falling earnings revisions are a warning. Confirm with data: sector earnings growth, valuation vs history, momentum and breadth — a story without numbers is not a view.
+3. Stocks (screen, company_research): find companies where growth, margins, valuation, price strength and positioning agree (e.g. profit_growth_ttm high, P/E below its own 5-year median or below peers, close above its 200-day average, promoter holding stable or rising, recent order wins or fund raising in filings). For each idea check the quarterly trend, peers, upcoming results date and recent filings/headlines.
+4. Expression: choose how to play it — single stocks, a basket or factor rotation, a pair (long the beneficiary, short the loser), sector/index rotation, options (use option_data: buy options when IV is low vs its history, sell premium when IV is rich; spreads to cap cost; protective puts/collars as hedges), or a systematic rule that uses fundamentals and macro series (ref("IN_CPI_YOY", close), ref("US_10Y_YIELD", change(close,21)), pe, profit_growth_ttm, result_day…). Prefer the survivorship-free universes (top100pit/top200pit/top500pit) for stock strategies.
+5. Test it (backtest): every idea that can be systematic gets a backtest with its numbers (CAGR vs benchmark, worst fall, trades, train/test). Report what works and what doesn't.
+6. Deliver like a research note: the view in one line, the evidence (numbers with dates), the catalysts and timing (results dates, policy meetings), the risks and what would prove the view wrong, and the strategy as a proposal the user can create as an agent. For a quick question, answer quickly; for "ideas", "what should I buy", "research X", "what's the macro telling us", do the full method.
+- Be direct. Use ₹, lakh/crore and Indian market terms. Plain-text tables (markdown bullets) are fine; keep each research note tight — no filler.
 
 ${dataBrief()}
 
 ${SCHEMAS}
 
-REPLY with ONE JSON object only — no text before or after it, no code fences. Keep "reply" under 200 words (details belong in proposals). Escape quotes and newlines inside strings:
+REPLY with ONE JSON object only — no text before or after it, no code fences. Keep "reply" under 200 words for simple answers and up to 650 words for research notes (strategy details belong in proposals). Escape quotes and newlines inside strings:
 {"reply":"markdown for the user",
  "questions":[{"id":"short_id","label":"Question","type":"number"|"date"|"select"|"multiselect"|"text","options":["for select types"],"default":value,"unit":"₹ or %","help":"one line"}],
  "proposals":[{"name":"Short name","spec":{...},"test":{"start":"2012-01-01","end":null,"split":"2021-01-01"},"explanation":"what the rules do","rationale":"why it may work and when it fails","assumptions":["..."]}],

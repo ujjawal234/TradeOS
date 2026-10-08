@@ -272,6 +272,15 @@ def extra_series() -> dict:
         for w in ("FII", "DII"):
             if f"{w}_net" in c:
                 out[f"{w}_CASH_NET"] = (c[f"{w}_net"], f"{w} net buying in the cash market (₹ crore/day; history starts when collection began)", "flows")
+    mcat = ROOT / "data" / "macro" / "catalog.json"
+    if mcat.exists():  # macro series on the day they became public ("known"), not the period they describe
+        for key, m in json.loads(mcat.read_text()).items():
+            f = ROOT / "data" / "macro" / f"{key}.csv"
+            if not f.exists():
+                continue
+            mdf = pd.read_csv(f, parse_dates=["known"])
+            ser = mdf.groupby("known")["value"].last().sort_index()
+            out[key] = (ser, f"{m['name']} ({m['unit']}, {m['source']}; usable from its release date)", "macro")
     f = PIT_DIR / "breadth.csv"
     if f.exists():
         b = pd.read_csv(f, index_col=0, parse_dates=True).sort_index()
@@ -332,6 +341,38 @@ def copy_intraday(dst: Path) -> dict | None:
     (out / "live.json").write_text(json.dumps({"agents": live}, separators=(",", ":")))
     print(f"intraday: {len(idx.get('symbols', {}))} symbols to {idx.get('asof')}, live results for {len(live)} agent(s)")
     return {"asof": idx.get("asof"), "source": idx.get("source", ""), "symbols": idx.get("symbols", {}), "live": bool(live)}
+
+
+def copy_research(dst: Path) -> dict:
+    """company results (scripts/fetch_fundamentals.py via get_options.py) -> data/fund; macro catalog and news -> data/research.json"""
+    import base64
+    info = {}
+    src = ROOT / ".research" / "fund"
+    out = dst / "fund"
+    if out.exists():
+        shutil.rmtree(out)
+    if (src / "index.json").exists():
+        out.mkdir(parents=True)
+        for f in sorted(src.glob("*.json.gz")):
+            (out / f.name[:-3]).write_text(json.dumps({"b64gz": base64.b64encode(f.read_bytes()).decode()}))
+        idx = json.loads((src / "index.json").read_text())
+        info["fund"] = {"asof": idx.get("asof"), "latest_filing": idx.get("latest_filing"), "source": idx.get("source"), "companies": idx.get("companies", {})}
+        print(f"company results: {len(info['fund']['companies'])} companies, latest filing {idx.get('latest_filing')}")
+    res = {}
+    mc = ROOT / "data" / "macro" / "catalog.json"
+    if mc.exists():
+        res["macro"] = json.loads(mc.read_text())
+    for k in ("headlines", "filings", "events"):
+        f = ROOT / "data" / "news" / f"{k}.json"
+        if f.exists():
+            res[k] = json.loads(f.read_text())
+    if res:
+        raw = json.dumps(res, ensure_ascii=False, separators=(",", ":")).encode()
+        (dst / "research.json").write_text(json.dumps({"b64gz": base64.b64encode(gzip.compress(raw, 9)).decode()}))
+        info["research"] = {"macro": len(res.get("macro", {})), "headlines": len(res.get("headlines", {}).get("items", [])), "filings": len(res.get("filings", {}).get("items", [])),
+                            "events": len(res.get("events", {}).get("items", [])), "news_asof": res.get("headlines", {}).get("asof")}
+        print(f"research: {info['research']}")
+    return info
 
 
 def main(out: Path) -> None:
@@ -419,7 +460,7 @@ def main(out: Path) -> None:
             continue
         frames[key] = pd.DataFrame({"open": ser, "high": ser, "low": ser, "close": ser, "volume": 0.0})
         symbols[key] = {"first": str(ser.index[0].date()), "last": str(ser.index[-1].date()), "rows": len(ser), "name": name, "industry": "Data",
-                        "n50": False, "n200": False, "fno": False, "lot": None, "kind": "series", "group": group, "source": "NSE"}
+                        "n50": False, "n200": False, "fno": False, "lot": None, "kind": "series", "group": group, "source": "macro" if group == "macro" else "NSE"}
     # legacy keys (earlier builds used these names; saved agents may still refer to them) -> same series
     LEGACY = {"NIFTYBANK": "BANKNIFTY", "NIFTYIT": "NIFTY_IT", "NIFTYPHARMA": "NIFTY_PHARMA", "NIFTYNEXT50": "NIFTYNXT50",
               "NIFTY100": "NIFTY_100", "NIFTY200": "NIFTY_200", "NIFTY500": "NIFTY_500", "NIFTYMIDCAP50": "NIFTY_MIDCAP_50",
@@ -433,15 +474,17 @@ def main(out: Path) -> None:
     # calendar = union of all trading days
     # calendar = Indian trading days (union of NSE series); world markets are put on it (last known value), so
     # weekends and foreign holidays never become extra rows in Indian strategies
-    cal = sorted(set().union(*[set(df.index) for k, df in frames.items() if symbols.get(k, {}).get("group") != "global"]))
+    cal = sorted(set().union(*[set(df.index) for k, df in frames.items() if symbols.get(k, {}).get("group") not in ("global", "macro")]))
     cal_set = pd.DatetimeIndex(cal)
-    for k in [k for k in frames if symbols.get(k, {}).get("group") == "global"]:
+    for k in [k for k in frames if symbols.get(k, {}).get("group") in ("global", "macro")]:
         g = frames[k]
-        rng = cal_set[(cal_set >= g.index[0]) & (cal_set <= g.index[-1] + pd.Timedelta(days=4))]
+        macro = symbols[k].get("group") == "macro"  # a macro number stays the latest known value until the next release
+        rng = cal_set[(cal_set >= g.index[0]) & (cal_set <= (cal_set[-1] if macro else g.index[-1] + pd.Timedelta(days=4)))]
         g = g.reindex(g.index.union(rng)).sort_index().ffill().reindex(rng).dropna(subset=["close"])
         frames[k] = g
         symbols[k].update({"first": str(g.index[0].date()), "last": str(g.index[-1].date()), "rows": len(g)})
-        (dst / "p" / f"{k}.json").write_text(json.dumps(enc_full(g), separators=(",", ":")))
+        if not macro:
+            (dst / "p" / f"{k}.json").write_text(json.dumps(enc_full(g), separators=(",", ":")))
     cal_idx = pd.DatetimeIndex(cal)
     closes = pd.DataFrame({s: df["close"] for s, df in frames.items()}).reindex(cal_idx)
     # equal-weight sector baskets from today's Nifty 200 members (daily rebalanced, base 1000)
@@ -509,9 +552,10 @@ def main(out: Path) -> None:
                     (dst / "p" / f"{s_}.json").write_text(json.dumps(enc_full(frames[s_]), separators=(",", ":")))
     opt_info = copy_options(dst, symbols)
     intra_info = copy_intraday(dst)
+    research_info = copy_research(dst)
     has_shares = (ROOT / "data" / "shares.json").exists()
     manifest = {"generated": fetched.get("generated"), "shares": has_shares, "source": "Stocks: NSE daily bhavcopy, adjusted with NSE's corporate-action records (splits, bonuses, dividends, demergers, rights) and cross-checked against Yahoo; Yahoo only where NSE history is missing. Indices: NSE daily index files (with P/E, P/B, dividend yield). Lists: NSE.",
-                "symbols": symbols, "universes": universes, "sectors": sectors, **({"pit": pit} if pit else {}), **({"options": opt_info} if opt_info else {}), **({"intraday": intra_info} if intra_info else {})}
+                "symbols": symbols, "universes": universes, "sectors": sectors, **({"pit": pit} if pit else {}), **({"options": opt_info} if opt_info else {}), **({"intraday": intra_info} if intra_info else {}), **research_info}
     (dst / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":")))
     # share counts (for market-cap weights): {SYM: {"f": free-float ratio, "s": [[epoch_day, shares], ...]}}
     sh_file = ROOT / "data" / "shares.json"

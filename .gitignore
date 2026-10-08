@@ -9,3 +9,4 @@ build/
 .options/
 .fund_cache/
 build_fund/
+.research/

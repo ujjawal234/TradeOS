@@ -1,6 +1,5 @@
-name: Research data (macro, company results, shareholding)
+name: Company results (NSE filings, shareholding, profiles)
 
-# Macro series (FRED, BIS, OECD, MoSPI, World Bank) -> data/macro (committed, small).
 # Company quarterly results as filed with NSE (XBRL), shareholding and profiles -> the `research-data` release
 # (cache + app bundles). Incremental: the parsed cache is kept in the release, so each run only fetches what is new.
 
@@ -12,7 +11,7 @@ on:
         default: "300"
   push:
     branches: [main]
-    paths: ["data/REQUEST_RESEARCH", "scripts/fetch_fundamentals.py", "scripts/fetch_macro.py", ".github/workflows/research-data.yml"]
+    paths: ["data/REQUEST_RESEARCH", "scripts/fetch_fundamentals.py", ".github/workflows/research-data.yml"]
   schedule:
     - cron: "45 12 * * 1-5"          # 18:15 IST on weekdays (most results are filed in the evening; the 20:38 job publishes)
 
@@ -34,9 +33,6 @@ jobs:
           python-version: "3.11"
       - name: Install
         run: pip install pandas numpy requests yfinance
-      - name: Macro series
-        continue-on-error: true
-        run: python scripts/fetch_macro.py 2>&1 | tail -60
       - name: Previous company-results cache
         env:
           GH_TOKEN: ${{ github.token }}
@@ -58,12 +54,12 @@ jobs:
           gh release view research-data >/dev/null 2>&1 || gh release create research-data --title "Research data (daily)" --notes "Company quarterly results as filed with NSE (point in time), shareholding and profiles for TradeOS. fund_cache.tar.gz: parsed cache; research_app.tar: app bundles."
           gh release upload research-data fund_cache.tar.gz --clobber
           test -f research_app.tar && gh release upload research-data research_app.tar --clobber || true
-      - name: Commit macro data and reports
+      - name: Commit report
         if: always()
         run: |
           git config user.name "tradeos-bot"
           git config user.email "tradeos-bot@users.noreply.github.com"
-          git add data/macro data/research/_fund_report.json 2>/dev/null || true
+          git add data/research/_fund_report.json 2>/dev/null || true
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
-          git commit -m "data: macro and company results $(date -u +%Y-%m-%d)"
+          git commit -m "data: company results $(date -u +%Y-%m-%d)"
           for i in 1 2 3 4; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 5; done

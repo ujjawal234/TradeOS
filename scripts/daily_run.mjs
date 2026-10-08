@@ -43,6 +43,14 @@ function ensureIntraday(spec) {
     for (const [s, p] of Object.entries(readJ(path.join(data, "intra", `${k}.json`)))) E.setIntraday(s, p);
   }
 }
+// company results (data/fund/*.json) for agents whose rules use fundamentals
+const fundLoaded = new Set();
+function ensureFund(syms) {
+  const C = (man.fund && man.fund.companies) || {};
+  for (const k of new Set(syms.filter((s) => C[s] && !fundLoaded.has(s)).map((s) => C[s].f))) {
+    for (const [s, p] of Object.entries(readJ(path.join(data, "fund", `${k}.json`)))) { if (!fundLoaded.has(s)) { E.setFundamentals(s, p); fundLoaded.add(s); } }
+  }
+}
 const specExprs = (spec) => spec.type === "rule" || spec.type === "intraday" ? [spec.entry, spec.exit, spec.rank_by] : spec.type === "rotation" ? E.exprsOf(spec) : [spec.entry, spec.exit];
 const full = {};
 const bundleCache = {};
@@ -74,6 +82,7 @@ function framesFor(spec) {
     if (specExprs(spec).some(E.usesOptionVars)) { E.initOptionSummaries(); ensureOptions(need.concat(specExprs(spec).flatMap((x) => E.refSymbols(x))), "s"); }
   }
   if (spec.type === "intraday") ensureIntraday(spec);
+  if (man.fund && specExprs(spec).some(E.usesFundVars)) ensureFund(need.concat(spec.type === "intraday" ? spec.symbols : []));
   const out = {};
   for (const s of need) {
     if (pk && pitSyms.has(s)) { if (!pitLight) throw new Error("point-in-time data missing"); out[s] = E.needsFull(spec) ? pitFrame(s) : pitLight[s]; continue; }
@@ -94,7 +103,7 @@ function staleIn(frames) {
   for (const [s, f] of Object.entries(frames)) {
     if (!f || !f.d || !f.d.length) continue;
     const meta = man.symbols[s] || {};
-    if (meta.group === "global") continue; // world markets are carried forward onto Indian days
+    if (meta.group === "global" || meta.group === "macro") continue; // world markets are carried forward onto Indian days
     // closes.json carries every series' last close forward to the end of the calendar, so a light frame always looks
     // current; the manifest's "last" is the real last date. Point-in-time frames stop at their real last day.
     const last = meta.last && meta.kind !== "basket" ? dayN(meta.last) : f.d[f.d.length - 1];

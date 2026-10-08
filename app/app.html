@@ -62,7 +62,7 @@ code { background: var(--sunken); padding: 1px 5px; border-radius: 5px; overflow
 .tabbar { display: none; }
 @media (max-width: 760px) {
   .topnav, #dataChip, .who span, #capBtn .lbl { display: none; }
-  .tabbar { display: grid; grid-template-columns: repeat(3, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
   .tabbar button { border: 0; background: none; height: var(--tab-h); display: grid; place-items: center; align-content: center; gap: 2px; color: var(--muted); font-size: 0.72rem; font-weight: 600; cursor: pointer; position: relative; }
   .tabbar button svg { width: 22px; height: 22px; }
   .tabbar button[aria-current="page"] { color: var(--accent); }
@@ -297,6 +297,13 @@ blockquote.snip .src { display: block; color: var(--muted); font-size: 0.72rem; 
 .ver.cur .n { color: var(--accent); }
 .diff { font-size: var(--step--1); display: grid; gap: 4px; }
 .diff .old { color: var(--bad); text-decoration: line-through; } .diff .new { color: var(--good); }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: 10px; margin-top: 8px; }
+.mtile { background: var(--sunken); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.mtile .k { font-size: 0.75rem; color: var(--muted); } .mtile .v { font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); font-variant-numeric: tabular-nums; } .mtile .b { font-size: 0.72rem; color: var(--muted); }
+.spark { width: 100%; height: 28px; margin-top: 4px; }
+.newslist { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; font-size: var(--step--1); max-height: 640px; overflow-y: auto; }
+.newslist li { border-bottom: 1px solid var(--line); padding-bottom: 8px; overflow-wrap: anywhere; }
+.newslist a { color: var(--ink); text-decoration: none; } .newslist a:hover { text-decoration: underline; }
 .busy { opacity: 0.55; pointer-events: none; transition: opacity .2s; }
 
 /* ---------- select & ask */
@@ -319,6 +326,7 @@ blockquote.snip .src { display: block; color: var(--muted); font-size: 0.72rem; 
       <button type="button" data-view="main" aria-current="page">Main Agent</button>
       <button type="button" data-view="agents">Agents <span class="count" data-count="agents"></span></button>
       <button type="button" data-view="signals">Signals <span class="count" data-count="signals"></span></button>
+      <button type="button" data-view="research">Research</button>
     </nav>
     <span class="bar-spacer"></span>
     <span class="chip-static" id="dataChip">Loading market data…</span>
@@ -331,6 +339,7 @@ blockquote.snip .src { display: block; color: var(--muted); font-size: 0.72rem; 
   <button type="button" data-view="main" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Main Agent</button>
   <button type="button" data-view="agents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Agents<span class="count" data-count="agents"></span></button>
   <button type="button" data-view="signals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-5 4 4 8-9"/><path d="M15 7h5v5"/></svg>Signals<span class="count" data-count="signals"></span></button>
+  <button type="button" data-view="research"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Research</button>
 </nav>
 
 <main class="page">
@@ -400,6 +409,20 @@ blockquote.snip .src { display: block; color: var(--muted); font-size: 0.72rem; 
       <div class="pagehead"><div><h1>Today's signals</h1><p class="small muted" id="sigAsOf"></p></div></div>
       <div id="sigTable" class="stack"></div>
       <p class="note">From agents that are paper trading. Signals use the latest daily close; entries and exits happen at the next session's open. Paper only — not investment advice.</p>
+    </div>
+  </section>
+
+  <!-- ============ RESEARCH ============ -->
+  <section id="view-research" aria-label="Research" hidden>
+    <div class="stack">
+      <div class="pagehead"><div><h1>Research</h1><p class="small muted">Macro, sectors, companies and news — the same data the Main Agent uses for its views and strategies.</p></div><button class="btn" type="button" data-go="main">Ask the Main Agent</button></div>
+      <div class="tabs" role="tablist" id="researchTabs" style="position:static">
+        <button role="tab" type="button" data-rtab="macro" aria-selected="true">Macro &amp; markets</button>
+        <button role="tab" type="button" data-rtab="sectors" aria-selected="false">Sectors</button>
+        <button role="tab" type="button" data-rtab="company" aria-selected="false">Companies</button>
+        <button role="tab" type="button" data-rtab="news" aria-selected="false">News &amp; filings</button>
+      </div>
+      <div id="researchBody" class="stack"></div>
     </div>
   </section>
 

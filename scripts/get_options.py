@@ -33,6 +33,24 @@ def main() -> None:
         get_intraday(args.repo)
     except Exception as e:  # noqa: BLE001
         print(f"intraday bars: not downloaded ({e})")
+    try:
+        get_research(args.repo)
+    except Exception as e:  # noqa: BLE001
+        print(f"company results: not downloaded ({e})")
+
+
+def get_research(repo: str) -> None:
+    url = f"https://github.com/{repo}/releases/download/research-data/research_app.tar"
+    with urllib.request.urlopen(url, timeout=300) as r:
+        data = r.read()
+    dst = ROOT / ".research"
+    if dst.exists():
+        shutil.rmtree(dst)
+    dst.mkdir(parents=True)
+    with tarfile.open(fileobj=io.BytesIO(data)) as t:
+        t.extractall(dst, filter="data")
+    idx = json.loads((dst / "fund" / "index.json").read_text())
+    print(f"company results: {len(idx.get('companies', {}))} companies, latest filing {idx.get('latest_filing')}, {len(data) / 1e6:.1f} MB -> {dst / 'fund'}")
 
 
 def get_intraday(repo: str) -> None:

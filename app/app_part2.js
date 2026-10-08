@@ -340,7 +340,7 @@
   function agentPrompt(a, v, res, stats, text, atts) {
     const hist = S.room.messages.filter((m) => m.role !== "system").slice(-12).map((m) => `${m.role === "user" ? "USER" : "YOU"}: ${m.text}${m.attachments?.length ? ` [attached: ${attNames(m.attachments)}]` : ""}${m.att_notes ? ` [the attachments showed: ${m.att_notes}]` : ""}${m.proposal ? ` [proposed: ${m.proposal.note}; ${m.proposal.status || "pending"}]` : ""}`).join("\n\n");
     const trades = (res.trades || []).slice(-12).map((t) => t.symbol ? `${t.symbol} ${t.entry_date || t.date}→${t.exit_date || ""} ${t.return_pct != null ? t.return_pct.toFixed(1) + "%" : ""} ${t.reason || t.note || ""}` : `${t.entry_date}→${t.exit_date} pnl ${Math.round(t.pnl)} ${t.reason}`);
-    return `You are "${a.name}", one agent inside TradeOS, a strategy desk for Indian markets. You run this one strategy for the user. The user is the portfolio manager and decides; you carry out their instructions exactly and help them make money.
+    return `You are "${a.name}", one agent inside TradeOS, a strategy desk for Indian markets. You run this one strategy for the user. The user is the portfolio manager and decides; you carry out their instructions exactly and help them make money. You think like a top equity research analyst, macro strategist and quant PM: when asked why the strategy behaves as it does or what to change, connect it to the macro regime, sector trends and company results using the research tools (macro_dashboard, sector_view, company_research, screen, news) and the backtest tool, and cite the numbers.
 
 ${ordersBlock(a)}
 
@@ -370,7 +370,7 @@ VERSION HISTORY: ${JSON.stringify(S.room.versions.map((x) => ({ n: x.n, note: x.
 ${dataBrief()}
 
 When the user selects part of the page or attaches a photo/screenshot, answer about exactly that and set "attachment_notes" to 1-3 lines of the key facts it shows.
-REPLY with ONE JSON object only (no text before or after it, no code fences; keep "reply" under 200 words; escape quotes and newlines inside strings): {"reply":"markdown","attachment_notes":"","proposal":null or {"note":"what changed, in a few words","changes":{only the changed fields; null removes},"apply_now":true|false,"explanation":"updated one-paragraph description of the rules","test":null or {"start":"...","end":null,"split":"..."}},"remember":[],"forget":[],"new_chat":false}
+REPLY with ONE JSON object only (no text before or after it, no code fences; keep "reply" under 200 words, up to 450 for research answers; escape quotes and newlines inside strings): {"reply":"markdown","attachment_notes":"","proposal":null or {"note":"what changed, in a few words","changes":{only the changed fields; null removes},"apply_now":true|false,"explanation":"updated one-paragraph description of the rules","test":null or {"start":"...","end":null,"split":"..."}},"remember":[],"forget":[],"new_chat":false}
 
 CONVERSATION:
 ${hist || "(new)"}
@@ -456,12 +456,13 @@ USER NOW: ${text}${attachmentText(atts)}`;
   function go(hash) { if (location.hash.slice(1) === hash) route(); else location.hash = hash; }
   function route() {
     const h = location.hash.slice(1);
-    const view = h.startsWith("agent-") ? "room" : h === "agents" ? "agents" : h === "signals" ? "signals" : "main";
-    for (const v of ["main", "agents", "signals", "room"]) $("view-" + v).hidden = v !== view;
+    const view = h.startsWith("agent-") ? "room" : h === "agents" ? "agents" : h === "signals" ? "signals" : h === "research" ? "research" : "main";
+    for (const v of ["main", "agents", "signals", "research", "room"]) $("view-" + v).hidden = v !== view;
     document.querySelectorAll(".nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.view === (view === "room" ? "agents" : view) ? "page" : "false"));
     S.view = view; closeMenus(); if (view !== "room") document.body.classList.remove("chat-open");
     if (view === "room") { const id = h.slice(6); if (S.room.id !== id) openRoom(id); else { renderRoomHead(); renderRoomBody(); } }
     else { S.room.unsubs.forEach((u) => u()); S.room.unsubs = []; S.room.id = null; }
+    if (view === "research") renderResearch();
     if (view === "agents") renderFleet(); if (view === "signals") renderSignals(); if (view === "main") { S.suppressScroll = false; renderMain(); }
     window.scrollTo({ top: view === "main" ? document.body.scrollHeight : 0 });
   }
@@ -488,6 +489,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
   $("roomSend").addEventListener("click", sendRoom);
   $("roomInput").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendRoom(); } });
   $("roomVersion").addEventListener("change", (e) => { S.room.ver = +e.target.value; renderRoomBody(); });
+  $("researchTabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-rtab]"); if (!b) return; researchTab = b.dataset.rtab; renderResearch(); });
   $("roomTabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (!b) return; S.room.tab = b.dataset.tab; renderRoomBody(); });
   $("fleetFilter").addEventListener("click", (e) => { const b = e.target.closest("button[data-f]"); if (!b) return; fleetFilter = b.dataset.f; $("fleetFilter").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); renderFleet(); });
   // "+" menus, the standing-orders sheet and the phone chat sheet
