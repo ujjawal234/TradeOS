@@ -23,13 +23,13 @@
   "group": "india",
   "lag_days": 13,
   "first": "2013-01-01",
-  "last_period": "2025-12-01",
-  "last_known": "2026-01-13",
-  "last": 1.33,
-  "prev": 0.71,
-  "chg_3m": -0.11,
-  "chg_12m": -3.89,
-  "n": 147
+  "last_period": "2026-08-01",
+  "last_known": "2026-09-13",
+  "last": 4.963,
+  "prev": 4.573,
+  "chg_3m": 0.24,
+  "chg_12m": 2.893,
+  "n": 155
  },
  "IN_IIP_YOY": {
   "name": "India industrial production (IIP, y/y)",
