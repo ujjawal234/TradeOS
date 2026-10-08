@@ -89,7 +89,9 @@
     "log", "sqrt", "sign", "iff", "clip", "ref"];
   const VARS = ["open", "high", "low", "close", "volume", "hl2", "hlc3", "dow", "dom", "month", "year", "pe", "pb", "dy", "vix",
     "iv", "iv_near", "iv_next", "pcr", "pcr_vol", "skew", "straddle", "max_pain", "oi_calls", "oi_puts", "fut_oi", "dte", "fut_basis", "rollover", "fut_next",
-    "day_open", "prev_close", "day_high", "day_low", "or_high", "or_low", "minutes", "day_ret"]; // + vwap (as a variable): intraday only
+    "day_open", "prev_close", "day_high", "day_low", "or_high", "or_low", "minutes", "day_ret", // + vwap (as a variable): intraday only
+    "sales", "sales_ttm", "profit", "profit_ttm", "eps_ttm", "sales_growth", "profit_growth", "sales_growth_ttm", "profit_growth_ttm", "sales_cagr_3y", "profit_cagr_3y",
+    "opm", "npm", "mcap", "ps", "earnings_yield", "promoter", "promoter_chg", "result_day", "days_since_result", "gnpa", "nnpa", "nii_growth"];
   // option-market variables (NSE F&O data): name -> [summary key, divisor]
   const OPTVARS = { iv: ["iv30", 10], iv_near: ["ivn", 10], iv_next: ["ivx", 10], pcr: ["pcr", 1000], pcr_vol: ["pcrv", 1000], skew: ["sk", 10],
     straddle: ["st", 1000], max_pain: ["mp", 100], oi_calls: ["coi", 1], oi_puts: ["poi", 1], fut_oi: ["foi", 1], dte: ["dte", 1],
@@ -318,6 +320,13 @@
             if (ctx.validating) return n.v === "minutes" ? Float64Array.from(df.c, (_, i) => (i % 75) * 5 + 5) : df.c;
             if (!ctx.intra) throw new RuleError(`'${n.v}' is an intraday variable: it works in intraday strategies (type "intraday"). On daily bars use vwap(n) for a rolling VWAP.`);
             return ctx.intra[n.v];
+          }
+          if (FUNDVARS.includes(n.v) || (n.v === "pe" && !df.pe && DATA.fund && df.sym && DATA.fund[df.sym])) { // company results (point in time)
+            if (ctx.validating) return df.c;
+            if (n.v !== "pe" && !DATA.fund) throw new RuleError(`Company results aren't loaded here (needed for '${n.v}')`);
+            const lag = ctx.intraday ? 1 : 0, key = `${df.sym}|${n.v}|${df.d.length}|${df.d[0]}|${df.d[df.d.length - 1]}|${lag}`, FC = (DATA.fundCacheS ||= new Map());
+            let v = FC.get(key); if (!v) { v = fundSeries(n.v, df, lag); if (FC.size > 4000) FC.clear(); FC.set(key, v); }
+            return v;
           }
           if (OPTVARS[n.v]) { // this symbol's option-market series (NSE F&O), NaN where it had no options
             if (ctx.validating) return df.c;
@@ -1171,6 +1180,81 @@
     return { days: Float64Array.from(eqD), eq: Float64Array.from(eqV), trades: cycles, metrics: m, optState };
   }
 
+  // ----------------------------------------------------------------- company fundamentals (NSE quarterly results as filed)
+  // DATA.fund[sym] = {q: [period-end days], k: [first tradable day = filing day + 1], b, sh (shares, mn), rev, pat, eps, pbt, oi, fin, dep, exc,
+  //   ie, ix, ppop, prov, gnpa, nnpa (₹ crore / %), shp: [[known day, promoter %]...]}. A value is visible from its k day onwards.
+  const FUNDVARS = ["sales", "sales_ttm", "profit", "profit_ttm", "eps_ttm", "sales_growth", "profit_growth", "sales_growth_ttm", "profit_growth_ttm",
+    "sales_cagr_3y", "profit_cagr_3y", "opm", "npm", "mcap", "ps", "earnings_yield", "promoter", "promoter_chg", "result_day", "days_since_result", "gnpa", "nnpa", "nii_growth"];
+  function setFundamentals(sym, p) { (DATA.fund ||= {})[sym] = p; if (DATA.fundQ) delete DATA.fundQ[sym]; if (DATA.fundCacheS) DATA.fundCacheS.clear(); }
+  const usesFundVars = (expr) => !!expr && FUNDVARS.concat(["pe"]).some((k) => new RegExp(`\\b${k}\\b`).test(String(expr).replace(/["'][^"']*["']/g, "")));
+  const SPLIT_RATIOS = (() => { const r = []; for (let a = 1; a <= 10; a++) for (let b = 1; b <= 10; b++) { const x = (a + b) / b; if (x >= 1.2) r.push(x); } for (const x of [2, 2.5, 4, 5, 10, 20]) r.push(x); return r; })();
+  // per-quarter derived metrics (cached): ttm sums, growth, margins, share count on today's split/bonus basis
+  function fundQuarterly(sym) {
+    const C = (DATA.fundQ ||= {}); if (C[sym]) return C[sym];
+    const p = DATA.fund && DATA.fund[sym]; if (!p || !p.q || !p.q.length) return (C[sym] = null);
+    const n = p.q.length, g = (f, i) => { const a = p[f]; const v = a ? a[i] : null; return v == null ? NaNv : v; };
+    const prevQ = (i, back) => { const want = p.q[i] - back * 91.3; let best = -1; for (let j = i - 1; j >= 0; j--) { if (Math.abs(p.q[j] - want) <= 20) { best = j; break; } if (p.q[j] < want - 30) break; } return best; };
+    const ttm = (f, i) => { let s = p[f] ? g(f, i) : NaNv; if (s !== s) return NaNv; let cur = i; for (let k = 1; k < 4; k++) { const j = prevQ(cur, 1); if (j < 0) return NaNv; const v = g(f, j); if (v !== v) return NaNv; s += v; cur = j; } return s; };
+    const growth = (a, b) => (a === a && b === b && b > 0) ? (a / b - 1) * 100 : NaNv;
+    // splits / bonuses: a jump in share count by a simple ratio (2, 1.5, 3, 5, 10, (a+b)/b) is treated as a split or bonus, not an issue of new shares
+    const shRaw = Float64Array.from(p.sh || [], (x) => x == null ? NaNv : x), F = new Float64Array(n).fill(1);
+    for (let i = n - 1, f = 1; i >= 0; i--) { F[i] = f; const j = i - 1; if (j >= 0 && shRaw[i] === shRaw[i] && shRaw[j] === shRaw[j] && shRaw[j] > 0) { const r = shRaw[i] / shRaw[j]; if (SPLIT_RATIOS.some((x) => Math.abs(r / x - 1) < 0.006)) f *= r; } }
+    const out = { k: p.k, q: p.q, sales: [], profit: [], sales_ttm: [], profit_ttm: [], eps_ttm: [], sales_growth: [], profit_growth: [], sales_growth_ttm: [], profit_growth_ttm: [],
+      sales_cagr_3y: [], profit_cagr_3y: [], opm: [], npm: [], shAdj: [], gnpa: [], nnpa: [], nii_growth: [] };
+    let lastSh = NaNv;
+    for (let i = 0; i < n; i++) {
+      const rev = g("rev", i), pat = g("pat", i), sT = ttm("rev", i), pT = ttm("pat", i), y = prevQ(i, 4), y3 = prevQ(i, 12);
+      out.sales.push(rev); out.profit.push(pat); out.sales_ttm.push(sT); out.profit_ttm.push(pT);
+      out.sales_growth.push(y >= 0 ? growth(rev, g("rev", y)) : NaNv); out.profit_growth.push(y >= 0 ? growth(pat, g("pat", y)) : NaNv);
+      const sTy = y >= 0 ? ttm("rev", y) : NaNv, pTy = y >= 0 ? ttm("pat", y) : NaNv;
+      out.sales_growth_ttm.push(growth(sT, sTy)); out.profit_growth_ttm.push(growth(pT, pTy));
+      const s3 = y3 >= 0 ? ttm("rev", y3) : NaNv, p3 = y3 >= 0 ? ttm("pat", y3) : NaNv;
+      out.sales_cagr_3y.push(sT > 0 && s3 > 0 ? (Math.pow(sT / s3, 1 / 3) - 1) * 100 : NaNv); out.profit_cagr_3y.push(pT > 0 && p3 > 0 ? (Math.pow(pT / p3, 1 / 3) - 1) * 100 : NaNv);
+      const ebitda = g("pbt", i) + (p.fin ? (g("fin", i) === g("fin", i) ? g("fin", i) : 0) : 0) + (g("dep", i) === g("dep", i) ? g("dep", i) : 0) - (g("oi", i) === g("oi", i) ? g("oi", i) : 0) - (g("exc", i) === g("exc", i) ? g("exc", i) : 0);
+      out.opm.push(p.bank || !(rev > 0) ? NaNv : ebitda / rev * 100); out.npm.push(rev > 0 ? pat / rev * 100 : NaNv);
+      if (shRaw[i] === shRaw[i] && shRaw[i] > 0) lastSh = shRaw[i];
+      const sh = lastSh * F[i]; out.shAdj.push(sh);
+      out.eps_ttm.push(pT === pT && sh > 0 ? pT * 1e7 / (sh * 1e6) : NaNv); // ₹ per share on today's share basis
+      out.gnpa.push(g("gnpa", i)); out.nnpa.push(g("nnpa", i));
+      const nii = g("ie", i) - g("ix", i), niiy = y >= 0 ? g("ie", y) - g("ix", y) : NaNv; out.nii_growth.push(growth(nii, niiy));
+    }
+    return (C[sym] = out);
+  }
+  // the latest quarter known on each day (a filing counts from its k day; a late filing for an older quarter never replaces a newer one)
+  function fundIndexOn(days, Q) {
+    const order = Q.k.map((k, i) => [k, i]).sort((a, b) => a[0] - b[0]), o = new Int32Array(days.length).fill(-1);
+    let j = 0, best = -1;
+    for (let t = 0; t < days.length; t++) {
+      while (j < order.length && order[j][0] <= days[t]) { const i = order[j][1]; if (best < 0 || Q.q[i] > Q.q[best]) best = i; j++; }
+      o[t] = best;
+    }
+    return o;
+  }
+  function fundSeries(name, df, lagDays = 0) {
+    const L = df.c.length, out = f64(L), sym = df.sym, p = sym && DATA.fund && DATA.fund[sym];
+    if (!p) return out;
+    const days = lagDays ? df.d.map((x) => x - lagDays) : df.d;
+    if (name === "promoter" || name === "promoter_chg") {
+      const s = p.shp || []; let j = -1;
+      for (let t = 0; t < L; t++) { while (j + 1 < s.length && s[j + 1][0] <= days[t]) j++; if (j >= 0) out[t] = name === "promoter" ? s[j][1] : (j >= 1 ? s[j][1] - s[j - 1][1] : NaNv); }
+      return out;
+    }
+    const Q = fundQuarterly(sym); if (!Q) return out;
+    const idx = fundIndexOn(days, Q);
+    if (name === "result_day" || name === "days_since_result") {
+      let last = -1, since = NaNv;
+      for (let t = 0; t < L; t++) { const i = idx[t]; if (i !== last && i >= 0) { since = 0; last = i; } else if (since === since) since++; out[t] = name === "result_day" ? (since === 0 ? 1 : 0) : since; }
+      return out;
+    }
+    for (let t = 0; t < L; t++) {
+      const i = idx[t]; if (i < 0) continue;
+      if (name === "mcap" || name === "pe" || name === "ps" || name === "earnings_yield") {
+        const mc = df.c[t] * Q.shAdj[i] * 1e6 / 1e7; // ₹ crore
+        out[t] = name === "mcap" ? mc : name === "pe" ? (Q.profit_ttm[i] > 0 ? mc / Q.profit_ttm[i] : NaNv) : name === "ps" ? (Q.sales_ttm[i] > 0 ? mc / Q.sales_ttm[i] : NaNv) : (mc > 0 ? Q.profit_ttm[i] / mc * 100 : NaNv);
+      } else out[t] = Q[name][i];
+    }
+    return out;
+  }
   // ----------------------------------------------------------------- intraday (port of tradeos/live/intraday.py)
   // Bars: DATA intraday store INTRA[sym][step] = {step, days: [{d, b0, o, h, l, c, v}]}, bar k of a day covers minutes
   // [(b0+k)*step, (b0+k+1)*step) after 09:15 IST. Indicators see only the same day's bars (as the live runner does).
@@ -1849,7 +1933,7 @@
     return { risk: riskStats(res), crises: crises(res), monteCarlo: monteCarlo(res), sensitivity: sensitivity(spec, frames, universes, opt), costs: costShock(spec, frames, universes, opt) };
   }
 
-  const api = { setIntraday, intradayData, decodeIntra, INTRA_VARS, runIntraday, parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, decodeOptions, setOptionSummary, initOptionSummaries, usesOptionVars, OPTVARS, OPT_BUY, OPT_SELL,
+  const api = { setFundamentals, usesFundVars, FUNDVARS, fundQuarterly, fundSeries, setIntraday, intradayData, decodeIntra, INTRA_VARS, runIntraday, parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, decodeOptions, setOptionSummary, initOptionSummaries, usesOptionVars, OPTVARS, OPT_BUY, OPT_SELL,
     signals, splitMetrics, riskStats, crises, monteCarlo, sensitivity, costShock, stressAll, scaleWindows, unparse, CRISES,
     setData, setPit, usesPit, pitAt, needsFull, refSymbols, periodKey, nextRebalanceDay, factorList, exprsOf, PRESETS, WEIGHTINGS, symKey };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.TradeEngine = api;
