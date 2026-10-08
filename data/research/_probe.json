@@ -1,323 +1,386 @@
 {
- "fred_cpi_india": {
-  "error": "HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=30)"
+ "fred_csv": {
+  "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10",
+  "error": "HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=60)",
+  "secs": 61.2
  },
- "fred_dgs10": {
-  "error": "HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=30)"
- },
- "worldbank_gdp": {
+ "fred_csv_curlua": {
+  "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10",
   "status": 200,
-  "bytes": 14072,
+  "bytes": 268967,
   "secs": 0.1,
-  "head": "[{\"page\":1,\"pages\":1,\"per_page\":100,\"total\":66,\"sourceid\":\"2\",\"lastupdated\":\"2026-07-13\"},[{\"indicator\":{\"id\":\"NY.GDP.MKTP.KD.ZG\",\"value\":\"GDP growth (annual %)\"},\"country\":{\"id\":\"IN\",\"value\":\"India\"},\"countryiso3code\":\"IND\",\"date\":\"2025\",\"value\":7.56666179284244,\"unit\":\"\",\"obs_status\":\"\",\"decimal\":1},{\"indicator\":{\"id\":\"NY.GDP.MKTP.KD.ZG\",\"value\":\"GDP growth (annual %)\"},\"country\":{\"id\":\"IN\",\"val"
+  "head": "observation_date,DGS10\n1962-01-02,4.06\n1962-01-03,4.03\n1962-01-04,3.99\n1962-01-05,4.02\n1962-01-08,4.03\n1962-01-09,4.05\n1962-01-10,4.07\n1962-01-11,4.08\n1962-01-12,4.08\n1962-01-15,4.10\n1962-01-16,4.13\n1962-01-17,4.12\n1962-01-18,4.11\n1962-01-19,4.11\n1962-01-22,4.09\n1962-01-23,4.11\n1962-01-24,4.10\n1962-01-25,4.11\n1962-01-26,4.11\n1962-01-29,4.12\n1962-01-30,4.11\n1962-01-31,4.10\n1962-02-01,4.09\n1962-02-02,4.08\n1962-02-05,4.07\n1962-02-06,4.06\n1962-02-07,4.07\n1962-02-08,4.07\n1962-02-09,4.05\n1962-02-12,\n1962-02-13,4.03\n1962-02-14,4.03\n1962-02-15,4.02\n1962-02-16,4.02\n1962-02-19,4.01\n1962-02-20,4.05\n1962-"
  },
- "imf_datamapper": {
-  "status": 403,
-  "bytes": 427,
-  "secs": 0.1,
-  "head": "<HTML><HEAD>\n<TITLE>Access Denied</TITLE>\n</HEAD><BODY>\n<H1>Access Denied</H1>\n \nYou don't have permission to access \"http&#58;&#47;&#47;www&#46;imf&#46;org&#47;external&#47;datamapper&#47;api&#47;v1&#47;NGDP&#95;RPCH&#47;IND\" on this server.<P>\nReference&#32;&#35;18&#46;48deda17&#46;1791459964&#46;1ceea1e\n<P>https&#58;&#47;&#47;errors&#46;edgesuite&#46;net&#47;18&#46;48deda17&#46;1791459964&#46;1"
+ "dbnomics_imf_cpi": {
+  "url": "https://api.db.nomics.org/v22/series/IMF/IFS/M.IN.PCPI_IX?observations=1&format=json",
+  "error": "HTTPSConnectionPool(host='api.db.nomics.org', port=443): Max retries exceeded with url: /v22/series/IMF/IFS/M.IN.PCPI_IX?observations=1&format=json (Caused by NameResolutionError(\"HTTPSConnection(host",
+  "secs": 0.7
  },
- "mospi_api": {
-  "error": "HTTPSConnectionPool(host='api.mospi.gov.in', port=443): Max retries exceeded with url: /api/cpi/getCPIIndex?base_year=2012&series=Current&limit=5 (Caused by SSLError(SSLError(1, '[SSL: UNSAFE_LEGACY_R"
+ "dbnomics_search": {
+  "url": "https://api.db.nomics.org/v22/search?q=india%20policy%20rate&limit=5",
+  "error": "HTTPSConnectionPool(host='api.db.nomics.org', port=443): Max retries exceeded with url: /v22/search?q=india%20policy%20rate&limit=5 (Caused by NameResolutionError(\"HTTPSConnection(host='api.db.nomics.",
+  "secs": 0.0
  },
- "rbi_home": {
+ "bis_cbpol": {
+  "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/D.IN?format=csv&startPeriod=2024-01-01",
   "status": 200,
-  "bytes": 151774,
-  "secs": 1.6,
-  "head": "\r\n<!DOCTYPE html >\r\n\r\n<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\">\r\n<head id=\"Head1\"><meta charset=\"utf-8\" /><meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\" /><title>\r\n\tHome | Official website of Reserve Bank of India\r\n</title><meta name=\"description\" content=\"Official website of Reserve Bank of India\" /><meta name=\"author\" content=\"author\" /><meta name=\"viewport\" content=\"width=devi"
+  "bytes": 337810,
+  "secs": 0.7,
+  "head": "FREQ,REF_AREA,UNIT_MEASURE,UNIT_MULT,TIME_FORMAT,COMPILATION,DECIMALS,SOURCE_REF,SUPP_INFO_BREAKS,TITLE,TIME_PERIOD,OBS_VALUE,OBS_STATUS,OBS_CONF,OBS_PRE_BREAK\nD,IN,368,0,,From 3 Apr 2001 onwards: official repo overnight rate; from 1 Jan 1946 to 2 Apr 2001: oank rate.,4,Reserve Bank of India,This rate can be considered the official policy rate as from 2001. The Reserve Bank of India (RBI) did not have a single policy rate prior to 2001. , Central bank policy rates - India - Daily - End of period,2024-01-01,6.5,A,F,\nD,IN,368,0,,From 3 Apr 2001 onwards: official repo overnight rate; from 1 Jan 1"
  },
- "rbi_dbie": {
+ "bis_cbpol_v1": {
+  "url": "https://stats.bis.org/api/v1/data/WS_CBPOL/D.IN?format=csv&startPeriod=2024-01-01",
   "status": 200,
-  "bytes": 50732,
-  "secs": 1.1,
-  "head": "<!doctype html>\r\n<html lang=\"en\" data-critters-container>\r\n<head>\r\n  <meta charset=\"utf-8\">\r\n  <title>DBIE</title>\r\n  <base href=\"#\">\r\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\r\n  <link rel=\"icon\" type=\"image/x-icon\" href=\"assets/images/Rbinote.png\">\r\n  <script type=\"text/javascript\">\r\n    let host = window && window.location && window.location.hostname\r\n    let ip = w"
+  "bytes": 337810,
+  "secs": 0.4,
+  "head": "FREQ,REF_AREA,UNIT_MEASURE,UNIT_MULT,TIME_FORMAT,COMPILATION,DECIMALS,SOURCE_REF,SUPP_INFO_BREAKS,TITLE,TIME_PERIOD,OBS_VALUE,OBS_STATUS,OBS_CONF,OBS_PRE_BREAK\nD,IN,368,0,,From 3 Apr 2001 onwards: official repo overnight rate; from 1 Jan 1946 to 2 Apr 2001: oank rate.,4,Reserve Bank of India,This rate can be considered the official policy rate as from 2001. The Reserve Bank of India (RBI) did not have a single policy rate prior to 2001. , Central bank policy rates - India - Daily - End of period,2024-01-01,6.5,A,F,\nD,IN,368,0,,From 3 Apr 2001 onwards: official repo overnight rate; from 1 Jan 1"
  },
- "nse_home": {
-  "status": 403,
-  "bytes": 368,
-  "secs": 0.1,
-  "head": "<HTML><HEAD>\n<TITLE>Access Denied</TITLE>\n</HEAD><BODY>\n<H1>Access Denied</H1>\n \nYou don't have permission to access \"http&#58;&#47;&#47;www&#46;nseindia&#46;com&#47;\" on this server.<P>\nReference&#32;&#35;18&#46;9b721102&#46;1791459968&#46;6ceb843\n<P>https&#58;&#47;&#47;errors&#46;edgesuite&#46;net&#47;18&#46;9b721102&#46;1791459968&#46;6ceb843</P>\n</BODY>\n</HTML>\n"
- },
- "nse_results_list": {
+ "oecd_cli": {
+  "url": "https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_CLI,4.1/IND.M.LI...AA...H?startPeriod=2024-01&format=csvfilewithlabels",
   "status": 200,
-  "bytes": 124738,
+  "bytes": 9568,
+  "secs": 0.9,
+  "head": "STRUCTURE,STRUCTURE_ID,STRUCTURE_NAME,ACTION,REF_AREA,Reference area,FREQ,Frequency of observation,MEASURE,Measure,UNIT_MEASURE,Unit of measure,ACTIVITY,Economic activity,ADJUSTMENT,Adjustment,TRANSFORMATION,Transformation,TIME_HORIZ,Time horizon,METHODOLOGY,Calculation methodology,TIME_PERIOD,Time period,OBS_VALUE,Observation value,OBS_STATUS,Observation status,UNIT_MULT,Unit multiplier,DECIMALS,Decimals,BASE_PER,Base period\r\nDATAFLOW,OECD.SDD.STES:DSD_STES@DF_CLI(4.1),Composite leading indicators,I,IND,India,M,Monthly,LI,Composite leading indicator (CLI),IX,Index,_Z,Not applicable,AA,Amplitu"
+ },
+ "ust_yields": {
+  "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2026/all?type=daily_treasury_yield_curve&field_tdr_date_value=2026&page&_format=csv",
+  "status": 200,
+  "bytes": 15743,
+  "secs": 0.8,
+  "head": "Date,\"1 Mo\",\"1.5 Month\",\"2 Mo\",\"3 Mo\",\"4 Mo\",\"6 Mo\",\"1 Yr\",\"2 Yr\",\"3 Yr\",\"5 Yr\",\"7 Yr\",\"10 Yr\",\"20 Yr\",\"30 Yr\"\n10/07/2026,4.07,4.13,4.14,4.22,4.28,4.28,4.42,4.77,4.87,5.03,5.15,5.28,5.71,5.67\n10/06/2026,4.06,4.12,4.13,4.21,4.26,4.28,4.46,4.79,4.88,5.03,5.15,5.27,5.68,5.64\n10/05/2026,4.05,4.10,4.13,4.22,4.27,4.30,4.47,4.84,4.97,5.06,5.19,5.31,5.70,5.66\n10/02/2026,4.04,4.09,4.11,4.19,4.26,4.27,4.46,4.83,4.96,5.06,5.17,5.28,5.67,5.63\n10/01/2026,4.06,4.10,4.13,4.17,4.26,4.27,4.44,4.78,4.91,5.01,5.12,5.24,5.64,5.61\n09/30/2026,4.02,4.13,4.16,4.20,4.29,4.33,4.54,4.88,5.00,5.09,5.19,5.29,5.68,5.64\n09/"
+ },
+ "google_news_rss": {
+  "url": "https://news.google.com/rss/search?q=Nifty%20OR%20Sensex%20when:2d&hl=en-IN&gl=IN&ceid=IN:en",
+  "status": 200,
+  "bytes": 193989,
+  "secs": 0.7,
+  "head": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><rss version=\"2.0\" xmlns:media=\"http://search.yahoo.com/mrss/\"><channel><generator>NFE/5.0</generator><title>\"Nifty OR Sensex when:2d\" - Google News</title><link>https://news.google.com/search?q=Nifty+OR+Sensex+when:2d&amp;hl=en-IN&amp;gl=IN&amp;ceid=IN:en</link><language>en-IN</language><webMaster>news-webmaster@google.com</webMaster><copyright>Copyright \u00a9 2026 Google. All rights reserved. This XML feed is made available solely for the purpose of rendering Google News results within a personal feed reader for personal, non-commercial use."
+ },
+ "et_markets_rss": {
+  "url": "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms",
+  "status": 200,
+  "bytes": 49030,
+  "secs": 0.2,
+  "head": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss xmlns:atom=\"http://www.w3.org/2005/Atom\" version=\"2.0\"><channel><title>Markets-Economic Times</title><link>https://economictimes.indiatimes.com/markets</link><description><![CDATA[Share Market Today | Share Market Live updates: Get all the Latest Share Market News and Updates on The Economic Times. Share Market Live Charts, News, Analysis, IPO News and more.]]> </description><language>en-gb</language><lastBuildDate>Thu, 08 Oct 2026 17:04:48 +0530</lastBuildDate><atom:link type=\"application/rss+xml\" rel=\"self\" href=\"https://economictimes.indiatimes.com"
+ },
+ "livemint_rss": {
+  "url": "https://www.livemint.com/rss/markets",
+  "status": 200,
+  "bytes": 39416,
+  "secs": 0.2,
+  "head": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<rss xmlns:atom=\"http://www.w3.org/2005/Atom\" xmlns:media=\"http://search.yahoo.com/mrss/\" version=\"2.0\">\r\n\t\t<channel>\r\n\t\t\t\t<atom:link type=\"application/rss+xml\" rel=\"self\" href=\"https://www.livemint.com/rss/markets\"/>\r\n\t        \t\r\n\t        \t<title>mint - markets</title>\r\n\t        \t<description>Get the latest news and analysis on business, finance, politics from mint, the website of the Mint newspaper, one of India's leading business and financial dailies</description>\r\n\t        \t\r\n\t\t\t\t<link>https://www.livemint.com/rss/markets</link>\r\n\t        \t\r\n<item>\r"
+ },
+ "rbi_press_rss": {
+  "url": "https://www.rbi.org.in/pressreleases_rss.xml",
+  "status": 200,
+  "bytes": 75024,
+  "secs": 0.2,
+  "head": "\u00ef\u00bb\u00bf<?xml version=\"1.0\" encoding=\"utf-8\"?><rss version=\"2.0\"><channel><title>PRESS RELEASES FROM RBI</title><link>http://www.rbi.org.in</link><description>This is Feed from RBI for Press Releases.</description><copyright>Copyright Reserve Bank of India. All Rights Reserved.</copyright><item><title><![CDATA[Directions under Section 35 A read with Section 56 of the Banking Regulation Act, 1949 \u00e2\u0080\u0093 The Tiruvalla Urban Co-operative Bank Ltd., Tiruvalla, Pathanamthitta]]></title><description><![CDATA[<table width=\"100%\" border=\"0\" align=\"center\" class=\"td\">  <tr>    <td><p>It is hereby notified for "
+ },
+ "mospi_cpi": {
+  "url": "https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&series=Current&year=2026&limit=20&Format=JSON",
+  "status": 200,
+  "bytes": 51,
+  "secs": 2.1,
+  "head": "{\"data\":[],\"msg\":\"No Data Found\",\"statusCode\":true}"
+ },
+ "mospi_iip": {
+  "url": "https://api.mospi.gov.in/api/iip/getIIPMonthly?base_year=2011-12&year=2026&limit=20&Format=JSON",
+  "status": 200,
+  "bytes": 3989,
   "secs": 0.3,
-  "head": "[{\"audited\":\"Audited\",\"bank\":\"N\",\"broadCastDate\":\"09-Jan-2025 21:39:43\",\"companyName\":\"Tata Consultancy Services Limited\",\"consolidated\":\"Consolidated\",\"cumulative\":\"Non-cumulative\",\"difference\":\"00:00:23\",\"exchdisstime\":\"09-Jan-2025 21:40:06\",\"filingDate\":\"09-Jan-2025 21:39\",\"financialYear\":\"01-Apr-2024 To 31-Mar-2025\",\"format\":\"New\",\"fromDate\":\"01-Oct-2024\",\"indAs\":\"Ind-AS New\",\"industry\":\"-\",\"i",
-  "n": 162,
-  "first": {
-   "audited": "Audited",
-   "bank": "N",
-   "broadCastDate": "09-Jan-2025 21:39:43",
-   "companyName": "Tata Consultancy Services Limited",
-   "consolidated": "Consolidated",
+  "head": "{\"data\":[{\"base_year\":\"2011-12\",\"year\":2026,\"month\":\"March\",\"type\":\"General\",\"category\":\"General\",\"sub_category\":\"\",\"index\":\"173.2\",\"growth_rate\":\"4.1\"},{\"base_year\":\"2011-12\",\"year\":2026,\"month\":\"March\",\"type\":\"Sectoral\",\"category\":\"Mining\",\"sub_category\":\"\",\"index\":\"166.8\",\"growth_rate\":\"5.5\"},{\"base_year\":\"2011-12\",\"year\":2026,\"month\":\"March\",\"type\":\"Sectoral\",\"category\":\"Manufacturing\",\"sub_category\":\"Manufacture of Food Products\",\"index\":\"132.2\",\"growth_rate\":\"0.5\"},{\"base_year\":\"2011-12\",\"year\":2026,\"month\":\"March\",\"type\":\"Sectoral\",\"category\":\"Manufacturing\",\"sub_category\":\"Manufacture "
+ },
+ "mospi_root": {
+  "url": "https://api.mospi.gov.in/",
+  "status": 200,
+  "bytes": 486,
+  "secs": 0.3,
+  "head": "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title>Ministry of Statistics and Program Implementation | Government Of India</title><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.24.2/swagger-ui.css\"><link rel=\"icon\" href=\"../public/favicon.ico\" type=\"image/x-icon\"><script defer=\"defer\" src=\"/static/js/main.addddd18.js\"></script><link href=\"/static/css/main.a3a48c73.css\" rel=\"stylesheet\"></head><body><div id=\"root\"></div></body></html>"
+ },
+ "nse_results_HDFCBANK": {
+  "url": "https://www.nseindia.com/api/corporates-financial-results?index=equities&symbol=HDFCBANK&period=Quarterly",
+  "status": 200,
+  "bytes": 79047,
+  "secs": 0.6,
+  "head": "[{\"audited\":\"Un-Audited\",\"bank\":\"B\",\"broadCastDate\":\"23-Jan-2025 12:27:21\",\"companyName\":\"HDFC Bank Limited\",\"consolidated\":\"Consolidated\",\"cumulative\":\"Non-cumulative\",\"difference\":\"00:00:40\",\"exchdisstime\":\"23-Jan-2025 12:28:01\",\"filingDate\":\"23-Jan-2025 12:27\",\"financialYear\":\"01-Apr-2024 To 31-Mar-2025\",\"format\":\"New\",\"fromDate\":\"01-Oct-2024\",\"indAs\":\"Non-Ind-AS\",\"industry\":\"-\",\"isin\":\"INE040A01018\",\"oldNewFlag\":null,\"params\":\"01-Oct-202431-Dec-2024Q3UBNCAEHDFCBANK\",\"period\":\"Quarterly\",\"reInd\":\"A\",\"relatingTo\":\"Third Quarter\",\"resultDescription\":null,\"resultDetailedDataLink\":null,\"seqNumb",
+  "n": 103,
+  "n_xbrl": 49,
+  "oldest_xbrl": {
+   "audited": "Un-Audited",
+   "bank": "B",
+   "broadCastDate": "10-Aug-2018 14:18:12",
+   "companyName": "HDFC Bank Limited",
+   "consolidated": "Non-Consolidated",
    "cumulative": "Non-cumulative",
-   "difference": "00:00:23",
-   "exchdisstime": "09-Jan-2025 21:40:06",
-   "filingDate": "09-Jan-2025 21:39",
-   "financialYear": "01-Apr-2024 To 31-Mar-2025",
+   "difference": "00:03:51",
+   "exchdisstime": "10-Aug-2018 14:22:03",
+   "filingDate": "10-Aug-2018 14:18",
+   "financialYear": "01-Apr-2018 To 31-Mar-2019",
    "format": "New",
-   "fromDate": "01-Oct-2024",
-   "indAs": "Ind-AS New",
-   "industry": "-",
-   "isin": "INE467B01029",
-   "oldNewFlag": "N",
-   "params": "01-Oct-202431-Dec-2024Q3ANNCNETCS",
-   "period": "Quarterly",
-   "reInd": "N",
-   "relatingTo": "Third Quarter",
-   "resultDescription": null,
-   "resultDetailedDataLink": null,
-   "seqNumber": "1189599",
-   "symbol": "TCS",
-   "toDate": "31-Dec-2024",
-   "xbrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_117182_1341298_09012025093940.xml"
-  },
-  "last": {
-   "audited": "Audited",
-   "bank": "N",
-   "broadCastDate": null,
-   "companyName": "Tata Consultancy Services Limited",
-   "consolidated": "Consolidated",
-   "cumulative": "Non-cumulative",
-   "difference": "::",
-   "exchdisstime": null,
-   "filingDate": "-",
-   "financialYear": "-",
-   "format": "Old",
-   "fromDate": "01-Jan-2005",
+   "fromDate": "01-Apr-2018",
    "indAs": "Non-Ind-AS",
    "industry": "-",
-   "isin": "INE467B01029",
+   "isin": "INE040A01018",
    "oldNewFlag": null,
-   "params": "01-Jan-200531-Mar-2005Q4ANNCAETCS",
+   "params": "01-Apr-201830-Jun-2018Q1UBNNAEHDFCBANK",
    "period": "Quarterly",
-   "reInd": "-",
+   "reInd": "A",
+   "relatingTo": "First Quarter",
+   "resultDescription": null,
+   "resultDetailedDataLink": null,
+   "seqNumber": "1046956",
+   "symbol": "HDFCBANK",
+   "toDate": "30-Jun-2018",
+   "xbrl": "https://nsearchives.nseindia.com/corporate/xbrl/BANKING_37206_29076_26072018063602_WEB.xml"
+  },
+  "kinds": [
+   [
+    "Consolidated",
+    "Non-Ind-AS",
+    "New",
+    "Non-cumulative"
+   ],
+   [
+    "Non-Consolidated",
+    "Non-Ind-AS",
+    "New",
+    "Non-cumulative"
+   ],
+   [
+    "Non-Consolidated",
+    "Non-Ind-AS",
+    "Old",
+    "Non-cumulative"
+   ]
+  ]
+ },
+ "xbrl_new_HDFCBANK": {
+  "url": "https://nsearchives.nseindia.com/corporate/xbrl/BANKING_117525_1359016_23012025122721.xml",
+  "status": 200,
+  "bytes": 54783,
+  "secs": 0.6,
+  "head": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xbrli:xbrl xmlns:in-bse-fin=\"http://www.bseindia.com/xbrl/fin/2019-09-30/in-bse-fin\" xmlns:in-bse-fin-roles=\"http://www.bseindia.com/xbrl/fin/2019-09-30/in-bse-fin-roles\" xmlns:in-bse-fin-ent=\"http://www.bseindia.com/xbrl/fin/2019-09-30/in-bse-fin/in-bse-fin-ent\" xmlns:in-bse-fin-type=\"http://www.bseindia.com/xbrl/fin/2019-09-30/in-bse-fin-types\" xmlns:xbrldt=\"http://xbrl.org/2005/xbrldt\" xmlns:nonnum=\"http://www.xbrl.org/dtr/type/non-numeric\" xmlns:link=\"http://www.xbrl.org/2003/linkbase\" xmlns:net=\"http://www.xbrl.org/2009/role/net\" xmlns:num=\"http://w"
+ },
+ "xbrl_old_HDFCBANK": {
+  "url": "https://nsearchives.nseindia.com/corporate/xbrl/BANKING_37206_29076_26072018063602_WEB.xml",
+  "status": 200,
+  "bytes": 27462,
+  "secs": 0.5,
+  "head": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xbrli:xbrl xmlns:in-bse-fin=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin\" xmlns:in-bse-fin-roles=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin-roles\" xmlns:in-bse-fin-ent=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin/in-bse-fin-ent\" xmlns:in-bse-fin-type=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin-types\" xmlns:xbrldt=\"http://xbrl.org/2005/xbrldt\" xmlns:nonnum=\"http://www.xbrl.org/dtr/type/non-numeric\" xmlns:link=\"http://www.xbrl.org/2003/linkbase\" xmlns:net=\"http://www.xbrl.org/2009/role/net\" xmlns:num=\"http://w"
+ },
+ "nse_results_JETAIRWAYS": {
+  "url": "https://www.nseindia.com/api/corporates-financial-results?index=equities&symbol=JETAIRWAYS&period=Quarterly",
+  "status": 200,
+  "bytes": 56091,
+  "secs": 0.5,
+  "head": "[{\"audited\":\"Un-Audited\",\"bank\":\"N\",\"broadCastDate\":\"08-Aug-2023 16:32:42\",\"companyName\":\"Jet Airways (India) Limited\",\"consolidated\":\"Non-Consolidated\",\"cumulative\":\"Non-cumulative\",\"difference\":\"00:03:21\",\"exchdisstime\":\"08-Aug-2023 16:36:03\",\"filingDate\":\"08-Aug-2023 16:32\",\"financialYear\":\"01-Apr-2023 To 31-Mar-2024\",\"format\":\"New\",\"fromDate\":\"01-Apr-2023\",\"indAs\":\"Ind-AS New\",\"industry\":\"-\",\"isin\":\"INE802G01018\",\"oldNewFlag\":\"N\",\"params\":\"01-Apr-202330-Jun-2023Q1UNNNNEJETAIRWAYS\",\"period\":\"Quarterly\",\"reInd\":\"N\",\"relatingTo\":\"First Quarter\",\"resultDescription\":null,\"resultDetailedDataLink",
+  "n": 71,
+  "n_xbrl": 17,
+  "oldest_xbrl": {
+   "audited": "Audited",
+   "bank": "N",
+   "broadCastDate": "29-May-2018 16:27:05",
+   "companyName": "Jet Airways (India) Limited",
+   "consolidated": "Non-Consolidated",
+   "cumulative": "Non-cumulative",
+   "difference": "00:03:00",
+   "exchdisstime": "29-May-2018 16:30:05",
+   "filingDate": "29-May-2018 16:27",
+   "financialYear": "01-Apr-2017 To 31-Mar-2018",
+   "format": "New",
+   "fromDate": "01-Jan-2018",
+   "indAs": "Ind-AS New",
+   "industry": "-",
+   "isin": "INE802G01018",
+   "oldNewFlag": "N",
+   "params": "01-Jan-201831-Mar-2018Q4ANNNNEJETAIRWAYS",
+   "period": "Quarterly",
+   "reInd": "N",
    "relatingTo": "Fourth Quarter",
    "resultDescription": null,
-   "resultDetailedDataLink": "https://nsearchives.nseindia.com/archives/financial_results/financial_res_TCS_31129.html",
-   "seqNumber": "31129",
-   "symbol": "TCS",
-   "toDate": "31-Mar-2005",
-   "xbrl": "https://nsearchives.nseindia.com/corporate/xbrl/-"
-  }
- },
- "nse_xbrl": {
-  "status": 200,
-  "bytes": 68849,
-  "secs": 0.6,
-  "head": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xbrli:xbrl xmlns:in-bse-fin=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin\" xmlns:in-bse-fin-roles=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin-roles\" xmlns:in-bse-fin-ent=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin/in-bse-fin-ent\" xmlns:in-bse-fin-type=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin-types\" xmlns:xbrld",
-  "tags": [
-   "AmountOfItemThatWillBeReclassifiedToProfitAndLoss",
-   "AmountOfItemThatWillNotBeReclassifiedToProfitAndLoss",
-   "BasicEarningsLossPerShareFromContinuingAndDiscontinuedOperations",
-   "BasicEarningsLossPerShareFromContinuingOperations",
-   "BasicEarningsLossPerShareFromDiscontinuedOperations",
-   "ChangesInInventoriesOfFinishedGoodsWorkInProgressAndStockInTrade",
-   "ClassOfSecurity",
-   "ComprehensiveIncomeForThePeriod",
-   "ComprehensiveIncomeForThePeriodAttributableToOwnersOfParent",
-   "ComprehensiveIncomeForThePeriodAttributableToOwnersOfParentNonControllingInterests",
-   "CostOfMaterialsConsumed",
-   "CurrentTax",
-   "DateOfBoardMeetingWhenFinancialResultsWereApproved",
-   "DateOfEndOfBoardMeeting",
-   "DateOfEndOfFinancialYear",
-   "DateOfEndOfReportingPeriod",
-   "DateOfStartOfBoardMeeting",
-   "DateOfStartOfFinancialYear",
-   "DateOfStartOfReportingPeriod",
-   "DateOnWhichPriorIntimationOfTheMeetingForConsideringFinancialResultsWasInformedToTheExchange",
-   "DeclarationOfUnmodifiedOpinionOrStatementOnImpactOfAuditQualification",
-   "DeferredTax",
-   "DepreciationDepletionAndAmortisationExpense",
-   "DescriptionOfItemThatWillBeReclassifiedToProfitAndLoss",
-   "DescriptionOfItemThatWillNotBeReclassifiedToProfitAndLoss",
-   "DescriptionOfOtherExpenses",
-   "DescriptionOfPresentationCurrency",
-   "DescriptionOfReportableSegment",
-   "DilutedEarningsLossPerShareFromContinuingAndDiscontinuedOperations",
-   "DilutedEarningsLossPerShareFromContinuingOperations",
-   "DilutedEarningsLossPerShareFromDiscontinuedOperations",
-   "EmployeeBenefitExpense",
-   "EndTimeOfBoardMeeting",
-   "ExceptionalItemsBeforeTax",
-   "Expenses",
-   "FaceValueOfEquityShareCapital",
-   "FinanceCosts",
-   "Income",
-   "IncomeTaxRelatingToItmesThatWillBeReclassifiedToProfitOrLoss",
-   "IncomeTaxRelatingToItmesThatWillNotBeReclassifiedToProfitOrLoss",
-   "IsCompanyReportingMultisegmentOrSingleSegment",
-   "LevelOfRoundingUsedInFinancialStatements",
-   "MSEISymbol",
-   "NameOfTheCompany",
-   "NatureOfReportStandaloneConsolidated",
-   "NetMovementInRegulatoryDeferralAccountBalancesRelatedToProfitOrLossAndTheRelatedDeferredTaxMovement",
-   "OtherComprehensiveIncomeNetOfTaxes",
-   "OtherExpenses",
-   "OtherIncome",
-   "OtherUnallocableExpenditureNetOffUnAllocableIncome",
-   "PaidUpValueOfEquityShareCapital",
-   "ProfitBeforeExceptionalItemsAndTax",
-   "ProfitBeforeTax",
-   "ProfitLossForPeriod",
-   "ProfitLossForPeriodFromContinuingOperations",
-   "ProfitLossFromDiscontinuedOperationsAfterTax",
-   "ProfitLossFromDiscontinuedOperationsBeforeTax",
-   "ProfitOrLossAttributableToNonControllingInterests",
-   "ProfitOrLossAttributableToOwnersOfParent",
-   "PurchasesOfStockInTrade",
-   "ReportingQuarter",
-   "RevenueFromOperations",
-   "ScripCode",
-   "SegmentAssets",
-   "SegmentFinanceCosts",
-   "SegmentLiabilities",
-   "SegmentProfitBeforeTax",
-   "SegmentProfitLossBeforeTaxAndFinanceCosts",
-   "SegmentRevenue",
-   "SegmentRevenueFromOperations",
-   "ShareOfProfitLossOfAssociatesAndJointVenturesAccountedForUsingEquityMethod",
-   "StartTimeOfBoardMeeting",
-   "Symbol",
-   "TaxExpense",
-   "TaxExpenseOfDiscontinuedOperations",
-   "WhetherResultsAreAuditedOrUnaudited"
+   "resultDetailedDataLink": null,
+   "seqNumber": "1041758",
+   "symbol": "JETAIRWAYS",
+   "toDate": "31-Mar-2018",
+   "xbrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_35583_10987_24052018015712_WEB.xml"
+  },
+  "kinds": [
+   [
+    "Non-Consolidated",
+    "Ind-AS New",
+    "New",
+    "Non-cumulative"
+   ],
+   [
+    "Non-Consolidated",
+    "Ind-AS New",
+    "Old",
+    "Non-cumulative"
+   ],
+   [
+    "Non-Consolidated",
+    "Non-Ind-AS",
+    "Old",
+    "Non-cumulative"
+   ]
   ]
  },
- "nse_shareholding": {
+ "xbrl_new_JETAIRWAYS": {
+  "url": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_95679_910965_08082023043241.xml",
   "status": 200,
-  "bytes": 19413,
+  "bytes": 12867,
   "secs": 0.3,
-  "head": "[{\"broadcastDate\":\"21-JUL-2026 15:44:00\",\"cgTimeStamp\":null,\"countString\":null,\"date\":\"30-JUN-2026\",\"desc\":\"NEW_1\",\"employeeTrusts\":\"0\",\"format\":null,\"index\":\"-\",\"industry\":\"-\",\"isin\":\"INE467B01029\",\"name\":\"Tata Consultancy Services Limited\",\"newColumn\":true,\"pr_and_prgrp\":\"71.77\",\"promoterDematNotes\":\"\",\"publicShareholdingNotes\":\"\",\"public_val\":\"28.23\",\"recordId\":\"212719\",\"remarksWeb\":\"1.The Comp"
+  "head": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xbrli:xbrl xmlns:in-bse-fin=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin\" xmlns:in-bse-fin-roles=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin-roles\" xmlns:in-bse-fin-ent=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin/in-bse-fin-ent\" xmlns:in-bse-fin-type=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin-types\" xmlns:xbrldt=\"http://xbrl.org/2005/xbrldt\" xmlns:nonnum=\"http://www.xbrl.org/dtr/type/non-numeric\" xmlns:link=\"http://www.xbrl.org/2003/linkbase\" xmlns:net=\"http://www.xbrl.org/2009/role/net\" xmlns:num=\"http://w"
  },
- "nse_board_meetings": {
+ "xbrl_old_JETAIRWAYS": {
+  "url": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_35583_10987_24052018015712_WEB.xml",
   "status": 200,
-  "bytes": 15732,
+  "bytes": 35150,
   "secs": 0.4,
-  "head": "[{\"bm_symbol\":\"TCS\",\"bm_date\":\"08-Oct-2026\",\"bm_purpose\":\"Board Meeting Intimation\",\"bm_desc\":\"TATA CONSULTANCY SERVICES LIMITED has informed the Exchange about Board Meeting to be held on 08-Oct-2026 to consider and approve the Quarterly Audited Financial results of the Company for the period ended September 2026 and Dividend.\",\"sm_indusrty\":\"Computers - Software\",\"bm_timestamp\":\"22-Sep-2026 18:4"
+  "head": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xbrli:xbrl xmlns:in-bse-fin=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin\" xmlns:in-bse-fin-roles=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin-roles\" xmlns:in-bse-fin-ent=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin/in-bse-fin-ent\" xmlns:in-bse-fin-type=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin-types\" xmlns:xbrldt=\"http://xbrl.org/2005/xbrldt\" xmlns:nonnum=\"http://www.xbrl.org/dtr/type/non-numeric\" xmlns:link=\"http://www.xbrl.org/2003/linkbase\" xmlns:net=\"http://www.xbrl.org/2009/role/net\" xmlns:num=\"http://w"
  },
- "nse_announcements": {
+ "nse_results_RELIANCE": {
+  "url": "https://www.nseindia.com/api/corporates-financial-results?index=equities&symbol=RELIANCE&period=Quarterly",
   "status": 200,
-  "bytes": 2497902,
-  "secs": 1.6,
-  "head": "[{\"an_dt\":\"08-Oct-2026 15:44:45\",\"attFileSize\":\"622.55 KB\",\"attchmntFile\":\"https://nsearchives.nseindia.com/corporate/TCS_CORPCS_08102026154436_Post_BM_SE_Letter_fin.pdf\",\"attchmntText\":\"Tata Consultancy Services Limited has informed the Exchange about Date of Payment of Dividend.\",\"bflag\":null,\"csvName\":null,\"desc\":\"General Updates\",\"difference\":\"00:00:01\",\"dt\":\"08102026154445\",\"exchdisstime\":\"08"
- },
- "yf_info": {
-  "sector": "Technology",
-  "industry": "Information Technology Services",
-  "marketCap": null,
-  "trailingPE": 15.080633,
-  "forwardPE": 12.8180485,
-  "priceToBook": 6.8511686,
-  "returnOnEquity": 0.47743,
-  "profitMargins": 0.18052,
-  "revenueGrowth": 0.139,
-  "earningsGrowth": 0.046,
-  "debtToEquity": 10.211,
-  "recommendationKey": "buy",
-  "targetMeanPrice": 2445.5366,
-  "numberOfAnalystOpinions": 41
- },
- "yf_quarterly": {
-  "cols": [
-   "2026-06-30",
-   "2026-03-31",
-   "2025-12-31",
-   "2025-06-30",
-   "2025-03-31"
-  ],
-  "rows": [
-   "Tax Effect Of Unusual Items",
-   "Tax Rate For Calcs",
-   "Normalized EBITDA",
-   "Total Unusual Items",
-   "Total Unusual Items Excluding Goodwill",
-   "Net Income From Continuing Operation Net Minority Interest",
-   "Reconciled Depreciation",
-   "Reconciled Cost Of Revenue",
-   "EBITDA",
-   "EBIT",
-   "Net Interest Income",
-   "Interest Expense",
-   "Interest Income",
-   "Normalized Income",
-   "Net Income From Continuing And Discontinued Operation",
-   "Total Expenses",
-   "Diluted Average Shares",
-   "Basic Average Shares",
-   "Diluted EPS",
-   "Basic EPS",
-   "Diluted NI Availto Com Stockholders",
-   "Net Income Common Stockholders",
-   "Otherunder Preferred Stock Dividend",
-   "Net Income",
-   "Minority Interests",
-   "Net Income Including Noncontrolling Interests",
-   "Net Income Continuous Operations",
-   "Tax Provision",
-   "Pretax Income",
-   "Other Non Operating Income Expenses",
-   "Special Income Charges",
-   "Other Special Charges",
-   "Write Off",
-   "Restructuring And Mergern Acquisition",
-   "Net Non Operating Interest Income Expense",
-   "Interest Expense Non Operating",
-   "Interest Income Non Operating",
-   "Operating Income",
-   "Operating Expense",
-   "Other Operating Expenses"
+  "bytes": 101760,
+  "secs": 0.5,
+  "head": "[{\"audited\":\"Un-Audited\",\"bank\":\"N\",\"broadCastDate\":\"16-Jan-2025 20:20:21\",\"companyName\":\"Reliance Industries Limited\",\"consolidated\":\"Non-Consolidated\",\"cumulative\":\"Non-cumulative\",\"difference\":\"00:00:33\",\"exchdisstime\":\"16-Jan-2025 20:20:54\",\"filingDate\":\"16-Jan-2025 20:20\",\"financialYear\":\"01-Apr-2024 To 31-Mar-2025\",\"format\":\"New\",\"fromDate\":\"01-Oct-2024\",\"indAs\":\"Ind-AS New\",\"industry\":\"-\",\"isin\":\"INE002A01018\",\"oldNewFlag\":\"N\",\"params\":\"01-Oct-202431-Dec-2024Q3UNNNNERELIANCE\",\"period\":\"Quarterly\",\"reInd\":\"N\",\"relatingTo\":\"Third Quarter\",\"resultDescription\":null,\"resultDetailedDataLink\":",
+  "n": 130,
+  "n_xbrl": 53,
+  "oldest_xbrl": {
+   "audited": "Un-Audited",
+   "bank": "N",
+   "broadCastDate": "07-Aug-2018 17:10:30",
+   "companyName": "Reliance Industries Limited",
+   "consolidated": "Consolidated",
+   "cumulative": "Non-cumulative",
+   "difference": "00:03:33",
+   "exchdisstime": "07-Aug-2018 17:14:03",
+   "filingDate": "07-Aug-2018 17:10",
+   "financialYear": "01-Apr-2018 To 31-Mar-2019",
+   "format": "New",
+   "fromDate": "01-Apr-2018",
+   "indAs": "Ind-AS New",
+   "industry": "-",
+   "isin": "INE002A01018",
+   "oldNewFlag": "N",
+   "params": "01-Apr-201830-Jun-2018Q1UNNCNERELIANCE",
+   "period": "Quarterly",
+   "reInd": "N",
+   "relatingTo": "First Quarter",
+   "resultDescription": null,
+   "resultDetailedDataLink": null,
+   "seqNumber": "1047326",
+   "symbol": "RELIANCE",
+   "toDate": "30-Jun-2018",
+   "xbrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_37522_30151_27072018083745_WEB.xml"
+  },
+  "kinds": [
+   [
+    "Consolidated",
+    "Ind-AS New",
+    "New",
+    "Non-cumulative"
+   ],
+   [
+    "Consolidated",
+    "Ind-AS New",
+    "Old",
+    "Non-cumulative"
+   ],
+   [
+    "Consolidated",
+    "Ind-AS",
+    "Old",
+    "Non-cumulative"
+   ],
+   [
+    "Consolidated",
+    "Non-Ind-AS",
+    "Old",
+    "Non-cumulative"
+   ],
+   [
+    "Non-Consolidated",
+    "Ind-AS New",
+    "New",
+    "Non-cumulative"
+   ],
+   [
+    "Non-Consolidated",
+    "Ind-AS New",
+    "Old",
+    "Non-cumulative"
+   ],
+   [
+    "Non-Consolidated",
+    "Ind-AS",
+    "Old",
+    "Non-cumulative"
+   ],
+   [
+    "Non-Consolidated",
+    "Non-Ind-AS",
+    "Old",
+    "Non-cumulative"
+   ]
   ]
  },
- "yf_annual": {
-  "cols": [
-   "2026-03-31",
-   "2025-03-31",
-   "2024-03-31",
-   "2023-03-31"
-  ]
+ "xbrl_new_RELIANCE": {
+  "url": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_117298_1348254_16012025082021.xml",
+  "status": 200,
+  "bytes": 57588,
+  "secs": 0.3,
+  "head": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xbrli:xbrl xmlns:in-bse-fin=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin\" xmlns:in-bse-fin-roles=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin-roles\" xmlns:in-bse-fin-ent=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin/in-bse-fin-ent\" xmlns:in-bse-fin-type=\"http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin-types\" xmlns:xbrldt=\"http://xbrl.org/2005/xbrldt\" xmlns:nonnum=\"http://www.xbrl.org/dtr/type/non-numeric\" xmlns:link=\"http://www.xbrl.org/2003/linkbase\" xmlns:net=\"http://www.xbrl.org/2009/role/net\" xmlns:num=\"http://w"
  },
- "yf_bs": {
-  "cols": [
-   "2026-03-31",
-   "2025-03-31",
-   "2024-03-31",
-   "2023-03-31",
-   "2022-03-31"
-  ],
-  "rows": [
-   "Treasury Shares Number",
-   "Ordinary Shares Number",
-   "Share Issued",
-   "Total Debt",
-   "Tangible Book Value",
-   "Invested Capital",
-   "Working Capital",
-   "Net Tangible Assets",
-   "Capital Lease Obligations",
-   "Common Stock Equity",
-   "Total Capitalization",
-   "Total Equity Gross Minority Interest",
-   "Minority Interest",
-   "Stockholders Equity",
-   "Other Equity Interest",
-   "Retained Earnings",
-   "Additional Paid In Capital",
-   "Capital Stock",
-   "Common Stock",
-   "Total Liabilities Net Minority Interest",
-   "Total Non Current Liabilities Net Minority Interest",
-   "Other Non Current Liabilities",
-   "Preferred Securities Outside Stock Equity",
-   "Non Current Pension And Other Postretirement Benefit Plans",
-   "Tradeand Other Payables Non Current",
-   "Non Current Deferred Revenue",
-   "Non Current Deferred Taxes Liabilities",
-   "Long Term Debt And Capital Lease Obligation",
-   "Long Term Capital Lease Obligation",
-   "Current Liabilities"
-  ]
+ "xbrl_old_RELIANCE": {
+  "url": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_37522_30151_27072018083745_WEB.xml",
+  "status": 200,
+  "bytes": 37497,
+  "secs": 0.3,
+  "head": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xbrli:xbrl xmlns:in-bse-fin=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin\" xmlns:in-bse-fin-roles=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin-roles\" xmlns:in-bse-fin-ent=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin/in-bse-fin-ent\" xmlns:in-bse-fin-type=\"http://www.bseindia.com/xbrl/fin/2018-03-31/in-bse-fin-types\" xmlns:xbrldt=\"http://xbrl.org/2005/xbrldt\" xmlns:nonnum=\"http://www.xbrl.org/dtr/type/non-numeric\" xmlns:link=\"http://www.xbrl.org/2003/linkbase\" xmlns:net=\"http://www.xbrl.org/2009/role/net\" xmlns:num=\"http://w"
  },
- "yf_earnings_dates": "                           EPS Estimate  Reported EPS  Surprise(%)\nEarnings Date                                                     \n2026-10-08 06:00:00-04:00         38.07           NaN          NaN\n2026-07-08 20:00:00-04:00         37.33         38.28         2.54\n2026-04-09 06:00:00-04:00         38.11         37.92        -0.50\n2026-01-12 05:00:00-05:00         36.19         36.59         1.10\n2025-10-09 06:00:00-04:00         34.71         35.74         2.95\n2025-07-10 06:00:00-04:00         33.75         35.27         4.49\n2025-04-10 06:00:00-04:00         35.09         33.79        -3."
+ "nse_ann_all": {
+  "url": "https://www.nseindia.com/api/corporate-announcements?index=equities&from_date=07-10-2026&to_date=08-10-2026",
+  "status": 200,
+  "bytes": 795822,
+  "secs": 0.3,
+  "head": "[{\"an_dt\":\"08-Oct-2026 17:19:16\",\"attFileSize\":\"1.24 MB\",\"attchmntFile\":\"https://nsearchives.nseindia.com/corporate/NAGREEKCAP_08102026171829_74_5__covering_letter_with_attachment__1__OCR_SD.pdf\",\"attchmntText\":\"Nagreeka Capital & Infrastructure Limited has informed the Exchange about Certificate under SEBI (Depositories and Participants) Regulations, 2018\",\"bflag\":null,\"csvName\":null,\"desc\":\"Certificate under SEBI (Depositories and Participants) Regulations, 2018\",\"difference\":\"00:00:02\",\"dt\":\"08102026171916\",\"exchdisstime\":\"08-Oct-2026 17:19:18\",\"fileSize\":\"1.24 MB\",\"hasXbrl\":true,\"old_new\":"
+ },
+ "nse_events": {
+  "url": "https://www.nseindia.com/api/event-calendar",
+  "status": 200,
+  "bytes": 59755,
+  "secs": 0.4,
+  "head": "[{\"symbol\":\"ANANDRATHI\",\"company\":\"Anand Rathi Wealth Limited\",\"purpose\":\"Financial Results/Dividend\",\"bm_desc\":\"i. Consider, approve and take on record the Unaudited standalone and consolidated financial results of the Company for the Second quarter and Half year ended 30th September, 2026 after these results are reviewed by the Audit Committee of the Board.ii. Consider declaration of interim dividend on equity shares of the Company for the Financial Year 2026-27, if any.iii. Any Other matter with permission of the chair.\",\"date\":\"09-Oct-2026\"},{\"symbol\":\"BALLARPUR\",\"company\":\"Ballarpur Indus"
+ },
+ "nse_shp": {
+  "url": "https://www.nseindia.com/api/corporate-share-holdings-master?index=equities&symbol=HDFCBANK",
+  "status": 200,
+  "bytes": 18539,
+  "secs": 0.4,
+  "head": "[{\"broadcastDate\":\"06-OCT-2026 17:00:45\",\"cgTimeStamp\":null,\"countString\":null,\"date\":\"30-SEP-2026\",\"desc\":\"NEW_1\",\"employeeTrusts\":\"0\",\"format\":null,\"index\":\"-\",\"industry\":\"-\",\"isin\":\"INE040A01018\",\"name\":\"HDFC Bank Limited\",\"newColumn\":true,\"pr_and_prgrp\":\"0\",\"promoterDematNotes\":\"\",\"publicShareholdingNotes\":\"\",\"public_val\":\"100\",\"recordId\":\"213324\",\"remarksWeb\":\"N\",\"revisedData\":\"N\",\"revisedDate\":null,\"revisedRemark\":null,\"revisedStatus\":\"-\",\"revisionDate\":null,\"revisionRemark\":null,\"shareholdingPatternNotes\":\"\",\"submissionDate\":\"06-OCT-2026\",\"symbol\":\"HDFCBANK\",\"systemDate\":\"06-OCT-2026 17"
+ },
+ "nse_quote": {
+  "url": "https://www.nseindia.com/api/quote-equity?symbol=TCS",
+  "status": 403,
+  "bytes": 399,
+  "secs": 0.0,
+  "head": "<HTML><HEAD>\n<TITLE>Access Denied</TITLE>\n</HEAD><BODY>\n<H1>Access Denied</H1>\n \nYou don't have permission to access \"http&#58;&#47;&#47;www&#46;nseindia&#46;com&#47;api&#47;quote&#45;equity&#63;\" on this server.<P>\nReference&#32;&#35;18&#46;6ca71002&#46;1791460190&#46;f71b8f0b\n<P>https&#58;&#47;&#47;errors&#46;edgesuite&#46;net&#47;18&#46;6ca71002&#46;1791460190&#46;f71b8f0b</P>\n</BODY>\n</HTML>\n"
+ },
+ "nse_quote_trade": {
+  "url": "https://www.nseindia.com/api/quote-equity?symbol=TCS&section=trade_info",
+  "status": 403,
+  "bytes": 399,
+  "secs": 0.0,
+  "head": "<HTML><HEAD>\n<TITLE>Access Denied</TITLE>\n</HEAD><BODY>\n<H1>Access Denied</H1>\n \nYou don't have permission to access \"http&#58;&#47;&#47;www&#46;nseindia&#46;com&#47;api&#47;quote&#45;equity&#63;\" on this server.<P>\nReference&#32;&#35;18&#46;6ca71002&#46;1791460190&#46;f71b8ff9\n<P>https&#58;&#47;&#47;errors&#46;edgesuite&#46;net&#47;18&#46;6ca71002&#46;1791460190&#46;f71b8ff9</P>\n</BODY>\n</HTML>\n"
+ },
+ "worldbank_cpi": {
+  "url": "https://api.worldbank.org/v2/country/IN/indicator/FP.CPI.TOTL.ZG?format=json&per_page=100",
+  "status": 200,
+  "bytes": 14939,
+  "secs": 0.8,
+  "head": "[{\"page\":1,\"pages\":1,\"per_page\":100,\"total\":66,\"sourceid\":\"2\",\"lastupdated\":\"2026-07-13\"},[{\"indicator\":{\"id\":\"FP.CPI.TOTL.ZG\",\"value\":\"Inflation, consumer prices (annual %)\"},\"country\":{\"id\":\"IN\",\"value\":\"India\"},\"countryiso3code\":\"IND\",\"date\":\"2025\",\"value\":2.39884954182294,\"unit\":\"\",\"obs_status\":\"\",\"decimal\":1},{\"indicator\":{\"id\":\"FP.CPI.TOTL.ZG\",\"value\":\"Inflation, consumer prices (annual %)\"},\"country\":{\"id\":\"IN\",\"value\":\"India\"},\"countryiso3code\":\"IND\",\"date\":\"2024\",\"value\":4.95303550973661,\"unit\":\"\",\"obs_status\":\"\",\"decimal\":1},{\"indicator\":{\"id\":\"FP.CPI.TOTL.ZG\",\"value\":\"Inflation, con"
+ }
 }
