@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["data/REQUEST", "data/REQUEST_INDICES", "data/REQUEST_SHARES"]   # touch to trigger a refresh
+    paths: ["data/REQUEST", "data/REQUEST_INDICES", "data/REQUEST_SHARES", "data/requests.json"]   # touch to trigger a refresh
   schedule:
     - cron: "30 10 * * 1-5"          # 16:00 IST on weekdays, after market close
 
@@ -27,6 +27,7 @@ jobs:
       - name: Install
         run: pip install pandas numpy yfinance requests
       - name: Update universe and daily prices
+        continue-on-error: true    # NSE index history and the commit still run if Yahoo fails; data/_fetch_report.json says what failed
         run: python scripts/fetch_data.py --years 15 ${{ github.event_name == 'workflow_dispatch' && '--full' || '' }}
       - name: Update every NSE index (history, P/E, P/B, dividend yield)
         continue-on-error: true

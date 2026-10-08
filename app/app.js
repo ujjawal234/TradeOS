@@ -163,7 +163,7 @@
     const pk = E.usesPit(spec), inPit = (s) => !!pk && S.pitSyms.has(s);
     const need = [...new Set(E.symbolsNeeded(spec, S.man.universes).concat(["NIFTY"]))];
     const missing = need.filter((s) => !inPit(s) && !S.man.symbols[s]);
-    if (missing.length) throw new Error(`No data for ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? "…" : ""}. Use NSE tickers from the Nifty 200 / F&O list.`);
+    if (missing.length) throw new Error(`No data for ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? "…" : ""}. Check the ticker; for anything not in TradeOS yet, use the request_data tool.`);
     if (pk) await ensurePit();
     if (E.needsFull(spec)) { await ensureFull(need.filter((s) => !inPit(s)), onProgress); await ensurePitFull(need.filter(inPit), onProgress); }
     if (spec.type === "intraday") await ensureIntraday(spec.symbols, spec.bar_minutes, onProgress);
@@ -387,8 +387,8 @@
           toast(`Preparing ${f.name || "photo"}…`);
           await addImage(list, f, f.name && f.name !== "image.png" ? f.name : `Photo ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`);
         } else if (f.type === "application/pdf" || /\.pdf$/i.test(f.name)) {
-          toast("Reading " + f.name + "…"); list.push({ kind: "text", name: f.name, text: (await pdfText(f)).slice(0, 60000) });
-        } else list.push({ kind: "text", name: f.name, text: (await f.text()).slice(0, 60000) });
+          toast("Reading " + f.name + "…"); list.push({ kind: "text", name: f.name, text: (await pdfText(f)).slice(0, 250000) });
+        } else list.push({ kind: "text", name: f.name, text: (await f.text()).slice(0, 250000) });
       } catch (e) { toast(`Couldn't use ${f.name || "that file"}: ${e.message || e}`); }
     }
     renderAttach(list, box);
@@ -504,7 +504,8 @@ RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime an
   shift(x,n) prev(x) change(x,n) roc(x,n)(%) ret(x,n)(fraction) sum(x,n) median(x,n) stdev(x,n) zscore(x,n) volatility(x,n)(ann.%) pct_rank(x,n)(0-100) slope(x,n) drawdown(x)(% from peak) days_since(cond) count_true(cond,n)
   adx(14) plus_di(14) minus_di(14) stoch_k(14) stoch_d(14,3) cci(20) mfi(14) williams_r(14) obv() vwap(20) corr(a,b,n) beta(a,b,n) cross_above(a,b) cross_below(a,b) abs max min log sqrt sign iff(cond,a,b) clip(x,lo,hi)
   ref("SYMBOL", expr): expr computed on another symbol, aligned by date — e.g. entry "close > sma(close,50) and ref(\\"NIFTY\\", close > sma(close,200))", or beta(ret(close,1), ref("NIFTY", ret(close,1)), 252).
- Operators + - * / % **, comparisons, and/or/not. No company fundamentals (only index P/E, P/B, DY). Daily types run on daily bars; use type "intraday" for anything within the day.
+ Operators + - * / % **, comparisons, and/or/not. Company fundamentals and macro series: see COMPANY RESULTS and MACRO SERIES in DATA. Daily types run on daily bars; use type "intraday" for anything within the day.
+ EXPRESSIVENESS: rotation with expression factors, filters, expression weighting, short_n, regime and target_vol is a general portfolio engine (long-only, long-short, market-neutral, factor tilts, macro-switching, risk parity, pairs via a two-symbol universe); rule strategies with ref() cross-asset and macro conditions cover event and timing systems; several agents together form a multi-strategy book. Build whatever the user describes from these.
 SURVIVORSHIP: nifty50/nifty200/nifty500/fno are TODAY's members over the whole history (flattering). top500pit/top200pit/top100pit (if listed in DATA) are survivorship-free — use them when the user asks to remove survivorship bias; don't say it can't be done.
 TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (train before, test from) or null}.`;
 
@@ -533,12 +534,12 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
       vs_sma50_pct: +((c[n - 1] / ev("sma(close,50)") - 1) * 100).toFixed(2), vs_sma200_pct: +((c[n - 1] / ev("sma(close,200)") - 1) * 100).toFixed(2), rsi14: +(+ev("rsi(close,14)")).toFixed(1),
       vol_20d_ann_pct: +(+ev("volatility(close,20)")).toFixed(1), from_52w_high_pct: +((c[n - 1] / hi - 1) * 100).toFixed(2), from_52w_low_pct: +((c[n - 1] / lo - 1) * 100).toFixed(2) };
   }
-  function rankTool(universe, days) {
-    const list = Array.isArray(universe) ? universe : (S.man.universes[String(universe).toLowerCase()] || []);
+  function rankTool(universe, days, top = 20, bottom = 10) {
+    const list = Array.isArray(universe) ? universe.map(E.symKey) : (S.man.universes[String(universe).toLowerCase().replace(/[^a-z0-9]/g, "")] || []);
     const out = list.map((s) => { const f = S.light[s]; if (!f || f.c.length <= days) return null; const c = f.c; return [s, +((c[c.length - 1] / c[c.length - 1 - days] - 1) * 100).toFixed(2)]; }).filter(Boolean).sort((a, b) => b[1] - a[1]);
-    return { universe, days, top: out.slice(0, 12), bottom: out.slice(-6).reverse(), count: out.length };
+    return top === "all" ? { universe, days, all: out, count: out.length } : { universe, days, top: out.slice(0, Math.max(1, +top || 20)), bottom: out.slice(-Math.max(0, +bottom || 10)).reverse(), count: out.length };
   }
-  async function optionSnapshot(sym, onDate) {
+  async function optionSnapshot(sym, onDate, nExp = 3, rangePct = 8) {
     const U = S.man.options?.underlyings || {};
     if (!U[sym]) return { symbol: sym, error: `No NSE option data for ${sym}. Covered: ${Object.keys(U).length} underlyings (indices ${Object.keys(U).filter((k) => U[k].kind === "index").join(", ")} and F&O stocks).` };
     await ensureOptions([sym], "c"); E.initOptionSummaries(); await ensureOptions([sym], "s");
@@ -548,9 +549,9 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
     const day = od.d[i], F = od.F[i], chains = (od.ch[i] || []).slice().sort((a, b) => a[0] - b[0]);
     const r2x = (x) => x == null || !isFinite(x) ? null : Math.round(x * 100) / 100;
     const out = { symbol: sym, date: E.isoOf(day), futures: r2x(F), spot: r2x(od.S[i]), expiries: [] };
-    for (const [ex, ks, C, P] of chains.slice(0, 3)) {
+    for (const [ex, ks, C, P] of chains.slice(0, Math.max(1, +nExp || 3))) {
       const T = ((ex - day) + 0.25) / 365, rows = [];
-      ks.forEach((K, j) => { if (Math.abs(K / F - 1) > 0.08) return;
+      ks.forEach((K, j) => { if (Math.abs(K / F - 1) > (+rangePct || 8) / 100) return;
         const c = C[j], p = P[j], iv = (v, k) => v == null || v === 0 ? null : r2x(E.impliedVol(Math.abs(v), F, K, T, 0.065, k) * 100);
         rows.push({ strike: K, call: c == null ? null : Math.abs(c), call_traded: c > 0, call_iv: iv(c, "CE"), put: p == null ? null : Math.abs(p), put_traded: p > 0, put_iv: iv(p, "PE") }); });
       out.expiries.push({ expiry: E.isoOf(ex), days_left: ex - day, strikes: rows });
@@ -569,16 +570,16 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
         inputSchema: { type: "object", properties: { spec: { type: "object" }, test: { type: "object", properties: { start: { type: "string" }, end: { type: "string" }, split: { type: "string" } } } }, required: ["spec"] },
         execute: async (input) => { const spec = E.normalize(input.spec, S.man.universes), test = { start: "2012-01-01", ...(input.test || {}) };
           progress(`Backtesting ${TYPE_LABEL[spec.type].toLowerCase()} on ${universeLabel(spec)}…`); const res = await runSpec(spec, test); return compactRes(res, test); } },
-      { name: "market_snapshot", description: "Latest price, 1w–1y returns, distance from 50/200-day averages and 52-week range, RSI(14) and volatility for up to 15 NSE symbols or sector baskets.",
+      { name: "market_snapshot", description: "Latest price, 1w–1y returns, distance from 50/200-day averages and 52-week range, RSI(14) and volatility for any list of symbols (stocks, indices, global assets, sector baskets).",
         inputSchema: { type: "object", properties: { symbols: { type: "array", items: { type: "string" } } }, required: ["symbols"] },
-        execute: async (input) => { progress("Reading market data…"); return (input.symbols || []).slice(0, 15).map((s) => snapshot(String(s).toUpperCase().replace(/\.NS$/, ""))); } },
-      { name: "rank", description: "Rank a universe (nifty50, nifty200, fno, sectors, or a group/list) by return over N trading days; returns the top 12 and bottom 6.",
-        inputSchema: { type: "object", properties: { universe: {}, days: { type: "number" } }, required: ["universe"] },
-        execute: async (input) => { progress("Ranking " + (Array.isArray(input.universe) ? "your list" : input.universe) + "…"); return rankTool(input.universe, Math.max(5, Math.trunc(Number(input.days) || 63))); } },
+        execute: async (input) => { progress("Reading market data…"); return (input.symbols || []).slice(0, 500).map((s) => snapshot(String(s).toUpperCase().replace(/\.NS$/, ""))); } },
+      { name: "rank", description: "Rank any universe (a group name or a list of any symbols) by return over N trading days; returns the top and bottom (default 20/10; top \"all\" returns the full ranking).",
+        inputSchema: { type: "object", properties: { universe: {}, days: { type: "number" }, top: {}, bottom: { type: "number" } }, required: ["universe"] },
+        execute: async (input) => { progress("Ranking " + (Array.isArray(input.universe) ? "your list" : input.universe) + "…"); return rankTool(input.universe, Math.max(1, Math.trunc(Number(input.days) || 63)), input.top, input.bottom); } },
       { name: "list_agents", description: "The team's existing agents with status and headline results.", execute: async () => [...S.agents.values()].map(agentBrief) },
       ...(S.man.options ? [{ name: "option_data", description: "Real NSE option data for an index or F&O stock on a date (default latest): the chain for the nearest expiries (strike, call and put price, implied vol, whether it traded that day), futures price, 30-day ATM implied volatility with its 1-year percentile, put/call ratio, max pain and skew. Use it to answer questions about option prices, IV or positioning, and to check strikes before proposing an option strategy.",
-        inputSchema: { type: "object", properties: { symbol: { type: "string" }, date: { type: "string" } }, required: ["symbol"] },
-        execute: async (input) => { const sym = E.symKey(input.symbol); progress(`Reading ${sym} options…`); return optionSnapshot(sym, input.date); } }] : []),
+        inputSchema: { type: "object", properties: { symbol: { type: "string" }, date: { type: "string" }, expiries: { type: "number", description: "how many expiries (default 3)" }, strike_range_pct: { type: "number", description: "strikes within this % of the futures price (default 8)" } }, required: ["symbol"] },
+        execute: async (input) => { const sym = E.symKey(input.symbol); progress(`Reading ${sym} options…`); return optionSnapshot(sym, input.date, input.expiries, input.strike_range_pct); } }] : []),
       ...researchTools(progress),
     ];
   }
@@ -768,11 +769,11 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
 
   // ================================================================ MAIN AGENT
   function mainPrompt(userText, answers, attachments) {
-    const hist = S.mainMsgs.slice(-14).map((m) => {
+    const hist = S.mainMsgs.slice(-40).map((m) => {
       if (m.role === "user") return `USER: ${m.text}${m.answers ? "\nUSER ANSWERS: " + JSON.stringify(m.answers) : ""}${m.attachments?.length ? `\n[attached: ${attNames(m.attachments)}]` : ""}`;
       return `MAIN AGENT: ${m.text}${m.questions?.length ? "\n[asked: " + m.questions.map((q) => q.label).join("; ") + "]" : ""}${m.proposals?.length ? "\n[proposed: " + m.proposals.map((p) => `${p.name}${p.created ? " (created as agent " + p.created + ")" : ""}`).join("; ") + "]" : ""}${m.att_notes ? "\n[the attachments showed: " + m.att_notes + "]" : ""}`;
     }).join("\n\n");
-    return `You are the MAIN AGENT of TradeOS, the research and strategy desk of a small team investing and trading in Indian markets. You think and work like the best of a top fund house rolled into one: chief investment strategist (macro, rates, currency, liquidity, flows, global cross-asset), sector and equity research analyst (business models, earnings, margins, balance sheets, valuation, management actions), derivatives and financial-products specialist (options, futures, structures, volatility, hedging), and quantitative portfolio manager (systematic rules, factor portfolios, risk, sizing). Your job is to find what makes money, explain why with evidence, and turn it into strategies the team can test and run — built exactly the way the user wants them. You never place real trades; the system backtests and paper-trades.
+    return `You are the MAIN AGENT of TradeOS — the best finance mind in the world, working for this team investing and trading in Indian and global markets. You combine: a legendary global macro investor (growth and inflation cycles, central-bank reaction functions, rates, curves, currencies, liquidity, credit, commodities, flows, geopolitics); a top-ranked buy-side and sell-side equity analyst (business models, unit economics, moats, industry structure, management and capital allocation, accounting quality, earnings revisions, valuation by DCF, reverse DCF, multiples, sum-of-the-parts); a derivatives and financial-products head (options, futures, volatility surfaces, skew, carry, structured payoffs, hedging, margin); a quant researcher (factors, statistics, regime models, robust backtesting, overfitting control); and a portfolio manager who compounds capital (sizing, correlation, drawdown control, conviction). You know financial history, market microstructure, Indian regulation and taxes (SEBI rules, F&O margins, STT, LTCG/STCG) and India's economy, sectors and companies deeply. Your job: find what makes money, explain why with evidence, connect the dots others miss, and turn it into strategies the team can test and run — built exactly the way the user wants them. You never place real trades; the system backtests and paper-trades.
 
 ${ordersBlock()}
 
@@ -783,7 +784,9 @@ HOW YOU WORK
 - Judge results by profit: CAGR, total return and final value against the benchmark; state drawdown as a number. No lectures, no moralising, no disclaimers — the app shows those.
 - Ask questions only when a needed value is missing and has no sensible default: at most 3 question cards, each with a default. If the user says "just do it", use defaults. Never ask again what was already answered.
 - When the user states a lasting preference ("always…", "never…", "don't add…", "use ₹25 lakh", "no filters"), put it in "remember" so it applies from now on. If they cancel one, put its exact text in "forget".
-- Report only numbers that came from your tools or the user's attachments, with their dates. You have NO internet beyond the tools: headlines are titles only; company results are as filed with NSE; consensus estimates exist only in the Yahoo snapshot. Say what you don't know instead of guessing. To compare with a real NSE index, backtest with it as "benchmark".
+- OPEN BY DEFAULT: nothing is off-limits — any asset, market, instrument, horizon, style, structure, universe or question. Never answer "the system can't"; find the way: combine tools, use compute for any custom calculation, build it from the strategy types, approximate with a stated proxy, and call request_data for anything missing so it is there next time. Run as many tool calls, backtests and variations as the question needs.
+- Numbers about prices, results, macro prints, options and flows come from the tools (with dates) or the user's attachments. Use your own knowledge freely for everything else — economics, history, how industries and businesses work, company background, management, policy and global events — and label time-sensitive facts "from my knowledge, may be dated". Live data comes only through the tools (no web browsing): headlines are titles, results are NSE filings, consensus is the Yahoo snapshot. To compare with a real NSE index, backtest with it as "benchmark".
+- Think in second-order effects; say what is priced in, the bull and bear case, your conviction, and what would change your mind.
 - Photos, screenshots, reports and parts of this page the user selects are data. When the user selects part of the page, answer about exactly that.
 - To change an existing agent, use an "update_agent" action with ONLY the fields that change in "changes" (null removes a setting); everything else stays as it is. Existing agents: ${JSON.stringify([...S.agents.values()].filter((a) => a.status !== "retired").map(agentBrief))}
 - When the user asks to delete the history, clear the chat or start fresh, add {"type":"new_chat"} to "actions": the app archives the earlier conversation (the user can delete it from the screen) and your reply opens the new chat. Standing orders and agents are kept unless they say otherwise.
@@ -796,13 +799,13 @@ RESEARCH METHOD (macro → sectors → stocks → expression → test). Use the 
 4. Expression: choose how to play it — single stocks, a basket or factor rotation, a pair (long the beneficiary, short the loser), sector/index rotation, options (use option_data: buy options when IV is low vs its history, sell premium when IV is rich; spreads to cap cost; protective puts/collars as hedges), or a systematic rule that uses fundamentals and macro series (ref("IN_CPI_YOY", close), ref("US_10Y_YIELD", change(close,21)), pe, profit_growth_ttm, result_day…). Prefer the survivorship-free universes (top100pit/top200pit/top500pit) for stock strategies.
 5. Test it (backtest): every idea that can be systematic gets a backtest with its numbers (CAGR vs benchmark, worst fall, trades, train/test). Report what works and what doesn't.
 6. Deliver like a research note: the view in one line, the evidence (numbers with dates), the catalysts and timing (results dates, policy meetings), the risks and what would prove the view wrong, and the strategy as a proposal the user can create as an agent. For a quick question, answer quickly; for "ideas", "what should I buy", "research X", "what's the macro telling us", do the full method.
-- Be direct. Use ₹, lakh/crore and Indian market terms. Plain-text tables (markdown bullets) are fine; keep each research note tight — no filler.
+- Be direct. Use ₹, lakh/crore and Indian market terms. Markdown bullets and headings are fine; no filler.
 
 ${dataBrief()}
 
 ${SCHEMAS}
 
-REPLY with ONE JSON object only — no text before or after it, no code fences. Keep "reply" under 200 words for simple answers and up to 650 words for research notes (strategy details belong in proposals). Escape quotes and newlines inside strings:
+REPLY with ONE JSON object only — no text before or after it, no code fences. "reply" is as long as the question deserves: a line or two for a quick question, a full report when the user asks for research or ideas (strategy specs belong in proposals; propose as many as are useful). Escape quotes and newlines inside strings:
 {"reply":"markdown for the user",
  "questions":[{"id":"short_id","label":"Question","type":"number"|"date"|"select"|"multiselect"|"text","options":["for select types"],"default":value,"unit":"₹ or %","help":"one line"}],
  "proposals":[{"name":"Short name","spec":{...},"test":{"start":"2012-01-01","end":null,"split":"2021-01-01"},"explanation":"what the rules do","rationale":"why it may work and when it fails","assumptions":["..."]}],
@@ -835,14 +838,14 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
         + (out?._unstructured ? "\n\n_(This answer came back without the usual structure, so no question cards or proposals could be shown. Reply “please put that in proposals” to get them.)_" : "");
       const questions = Array.isArray(out?.questions) ? out.questions.filter((q) => q && q.label).slice(0, 6) : [];
       const proposals = [];
-      for (const p of (Array.isArray(out?.proposals) ? out.proposals : []).filter((x) => x && typeof x === "object").slice(0, 3)) {
+      for (const p of (Array.isArray(out?.proposals) ? out.proposals : []).filter((x) => x && typeof x === "object").slice(0, 12)) {
         const prop = { id: newId("p"), name: String(p.name || "Strategy"), explanation: String(p.explanation || ""), rationale: String(p.rationale || ""), assumptions: Array.isArray(p.assumptions) ? p.assumptions.map(String) : [],
           test: { start: p.test?.start || "2012-01-01", end: p.test?.end || null, split: p.test?.split || null }, raw: p.spec || {} };
         try { prop.spec = E.normalize(p.spec || {}, S.man.universes); } catch (e) { prop.error = e.message; }
         proposals.push(prop);
       }
       const fresh = (Array.isArray(out?.actions) ? out.actions : []).some((a) => a && a.type === "new_chat");
-      const actions = (Array.isArray(out?.actions) ? out.actions : []).filter((a) => a && a.type !== "new_chat" && S.agents.has(a.agent_id)).slice(0, 4).map((a) => ({ ...a, id: newId("x") }));
+      const actions = (Array.isArray(out?.actions) ? out.actions : []).filter((a) => a && a.type !== "new_chat" && S.agents.has(a.agent_id)).slice(0, 30).map((a) => ({ ...a, id: newId("x") }));
       if (fresh) await startNewMainChat(true);
       const notes = atts.some((x) => x.kind === "image" || x.kind === "snippet") && typeof out?.attachment_notes === "string" ? out.attachment_notes.slice(0, 1200) : "";
       const learned = await applyOrderChanges("main", null, out);

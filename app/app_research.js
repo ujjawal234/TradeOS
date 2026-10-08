@@ -28,7 +28,7 @@
   const ord = (n) => n == null ? "–" : `${n}${(n % 100 >= 11 && n % 100 <= 13) ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"}`;
 
   // ---- one company: results, valuation vs its own history and peers, shareholding, price, options, events, filings, headlines
-  async function companyResearch(symIn) {
+  async function companyResearch(symIn, opts = {}) {
     const sym = E.symKey(symIn), meta = S.man.symbols[sym] || {}, C = S.man.fund?.companies || {};
     if (!meta.kind && !C[sym]) return { symbol: sym, error: `Unknown symbol ${sym}. Use an NSE ticker (Nifty 500 / F&O stocks have full data).` };
     const industry = meta.industry || "";
@@ -47,7 +47,7 @@
     const Q = E.fundQuarterly(sym), raw = (S.fundLoaded.has(sym) && C[sym]) ? C[sym] : null;
     if (Q && raw) {
       const n = Q.q.length, rows = [];
-      for (let i = n - 1; i >= Math.max(0, n - 12); i--) rows.push({ quarter: E.isoOf(Q.q[i]), filed: E.isoOf(Q.k[i] - 1), sales_cr: r1(Q.sales[i]), sales_yoy_pct: r1(Q.sales_growth[i]), ebitda_margin_pct: r1(Q.opm[i]),
+      const nq = opts.quarters > 0 ? Math.trunc(opts.quarters) : n; for (let i = n - 1; i >= Math.max(0, n - nq); i--) rows.push({ quarter: E.isoOf(Q.q[i]), filed: E.isoOf(Q.k[i] - 1), sales_cr: r1(Q.sales[i]), sales_yoy_pct: r1(Q.sales_growth[i]), ebitda_margin_pct: r1(Q.opm[i]),
         profit_cr: r1(Q.profit[i]), profit_yoy_pct: r1(Q.profit_growth[i]), net_margin_pct: r1(Q.npm[i]), ...(raw.bank ? { gnpa_pct: r2r(Q.gnpa[i]), nnpa_pct: r2r(Q.nnpa[i]), nii_yoy_pct: r1(Q.nii_growth[i]) } : {}) });
       const i = n - 1;
       out.results = { basis: raw.basis, latest_quarter: E.isoOf(Q.q[i]), filed: E.isoOf(Q.k[i] - 1), ttm: { sales_cr: r1(Q.sales_ttm[i]), profit_cr: r1(Q.profit_ttm[i]), eps_rs: r2r(Q.eps_ttm[i]),
@@ -61,13 +61,13 @@
         price_to_sales: r2r(psNow), mcap_cr: r1(evalLast("mcap", f)), earnings_yield_pct: r2r(evalLast("earnings_yield", f)) };
     }
     const sh = E.fundQuarterly && S.fundLoaded.has(sym) ? (await (async () => { const pp = await ensureRawFund(sym); return pp?.shp; })()) : null;
-    if (sh && sh.length) out.shareholding = { promoter_pct_history: sh.slice(-8).map(([k, v]) => [E.isoOf(k - 1), v]) };
+    if (sh && sh.length) out.shareholding = { promoter_pct_history: sh.slice(-(opts.quarters > 0 ? Math.trunc(opts.quarters) : sh.length)).map(([k, v]) => [E.isoOf(k - 1), v]) };
     if (peers.length > 1) out.peers = peerTable(sym, peers);
     if (S.man.options?.underlyings?.[sym]) { try { const o = await optionSnapshot(sym); out.options = { iv30_pct: o.iv30_pct, iv_1y_percentile: o.iv_1y_percentile, put_call_oi: o.put_call_oi_ratio, max_pain: o.max_pain, skew_vol_pts: o.skew_vol_pts, date: o.date }; } catch (e) { /* optional */ } }
-    const ev = (res.events?.items || []).filter((e) => e.sym === sym).slice(0, 5); if (ev.length) out.upcoming_events = ev;
-    const fl = (res.filings?.items || []).filter((x) => x.sym === sym).slice(0, 12).map((x) => ({ time: x.t, filing: x.desc, detail: x.text })); if (fl.length) out.recent_filings = fl;
+    const ev = (res.events?.items || []).filter((e) => e.sym === sym); if (ev.length) out.upcoming_events = ev;
+    const fl = (res.filings?.items || []).filter((x) => x.sym === sym).slice(0, opts.filings || 40).map((x) => ({ time: x.t, filing: x.desc, detail: x.text })); if (fl.length) out.recent_filings = fl;
     const nm = (meta.name || "").split(/\s+/)[0];
-    const hl = (res.headlines?.items || []).filter((x) => (x.syms || []).includes(sym) || (nm.length > 4 && new RegExp(`\\b${nm}\\b`, "i").test(x.title))).slice(0, 10).map((x) => ({ time: x.t, source: x.src, headline: x.title }));
+    const hl = (res.headlines?.items || []).filter((x) => (x.syms || []).includes(sym) || (nm.length > 4 && new RegExp(`\\b${nm}\\b`, "i").test(x.title))).slice(0, opts.headlines || 30).map((x) => ({ time: x.t, source: x.src, headline: x.title }));
     if (hl.length) out.headlines = hl;
     return out;
   }
@@ -84,7 +84,7 @@
     rows.sort((a, b) => (b.mcap_cr ?? 0) - (a.mcap_cr ?? 0));
     const med = (k) => { const xs = rows.map((r) => r[k]).filter((x) => x != null).sort((a, b) => a - b); return xs.length ? xs[xs.length >> 1] : null; };
     return { industry_medians: { pe: med("pe"), sales_growth_ttm: med("sales_growth_ttm"), profit_growth_ttm: med("profit_growth_ttm"), ebitda_margin: med("ebitda_margin"), ret_6m_pct: med("ret_6m_pct") },
-      largest: rows.slice(0, 10), this_company_rank_by_mcap: rows.findIndex((r) => r.symbol === sym) + 1, peers_with_data: rows.length };
+      largest: rows, this_company_rank_by_mcap: rows.findIndex((r) => r.symbol === sym) + 1, peers_with_data: rows.length };
   }
 
   // ---- macro and market dashboard: the latest prints plus what the market is pricing
@@ -120,11 +120,12 @@
   }
 
   // ---- screen any universe on any rule-language expressions (latest values), with the key metrics alongside
-  async function screenTool({ universe, filters, rank_by, top, ascending }, progress) {
+  async function screenTool({ universe, filters, rank_by, top, ascending, columns }, progress) {
     let list = Array.isArray(universe) ? universe.map(E.symKey) : (S.man.universes[String(universe || "nifty500").toLowerCase().replace(/[^a-z0-9]/g, "")] || []);
     list = list.filter((s) => S.man.symbols[s]?.kind === "stock" || S.pitSyms?.has(s));
     if (!list.length) throw new Error(`Unknown universe ${universe}. Use one of: ${Object.keys(S.man.universes).join(", ")}, or a list of tickers.`);
-    const exprs = [...(filters || []), rank_by].filter(Boolean).map(String);
+    const cols = columns && typeof columns === "object" ? (Array.isArray(columns) ? Object.fromEntries(columns.map((x) => [String(x), String(x)])) : columns) : {};
+    const exprs = [...(filters || []), rank_by, ...Object.values(cols)].filter(Boolean).map(String);
     exprs.forEach((x) => E.validate(x));
     const full = exprs.some((x) => /\b(open|high|low|volume|atr|adx|obv|mfi|vwap|cci|supertrend|stoch_k|williams_r)\b/.test(x));
     progress && progress(`Screening ${list.length} stocks…`);
@@ -137,10 +138,10 @@
       const rk = rank_by ? evalLast(rank_by, f) : null;
       if (rank_by && !(rk === rk && rk != null)) continue;
       rows.push({ symbol: s, rank_value: r2r(rk), close: r2r(lastOf(f.c)), pe: r1(evalLast("pe", f)), mcap_cr: r1(evalLast("mcap", f)), profit_growth_ttm: r1(evalLast("profit_growth_ttm", f)),
-        sales_growth_ttm: r1(evalLast("sales_growth_ttm", f)), ebitda_margin: r1(evalLast("opm", f)), ret_6m_pct: r1(evalLast("roc(close,126)", f)), industry: S.man.symbols[s]?.industry || "" });
+        sales_growth_ttm: r1(evalLast("sales_growth_ttm", f)), ebitda_margin: r1(evalLast("opm", f)), ret_6m_pct: r1(evalLast("roc(close,126)", f)), industry: S.man.symbols[s]?.industry || "", ...Object.fromEntries(Object.entries(cols).map(([k, x]) => [k, r2r(evalLast(x, f))])) });
     }
     if (rank_by) rows.sort((a, b) => ascending ? a.rank_value - b.rank_value : b.rank_value - a.rank_value);
-    return { universe: Array.isArray(universe) ? `${list.length} symbols` : universe, matched: rows.length, of: list.length, as_of: S.lastDay, rows: rows.slice(0, Math.min(40, top || 20)) };
+    return { universe: Array.isArray(universe) ? `${list.length} symbols` : universe, matched: rows.length, of: list.length, as_of: S.lastDay, rows: top === "all" || top === 0 ? rows : rows.slice(0, Math.max(1, Math.trunc(Number(top) || 50))) };
   }
 
   // ---- sectors bottom-up: medians of their stocks' valuation, growth and momentum (Nifty 500 members with results)
@@ -164,30 +165,86 @@
   }
 
   // ---- headlines, filings and the results calendar
-  async function newsTool({ symbol, query, days }) {
+  async function newsTool({ symbol, query, days, limit }) {
     const res = await loadResearch().catch(() => ({}));
-    const since = E.isoOf(E.dayOf(new Date().toISOString().slice(0, 10)) - (days || 7));
+    const since = E.isoOf(E.dayOf(new Date().toISOString().slice(0, 10)) - (days || 14)), L = Math.max(1, Math.trunc(Number(limit) || 60));
     const sym = symbol ? E.symKey(symbol) : null, rx = query ? new RegExp(String(query).replace(/[^\w\s|&-]/g, ""), "i") : null;
-    const hl = (res.headlines?.items || []).filter((x) => x.t >= since && (!sym || (x.syms || []).includes(sym) || new RegExp(`\\b${sym}\\b`, "i").test(x.title)) && (!rx || rx.test(x.title))).slice(0, 25).map((x) => ({ time: x.t, source: x.src, headline: x.title }));
-    const fl = (res.filings?.items || []).filter((x) => x.t >= since && (!sym || x.sym === sym) && (!rx || rx.test(x.desc + " " + x.text))).slice(0, sym ? 20 : 30).map((x) => ({ time: x.t, symbol: x.sym, filing: x.desc, detail: x.text }));
-    const ev = (res.events?.items || []).filter((e) => (!sym || e.sym === sym) && (!rx || rx.test(e.purpose + " " + e.desc))).slice(0, sym ? 5 : 40).map((e) => ({ date: e.date, symbol: e.sym, purpose: e.purpose }));
-    return { as_of: res.headlines?.asof, headlines: hl, filings: fl, upcoming_board_meetings: ev, note: "headlines are titles only (publishers' RSS); filings are NSE's one-line descriptions" };
+    const hl = (res.headlines?.items || []).filter((x) => x.t >= since && (!sym || (x.syms || []).includes(sym) || new RegExp(`\\b${sym}\\b`, "i").test(x.title)) && (!rx || rx.test(x.title))).slice(0, L).map((x) => ({ time: x.t, source: x.src, headline: x.title, link: x.link }));
+    const fl = (res.filings?.items || []).filter((x) => x.t >= since && (!sym || x.sym === sym) && (!rx || rx.test(x.desc + " " + x.text))).slice(0, L).map((x) => ({ time: x.t, symbol: x.sym, filing: x.desc, detail: x.text }));
+    const ev = (res.events?.items || []).filter((e) => (!sym || e.sym === sym) && (!rx || rx.test(e.purpose + " " + e.desc))).slice(0, L).map((e) => ({ date: e.date, symbol: e.sym, purpose: e.purpose, detail: e.desc }));
+    return { as_of: res.headlines?.asof, headlines: hl, filings: fl, upcoming_board_meetings: ev, kept: "headlines 45 days, filings 120 days", note: "headlines are titles only (publishers' RSS); filings are NSE's one-line descriptions" };
+  }
+
+  // ---- compute: any rule-language expression(s) on any symbols — latest value, value on a date, or a history; cross-section stats
+  async function computeTool({ symbols, universe, exprs, date, history, every, from }, progress) {
+    let list = [];
+    if (symbols) list = (Array.isArray(symbols) ? symbols : String(symbols).split(/[,;\s]+/)).filter(Boolean).map(E.symKey);
+    if (universe) list = list.concat(Array.isArray(universe) ? universe.map(E.symKey) : (S.man.universes[String(universe).toLowerCase().replace(/[^a-z0-9]/g, "")] || []));
+    list = [...new Set(list)];
+    if (!list.length) list = ["NIFTY"];
+    const named = Array.isArray(exprs) ? Object.fromEntries(exprs.map((x) => [String(x), String(x)])) : exprs && typeof exprs === "object" ? exprs : { [String(exprs || "close")]: String(exprs || "close") };
+    Object.values(named).forEach((x) => E.validate(String(x)));
+    const n = history ? Math.max(1, Math.trunc(Number(history))) : 0, step = Math.max(1, Math.trunc(Number(every) || 1));
+    const cells = list.length * Object.keys(named).length * Math.max(1, Math.ceil(n / step));
+    if (cells > 60000) throw new Error(`That is ${cells} numbers — too many for one answer. Ask for fewer symbols, a shorter history or a larger "every" step (e.g. every 5 = weekly, 21 = monthly).`);
+    progress && progress(`Computing on ${list.length} symbol${list.length > 1 ? "s" : ""}…`);
+    await ensureFund(list);
+    const needFull = Object.values(named).some((x) => /\b(open|high|low|volume|hl2|hlc3|pe|pb|dy|atr|atr_pct|adx|plus_di|minus_di|stoch_k|stoch_d|cci|mfi|williams_r|obv|vwap|supertrend|keltner_upper|keltner_lower)\b/.test(x));
+    if (needFull) await ensureFull(list.filter((s) => S.man.symbols[s])).catch(() => null);
+    const want = date ? E.dayOf(String(date).slice(0, 10)) : Infinity, fromDay = from ? E.dayOf(String(from).slice(0, 10)) : null;
+    const rows = [], missing = [];
+    for (const s of list) {
+      const f = priceFrame(s); if (!f) { missing.push(s); continue; }
+      let end = f.d.length - 1; while (end > 0 && f.d[end] > want) end--;
+      const row = { symbol: s, date: E.isoOf(f.d[end]) };
+      if (!n && !fromDay) { for (const [k, x] of Object.entries(named)) { const v = evalSeries(String(x), f); row[k] = v ? r2r(v[end]) : r2r(evalLast(String(x), f)); } }
+      else {
+        let start = fromDay != null ? f.d.findIndex((d) => d >= fromDay) : end - n + 1; if (start < 0) start = 0;
+        const idx = []; for (let i = end; i >= start; i -= step) idx.unshift(i);
+        row.dates = idx.map((i) => E.isoOf(f.d[i]));
+        for (const [k, x] of Object.entries(named)) { const v = evalSeries(String(x), f); row[k] = v ? idx.map((i) => r2r(v[i])) : null; }
+      }
+      rows.push(row);
+    }
+    const out = { as_of: date || S.lastDay, rows };
+    if (missing.length) out.no_data = missing;
+    if (!n && !fromDay && rows.length > 2) {
+      out.cross_section = Object.fromEntries(Object.keys(named).map((k) => { const xs = rows.map((r) => r[k]).filter((v) => v != null).sort((a, b) => a - b); const q = (p) => xs.length ? xs[Math.min(xs.length - 1, Math.floor(p * xs.length))] : null;
+        return [k, { count: xs.length, mean: xs.length ? r2r(xs.reduce((a, b) => a + b, 0) / xs.length) : null, p10: q(0.1), median: q(0.5), p90: q(0.9), min: xs[0] ?? null, max: xs[xs.length - 1] ?? null }]; }));
+    }
+    return out;
+  }
+
+  // ---- ask for data that isn't here yet: the daily job adds it to the fetchers (FRED/World Bank/OECD/BIS series, any Yahoo ticker)
+  async function requestData(input) {
+    const id = newId("rq"), doc = { at: nowIso(), by: S.uid || null, status: "open", kind: /macro|econ|fred|series|wb|oecd|bis/i.test(String(input.kind || input.source || "")) ? "macro" : "price",
+      key: String(input.key || input.id || input.ticker || "").toUpperCase().replace(/[^A-Z0-9_]/g, "_").slice(0, 40), source: String(input.source || "").slice(0, 20), id: String(input.id || input.ticker || "").slice(0, 80),
+      name: String(input.name || "").slice(0, 160), unit: String(input.unit || "").slice(0, 20), freq: String(input.freq || "").slice(0, 2), transform: String(input.transform || "level").slice(0, 10), market: String(input.market || "global").slice(0, 10), why: String(input.why || "").slice(0, 400) };
+    if (!doc.id) throw new Error("Give the series id (FRED/World Bank/OECD/BIS) or the Yahoo ticker.");
+    await S.db.collection("data_requests").doc(id).set(doc);
+    return { requested: doc, when: "The evening job adds it to the data fetchers; it appears in the app after the next data refresh (usually the next evening). Use a proxy from the data that exists meanwhile." };
   }
   async function researchNote() { try { const snap = await S.db.doc("research/latest").get(); return snap.exists ? snap.data() : null; } catch (e) { return null; } }
   function researchTools(progress) {
     return [
       { name: "macro_dashboard", description: "Macro & market regime in one call: latest Indian and global macro prints (RBI repo, CPI, IIP, GDP, 10y yield, FX reserves, trade, M3, OECD leading indicator; US Fed funds, yields, curve, real yields, breakevens, credit spreads, dollar, oil, CPI, jobs, financial stress, ECB/Japan/Germany/China) with release dates and 3m/12m changes, plus Nifty/midcap/smallcap valuations (P/E and its 10-year percentile, equity risk premium vs India 10y), India VIX percentile, FII/DII positioning and flows, market breadth, global assets, and every NSE sector index's returns and P/E percentile; also the last daily research note written after the close.",
         execute: async () => { progress("Reading the macro dashboard…"); const d = await macroDashboard(); const n = await researchNote(); return n && n.body ? { ...d, last_daily_research_note: { date: n.date, text: String(n.body).slice(0, 5000) } } : d; } },
-      { name: "company_research", description: "Everything on one NSE company: business profile, last 12 quarters of results as filed (sales, EBITDA margin, profit, y/y growth; banks: NPAs, NII growth), TTM and 3-year CAGRs, valuation now vs its own 5-year history (P/E percentile), industry peers table with medians, promoter-holding trend, price performance and technicals, beta, option IV/PCR, analyst consensus (Yahoo snapshot), upcoming board meetings, recent NSE filings and headlines.",
-        inputSchema: { type: "object", properties: { symbol: { type: "string" } }, required: ["symbol"] },
-        execute: async (input) => { progress(`Researching ${E.symKey(input.symbol)}…`); return companyResearch(input.symbol); } },
+      { name: "company_research", description: "Everything on one NSE company: business profile, every quarter of results filed since 2018 (or the last N) (sales, EBITDA margin, profit, y/y growth; banks: NPAs, NII growth), TTM and 3-year CAGRs, valuation now vs its own 5-year history (P/E percentile), industry peers table with medians, promoter-holding trend, price performance and technicals, beta, option IV/PCR, analyst consensus (Yahoo snapshot), upcoming board meetings, recent NSE filings and headlines.",
+        inputSchema: { type: "object", properties: { symbol: { type: "string" }, quarters: { type: "number", description: "how many quarters of results (default: all filed since 2018)" } }, required: ["symbol"] },
+        execute: async (input) => { progress(`Researching ${E.symKey(input.symbol)}…`); return companyResearch(input.symbol, { quarters: input.quarters }); } },
       { name: "screen", description: "Screen a universe (nifty50, nifty200, nifty500, fno, top500pit, a sector group, or a list of tickers) with rule-language expressions on the LATEST data, e.g. filters [\"pe > 0\", \"pe < 25\", \"profit_growth_ttm > 20\", \"close > sma(close,200)\"], rank_by \"profit_growth_ttm / pe\". Returns matches with P/E, mcap, growth, margin, 6m return and industry.",
-        inputSchema: { type: "object", properties: { universe: {}, filters: { type: "array", items: { type: "string" } }, rank_by: { type: "string" }, ascending: { type: "boolean" }, top: { type: "number" } }, required: ["universe"] },
+        inputSchema: { type: "object", properties: { universe: {}, filters: { type: "array", items: { type: "string" } }, rank_by: { type: "string" }, ascending: { type: "boolean" }, top: { description: "rows to return (default 50; 0 or \"all\" = every match)" }, columns: { description: "extra expressions to show per row: list or {name: expression}" } }, required: ["universe"] },
         execute: async (input) => screenTool(input, progress) },
       { name: "sector_view", description: "Bottom-up view of every industry in the Nifty 500: median P/E, median TTM sales and profit growth, median 3m and 12m returns, % of stocks above their 200-day average, total market cap. Use with macro_dashboard to connect macro drivers to sectors.",
         execute: async () => { progress("Comparing sectors…"); return sectorView(); } },
+      { name: "compute", description: "General calculator over ALL the data: evaluate any rule-language expressions (prices, indicators, fundamentals like pe/profit_growth_ttm/promoter, option vars like iv/pcr, macro via ref(\"KEY\", close), cross-asset ref(), beta/corr...) on any symbols or a whole universe — latest value, the value on a date, or a history (history = N trading days, every = step, from = start date). A universe without history also returns cross-section stats (mean, median, p10, p90). Use it for anything the other tools don't directly answer: custom ratios, comparisons, relative valuation, event studies, correlations, regime checks.",
+        inputSchema: { type: "object", properties: { symbols: { type: "array", items: { type: "string" } }, universe: {}, exprs: { description: "list of expressions, or {name: expression}" }, date: { type: "string" }, history: { type: "number" }, every: { type: "number" }, from: { type: "string" } }, required: ["exprs"] },
+        execute: async (input) => computeTool(input || {}, progress) },
+      { name: "request_data", description: "Ask for data that isn't in TradeOS yet so it gets added to the daily fetchers: a macro/economic series from FRED (any series id), the World Bank (indicator id), OECD leading indicators (area code) or BIS policy rates (path), or any price series with a Yahoo Finance ticker (global index, ETF, currency, commodity, crypto, a stock anywhere, an NSE stock outside the Nifty 500 as SYMBOL.NS). Give kind (macro|price), source (fred|wb|oecd_cli|bis|yahoo), id, a short key, name, unit, freq (D/W/M/Q/A), transform (level|yoy|diff), market (global|india) and why.",
+        inputSchema: { type: "object", properties: { kind: { type: "string" }, source: { type: "string" }, id: { type: "string" }, key: { type: "string" }, name: { type: "string" }, unit: { type: "string" }, freq: { type: "string" }, transform: { type: "string" }, market: { type: "string" }, why: { type: "string" } }, required: ["id"] },
+        execute: async (input) => { progress("Requesting new data…"); return requestData(input || {}); } },
       { name: "news", description: "Recent headlines (ET, Mint, RBI press releases), NSE corporate filings (orders, results, management changes, fund raising, M&A…) and upcoming board meetings (results dates). Filter by symbol and/or a keyword query; days = look-back (default 7).",
-        inputSchema: { type: "object", properties: { symbol: { type: "string" }, query: { type: "string" }, days: { type: "number" } } },
+        inputSchema: { type: "object", properties: { symbol: { type: "string" }, query: { type: "string" }, days: { type: "number" }, limit: { type: "number" } } },
         execute: async (input) => { progress("Reading news and filings…"); return newsTool(input || {}); } },
     ];
   }
@@ -196,7 +253,7 @@
     const mac = Object.entries(m.symbols).filter(([, v]) => v.group === "macro").map(([k, v]) => `${k}=${v.name.replace(/ \(.*$/, "")}`).join("; ");
     return `${n ? `COMPANY RESULTS: quarterly results as filed with NSE (XBRL, mid-2018 onwards) for ${n} companies incl. delisted/dropped ones, latest filing ${fund.latest_filing}; shareholding (promoter %) history; Yahoo profile snapshot (business, ROE, debt, analyst consensus). Point in time: a result counts from the day after it was filed. Rule-language variables on any stock: sales, profit (latest quarter, ₹ cr), sales_ttm, profit_ttm, eps_ttm, sales_growth, profit_growth (y/y %, latest quarter), sales_growth_ttm, profit_growth_ttm, sales_cagr_3y, profit_cagr_3y, opm (EBITDA margin %), npm (net margin %), pe (price / TTM EPS; for NSE indices pe is the index P/E), mcap (₹ cr), ps (price/sales), earnings_yield (%), promoter (%), promoter_chg (pp vs previous filing), result_day (1 on the first day after a result), days_since_result, gnpa, nnpa (banks, %), nii_growth (banks, y/y %). Use them in rule entries/exits, rotation factors/filters/weights (e.g. factors [{"name":"earnings_yield"},{"name":"profit_growth_ttm"}], filters ["profit_growth_ttm > 15"]).` : "COMPANY RESULTS: not in this build yet."}
 ${mac ? `MACRO SERIES (usable from their release date, so no look-ahead; use via ref("KEY", close), e.g. regime "ref(\\"IN_CPI_YOY\\", close) < 5", entry "ref(\\"US_10Y_YIELD\\", change(close,21)) < 0"): ${mac}.` : ""}
-RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, news (plus backtest, market_snapshot, rank, option_data).`;
+RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, compute (any expression on any symbols/dates), news, request_data (add missing data), plus backtest, market_snapshot, rank, option_data.`;
   }
 
   // ================================================================ RESEARCH VIEW (macro dashboard, company page, news)
@@ -289,4 +346,4 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, news (pl
       <p class="note">Headlines are titles from the publishers' RSS feeds; filings are NSE's own descriptions. Updated several times a day.</p>`;
   }
   // read-only hooks for testing the research tools from the browser console
-  window.__tradeosResearch = { macroDashboard, companyResearch, screen: (a) => screenTool(a, null), sectorView, news: newsTool, brief: () => dataBrief() };
+  window.__tradeosResearch = { macroDashboard, companyResearch, screen: (a) => screenTool(a, null), compute: (a) => computeTool(a, null), sectorView, news: newsTool, brief: () => dataBrief(), toolNames: () => makeTools(() => {}).map((t) => t.name) };

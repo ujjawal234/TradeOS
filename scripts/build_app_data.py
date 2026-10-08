@@ -431,9 +431,12 @@ def main(out: Path) -> None:
                         "val": bool(df.get("pe") is not None and df["pe"].notna().sum() >= 50), "source": "NSE",
                         "group": ("debt" if DEBT.search(name) else "derived" if DERIVED.search(name) else "broad" if BROAD_RX.search(name) else "sector" if SECTOR_RX.search(name)
                                   else "factor" if FACTOR_RX.search(name) else "theme")}
+    reqf = ROOT / "data" / "requests.json"
+    requested = {k.upper(): v for k, v in (json.loads(reqf.read_text()).get("prices", {}) if reqf.exists() else {}).items() if isinstance(v, dict)}
     for f in sorted(src.glob("*.csv")):
         s = f.stem
-        is_glob = s in GLOBAL_NAMES
+        rq = requested.get(s)
+        is_glob = s in GLOBAL_NAMES or bool(rq and rq.get("market", "global") != "india")
         is_idx = s in INDEX_NAMES or is_glob
         if s in symbols or (use_nse and is_idx and not is_glob and s not in ("SENSEX", "BSE100", "BSE500", "BANKEX")):
             continue  # NSE's official series replaces the Yahoo copy
@@ -449,7 +452,7 @@ def main(out: Path) -> None:
             (dst / "p" / f"{s}.json").write_text(json.dumps(enc_full(df), separators=(",", ":")))
         meta = uni.get(s, {})
         symbols[s] = {"first": str(df.index[0].date()), "last": str(df.index[-1].date()), "rows": len(df),
-                      "name": meta.get("name") or GLOBAL_NAMES.get(s) or INDEX_NAMES.get(s, s), "industry": meta.get("industry") or ("Global" if is_glob else "Index" if is_idx else ""),
+                      "name": meta.get("name") or GLOBAL_NAMES.get(s) or (rq or {}).get("name") or INDEX_NAMES.get(s, s), "industry": meta.get("industry") or ("Global" if is_glob else "Index" if is_idx else ""),
                       "n50": bool(meta.get("nifty50")), "n200": bool(meta.get("nifty200")), "n500": bool(meta.get("nifty500") or meta.get("nifty200")), "fno": bool(meta.get("fno")),
                       "lot": meta.get("lot_size"), "kind": "index" if is_idx else "stock", **({} if is_idx else {"src": src_name}),
                       **({"group": "global" if is_glob else "broad", "source": "Yahoo"} if is_idx else {})}

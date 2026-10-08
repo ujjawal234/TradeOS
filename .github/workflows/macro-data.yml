@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["scripts/fetch_macro.py", ".github/workflows/macro-data.yml"]
+    paths: ["scripts/fetch_macro.py", ".github/workflows/macro-data.yml", "data/requests.json"]
   schedule:
     - cron: "10 12 * * *"            # 17:40 IST daily (CPI/IIP come out at 16:00 IST on release days)
 

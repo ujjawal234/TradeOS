@@ -54,12 +54,16 @@ GLOBAL = {
     "MSCI_EM": "EEM", "US10Y": "^TNX", "US2Y": "^IRX", "DXY": "DX-Y.NYB", "USDINR": "INR=X", "EURINR": "EURINR=X", "GBPINR": "GBPINR=X", "JPYINR": "JPYINR=X",
     "GOLD": "GC=F", "SILVER": "SI=F", "CRUDE": "CL=F", "BRENT": "BZ=F", "NATGAS": "NG=F", "COPPER": "HG=F", "BITCOIN": "BTC-USD", "ETHEREUM": "ETH-USD",
 }
+# Anything else the team asked for (the app's request_data tool -> the daily job writes data/requests.json): {KEY: {"yahoo": ticker, "name": ..., "market": "global"|"india"}}
+_REQ_FILE = Path(__file__).resolve().parents[1] / "data" / "requests.json"
+REQUESTED = {k.upper(): v for k, v in (json.loads(_REQ_FILE.read_text()).get("prices", {}) if _REQ_FILE.exists() else {}).items() if isinstance(v, dict) and v.get("yahoo")}
 ALTERNATES = {
     "NIFTYFMCG": ["NIFTY_FMCG.NS"], "NIFTYAUTO": ["NIFTY_AUTO.NS"], "NIFTYMETAL": ["NIFTY_METAL.NS"],
     "NIFTYREALTY": ["NIFTY_REALTY.NS"], "NIFTYENERGY": ["NIFTY_ENERGY.NS"], "NIFTYPSUBANK": ["NIFTY_PSU_BANK.NS"],
     "NIFTYMEDIA": ["NIFTY_MEDIA.NS"], "NIFTYINFRA": ["NIFTY_INFRA.NS"], "NIFTYFIN": ["NIFTY_FIN_SERVICE.NS", "^CNXFIN"],
     **EXTRA_INDICES,
     **{k: [v] for k, v in GLOBAL.items()},
+    **{k: [v["yahoo"]] for k, v in REQUESTED.items()},
 }
 
 
@@ -163,9 +167,48 @@ def yahoo_history(ticker: str, start: str) -> pd.DataFrame:
     raise RuntimeError(f"{ticker}: {last}")
 
 
+def batch_rescue(syms: list[str]) -> list[str]:
+    """append recent bars for symbols whose single download failed, using yf.download in chunks"""
+    done = []
+    tick = {}
+    for s in syms:
+        t = ALTERNATES[s][0] if (s in EXTRA_INDICES or s in GLOBAL or s in REQUESTED) else to_yahoo(s)
+        tick[t] = s
+    items = list(tick.items())
+    now_utc = datetime.now(timezone.utc)
+    for k in range(0, len(items), 40):
+        chunk = dict(items[k:k + 40])
+        try:
+            raw = yf.download(list(chunk), period="1mo", interval="1d", group_by="ticker", auto_adjust=True, threads=False, progress=False)
+        except Exception as e:  # noqa: BLE001
+            print(f"  batch download failed: {e}")
+            time.sleep(5)
+            continue
+        for t, s in chunk.items():
+            try:
+                df = (raw[t] if len(chunk) > 1 else raw).rename(columns=str.lower)[["open", "high", "low", "close", "volume"]].dropna(subset=["close"])
+                idx = df.index.tz_localize(None) if df.index.tz is not None else df.index
+                df.index = pd.DatetimeIndex(idx).normalize()
+                if s not in GLOBAL and s not in REQUESTED and (now_utc.hour < 10 or (now_utc.hour == 10 and now_utc.minute < 15)):
+                    df = df[df.index.date < now_utc.date()]  # no half-day bar for Indian symbols before the close
+                path = OUT / f"{s}.csv"
+                old = pd.read_csv(path, index_col=0, parse_dates=True)
+                ov = old.index.intersection(df.index)
+                if len(ov) < 3 or (df.loc[ov, "close"] / old.loc[ov, "close"] - 1).abs().max() > 0.005:
+                    continue
+                new = pd.concat([old[old.index < df.index[0]], df[df["close"] > 0].round(2)])
+                new = new[~new.index.duplicated(keep="last")]
+                new.to_csv(path)
+                done.append(s)
+            except Exception:  # noqa: BLE001
+                continue
+        time.sleep(2)
+    return done
+
+
 def update_symbol(sym: str, start15: str, full: bool) -> dict:
     path = OUT / f"{sym}.csv"
-    tickers = ALTERNATES[sym] if (sym in EXTRA_INDICES or sym in GLOBAL) else [to_yahoo(sym)] + [t for t in ALTERNATES.get(sym, []) if t != to_yahoo(sym)]
+    tickers = ALTERNATES[sym] if (sym in EXTRA_INDICES or sym in GLOBAL or sym in REQUESTED) else [to_yahoo(sym)] + [t for t in ALTERNATES.get(sym, []) if t != to_yahoo(sym)]
     old = pd.read_csv(path, index_col=0, parse_dates=True) if path.exists() and not full else None
     if old is not None and len(old) > 200:
         recent_start = (old.index[-1] - pd.Timedelta(days=12)).date().isoformat()
@@ -207,7 +250,7 @@ def main() -> None:
     stocks = list(universe["stocks"])
     print(f"Universe: {len(stocks)} stocks ({sum(m['nifty200'] for m in universe['stocks'].values())} Nifty 200, "
           f"{sum(m['fno'] for m in universe['stocks'].values())} F&O)")
-    symbols = list(dict.fromkeys(INDICES + ["INDIAVIX"] + SECTORS + list(EXTRA_INDICES) + list(GLOBAL) + stocks))
+    symbols = list(dict.fromkeys(INDICES + ["INDIAVIX"] + SECTORS + list(EXTRA_INDICES) + list(GLOBAL) + stocks + list(REQUESTED)))
     if args.only:
         symbols = [s.strip().upper() for s in args.only.split(",") if s.strip()]
     start15 = (date.today() - timedelta(days=int(args.years * 365.25) + 5)).isoformat()
@@ -232,6 +275,16 @@ def main() -> None:
             manifest["symbols"][s] = {"yahoo": r["ticker"], "rows": len(df), "first": str(df.index[0].date()),
                                       "last": str(df.index[-1].date())}
             print(f"OK   {s:<14} {len(df):>5} rows ({r['mode']})")
+    # second chance for failures: one batched Yahoo download (fewer requests; per-ticker calls get rate-limited)
+    if failed:
+        rescued = batch_rescue([s for s in failed if (OUT / f"{s}.csv").exists()])
+        for s in rescued:
+            failed.pop(s, None)
+            df = pd.read_csv(OUT / f"{s}.csv", index_col=0, parse_dates=True)
+            manifest["symbols"][s] = {**manifest["symbols"].get(s, {}), "rows": len(df), "first": str(df.index[0].date()), "last": str(df.index[-1].date())}
+        print(f"batch rescue: {len(rescued)} symbols updated")
+    (ROOT / "data" / "_fetch_report.json").write_text(json.dumps({"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "symbols": len(symbols),
+        "failed": len(failed), "errors": dict(list(failed.items())[:60])}, indent=1))
     # fetched_at (UTC) tells the daily job whether this run happened after the Indian close (>= 10:20 UTC = 15:50 IST);
     # "generated" alone can't, since a run at noon has today's date too
     manifest.update({"generated": date.today().isoformat(), "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

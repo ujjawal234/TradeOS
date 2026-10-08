@@ -245,8 +245,20 @@ def transform(s: pd.Series, how: str, freq: str) -> pd.Series:
     raise ValueError(how)
 
 
+def requested() -> dict:
+    """series the team asked for in the app (request_data tool -> daily job -> data/requests.json "macro")"""
+    f = ROOT / "data" / "requests.json"
+    out = {}
+    for k, v in (json.loads(f.read_text()).get("macro", {}) if f.exists() else {}).items():
+        if not isinstance(v, dict) or v.get("source") not in ("fred", "wb", "oecd_cli", "bis") or not v.get("id"):
+            continue
+        out[k.upper()] = (v["source"], v["id"], v.get("name") or v["id"], v.get("unit", ""), v.get("freq", "M"), v.get("transform", "level"), int(v.get("lag_days", 30)), v.get("group", "requested"))
+    return out
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
+    CATALOG.update({k: v for k, v in requested().items() if k not in CATALOG})
 
     old = json.loads((OUT / "catalog.json").read_text()) if (OUT / "catalog.json").exists() else {}
     cat, errors = {}, {}
