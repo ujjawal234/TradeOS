@@ -186,7 +186,7 @@ def batch_rescue(syms: list[str]) -> list[str]:
             continue
         for t, s in chunk.items():
             try:
-                df = (raw[t] if len(chunk) > 1 else raw).rename(columns=str.lower)[["open", "high", "low", "close", "volume"]].dropna(subset=["close"])
+                df = (raw[t] if isinstance(raw.columns, pd.MultiIndex) else raw).rename(columns=str.lower)[["open", "high", "low", "close", "volume"]].dropna(subset=["close"])
                 idx = df.index.tz_localize(None) if df.index.tz is not None else df.index
                 df.index = pd.DatetimeIndex(idx).normalize()
                 if s not in GLOBAL and s not in REQUESTED and (now_utc.hour < 10 or (now_utc.hour == 10 and now_utc.minute < 15)):
@@ -264,8 +264,17 @@ def main() -> None:
         except Exception as e:
             return {"symbol": sym, "error": str(e)[:200]}
 
+    # incremental days: one batched download for everything already on disk (a few dozen requests instead of ~700);
+    # only new symbols, --full runs and anything the batch couldn't update go through the per-ticker path
+    batched = set()
+    if not args.full:
+        batched = set(batch_rescue([s for s in symbols if (OUT / f"{s}.csv").exists()]))
+        for s in batched:
+            df = pd.read_csv(OUT / f"{s}.csv", index_col=0, parse_dates=True)
+            manifest["symbols"][s] = {**manifest["symbols"].get(s, {}), "rows": len(df), "first": str(df.index[0].date()), "last": str(df.index[-1].date())}
+        print(f"batched update: {len(batched)} of {len(symbols)} symbols")
     with ThreadPoolExecutor(max_workers=6) as pool:
-        for r in pool.map(job, symbols):
+        for r in pool.map(job, [s for s in symbols if s not in batched]):
             s = r["symbol"]
             if "error" in r:
                 failed[s] = r["error"]
@@ -276,7 +285,7 @@ def main() -> None:
                                       "last": str(df.index[-1].date())}
             print(f"OK   {s:<14} {len(df):>5} rows ({r['mode']})")
     # second chance for failures: one batched Yahoo download (fewer requests; per-ticker calls get rate-limited)
-    if failed:
+    if failed and args.full:
         rescued = batch_rescue([s for s in failed if (OUT / f"{s}.csv").exists()])
         for s in rescued:
             failed.pop(s, None)
