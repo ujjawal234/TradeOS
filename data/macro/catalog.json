@@ -311,13 +311,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2023-10-09",
-  "last_period": "2026-10-06",
-  "last_known": "2026-10-07",
-  "last": 3.03,
-  "prev": 3.12,
-  "chg_3m": 0.34,
-  "chg_12m": -0.15,
-  "n": 785
+  "last_period": "2026-10-07",
+  "last_known": "2026-10-08",
+  "last": 3.09,
+  "prev": 3.03,
+  "chg_3m": 0.4,
+  "chg_12m": -0.09,
+  "n": 786
  },
  "US_IG_SPREAD": {
   "name": "US investment-grade credit spread",
@@ -327,13 +327,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2023-10-09",
-  "last_period": "2026-10-06",
-  "last_known": "2026-10-07",
-  "last": 0.83,
-  "prev": 0.84,
-  "chg_3m": 0.06,
-  "chg_12m": 0.02,
-  "n": 784
+  "last_period": "2026-10-07",
+  "last_known": "2026-10-08",
+  "last": 0.82,
+  "prev": 0.83,
+  "chg_3m": 0.05,
+  "chg_12m": 0.01,
+  "n": 785
  },
  "USD_BROAD": {
   "name": "US dollar, broad trade-weighted index",
