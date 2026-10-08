@@ -1,0 +1,7 @@
+{
+ "asof": "2026-10-08T12:07",
+ "ok": 39,
+ "errors": {
+  "IN_CPI_YOY": "Invalid comparison between dtype=int64 and str"
+ }
+}
