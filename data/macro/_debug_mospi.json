@@ -497,7 +497,7 @@
   "msg": null
  },
  "plfs": {
-  "status": 500,
+  "status": 200,
   "keys": [
    "error"
   ],

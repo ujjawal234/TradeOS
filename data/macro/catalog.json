@@ -29,7 +29,8 @@
   "prev": 5.1,
   "chg_3m": -3.9,
   "chg_12m": 0.2,
-  "n": 158
+  "n": 158,
+  "stale": true
  },
  "IN_GDP_YOY": {
   "name": "India real GDP growth (y/y, quarterly)",
