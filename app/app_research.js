@@ -173,10 +173,11 @@
     const ev = (res.events?.items || []).filter((e) => (!sym || e.sym === sym) && (!rx || rx.test(e.purpose + " " + e.desc))).slice(0, sym ? 5 : 40).map((e) => ({ date: e.date, symbol: e.sym, purpose: e.purpose }));
     return { as_of: res.headlines?.asof, headlines: hl, filings: fl, upcoming_board_meetings: ev, note: "headlines are titles only (publishers' RSS); filings are NSE's one-line descriptions" };
   }
+  async function researchNote() { try { const snap = await S.db.doc("research/latest").get(); return snap.exists ? snap.data() : null; } catch (e) { return null; } }
   function researchTools(progress) {
     return [
-      { name: "macro_dashboard", description: "Macro & market regime in one call: latest Indian and global macro prints (RBI repo, CPI, IIP, GDP, 10y yield, FX reserves, trade, M3, OECD leading indicator; US Fed funds, yields, curve, real yields, breakevens, credit spreads, dollar, oil, CPI, jobs, financial stress, ECB/Japan/Germany/China) with release dates and 3m/12m changes, plus Nifty/midcap/smallcap valuations (P/E and its 10-year percentile, equity risk premium vs India 10y), India VIX percentile, FII/DII positioning and flows, market breadth, global assets, and every NSE sector index's returns and P/E percentile.",
-        execute: async () => { progress("Reading the macro dashboard…"); return macroDashboard(); } },
+      { name: "macro_dashboard", description: "Macro & market regime in one call: latest Indian and global macro prints (RBI repo, CPI, IIP, GDP, 10y yield, FX reserves, trade, M3, OECD leading indicator; US Fed funds, yields, curve, real yields, breakevens, credit spreads, dollar, oil, CPI, jobs, financial stress, ECB/Japan/Germany/China) with release dates and 3m/12m changes, plus Nifty/midcap/smallcap valuations (P/E and its 10-year percentile, equity risk premium vs India 10y), India VIX percentile, FII/DII positioning and flows, market breadth, global assets, and every NSE sector index's returns and P/E percentile; also the last daily research note written after the close.",
+        execute: async () => { progress("Reading the macro dashboard…"); const d = await macroDashboard(); const n = await researchNote(); return n && n.body ? { ...d, last_daily_research_note: { date: n.date, text: String(n.body).slice(0, 5000) } } : d; } },
       { name: "company_research", description: "Everything on one NSE company: business profile, last 12 quarters of results as filed (sales, EBITDA margin, profit, y/y growth; banks: NPAs, NII growth), TTM and 3-year CAGRs, valuation now vs its own 5-year history (P/E percentile), industry peers table with medians, promoter-holding trend, price performance and technicals, beta, option IV/PCR, analyst consensus (Yahoo snapshot), upcoming board meetings, recent NSE filings and headlines.",
         inputSchema: { type: "object", properties: { symbol: { type: "string" } }, required: ["symbol"] },
         execute: async (input) => { progress(`Researching ${E.symKey(input.symbol)}…`); return companyResearch(input.symbol); } },
@@ -222,11 +223,13 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, news (pl
   const chgV = (v, unit) => v == null ? "" : `<span class="${cls(v)}">${v > 0 ? "+" : ""}${unit === "%" || unit === "pp" ? Number(v).toFixed(2) + " pp" : Number(v).toFixed(2)}</span>`;
   async function renderMacroTab(box) {
     const d = await macroDashboard(), mk = d.markets;
+    const note = await researchNote();
     const groups = [["India", d.macro.filter((m) => m.group === "india")], ["United States & global", d.macro.filter((m) => m.group !== "india")]];
     const tile = (m) => `<div class="mtile"><span class="k">${esc(m.name)}</span><span class="v">${fmtV(m.latest, m.unit)}</span><span class="b">${esc(m.period?.slice(0, 7) || "")}${m.stale ? " · stale" : ""} · 3m ${chgV(m.change_3m, m.unit) || "–"} · 12m ${chgV(m.change_12m, m.unit) || "–"}</span>${spark(seriesTail(m.key))}</div>`;
     const n = mk.nifty || {};
     const kv = (rows) => `<dl class="kv">${rows.filter(([, v]) => v != null && v !== "").map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
     box.innerHTML = `
+      ${note && note.body ? `<div class="card researchnote"><h2>${esc(note.title || "Research note")}</h2><p class="muted">${esc(note.date || "")} · written by Claude from the data below after the close</p>${md(String(note.body))}</div>` : ""}
       <div class="grid2">
         <div class="card"><h2>Indian equities</h2>${kv([["Nifty", `${px(n.close)} · 1m ${pct(n.ret_1m)} · 3m ${pct(n.ret_3m)} · 12m ${pct(n.ret_12m)}`], ["vs 200-day avg", pct(n.vs_200dma_pct)],
           ["Nifty P/E", n.pe != null ? `${n.pe} (${ord(n.pe_10y_percentile)} percentile of 10 years)` : null], ["Earnings yield − India 10y", n.equity_risk_premium_pp != null ? `${n.equity_risk_premium_pp} pp` : null],
