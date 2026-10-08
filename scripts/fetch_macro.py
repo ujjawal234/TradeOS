@@ -127,61 +127,47 @@ MONTHS = {m: i for i, m in enumerate(["January", "February", "March", "April", "
 
 
 def mospi(kind: str) -> pd.Series:
+    """y/y % by month. IIP: 2011-12 base, then the 2022-23 base where it exists. CPI: 2012 base, then the 2024 base."""
     s = requests.Session()
     s.mount("https://", _Legacy())
-    out = {}
-    for y in range(2013, date.today().year + 1):
-        if kind == "iip":
-            url = f"https://api.mospi.gov.in/api/iip/getIIPMonthly?base_year=2011-12&year={y}&type=General&limit=100&Format=JSON"
-        else:
-            url = None
-            for cand in (f"https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&year={y}&limit=500&Format=JSON",
-                         f"https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year=2012&series=Current&year={y}&limit=500&Format=JSON",
-                         f"https://api.mospi.gov.in/api/cpi/getAllIndiaItemIndex?base_year=2012&year={y}&limit=500&Format=JSON"):
-                try:
-                    js = get(cand, session=s, tries=1).json()
-                except Exception:  # noqa: BLE001
-                    continue
-                if js.get("data"):
-                    url = cand
-                    if y == 2024:
-                        print(f"  mospi cpi sample ({cand}): {json.dumps(js['data'][:2])[:600]}", flush=True)
-                    break
-            if not url:
-                continue
-        try:
+    out, seen = {}, {}
+    bases = [("2011-12", 2013), ("2022-23", 2023)] if kind == "iip" else [("2012", 2013), ("2024", 2025)]
+    for base, y0 in bases:
+        for y in range(y0, date.today().year + 1):
             if kind == "iip":
-                js = get(url, session=s, tries=2).json()
-        except Exception as e:  # noqa: BLE001
-            print(f"  mospi {kind} {y}: {e}", flush=True)
-            continue
-        for x in js.get("data") or []:
-            m = MONTHS.get(str(x.get("month", "")).strip().title())
-            if not m:
-                continue
-            if kind == "iip":
-                if str(x.get("category", "")).lower() != "general" and str(x.get("type", "")).lower() != "general":
-                    continue
-                v = x.get("growth_rate")
+                url = f"https://api.mospi.gov.in/api/iip/getIIPMonthly?base_year={base}&year={y}&type=General&limit=1000&Format=JSON"
             else:
-                sec = str(x.get("sector", "combined")).lower()
-                grp = str(x.get("group", x.get("group_name", "general"))).lower()
-                if "combined" not in sec or ("general" not in grp and grp not in ("", "none", "-")):
-                    continue
-                v = x.get("inflation") or x.get("inflation_rate") or x.get("yoy")
-                if v in (None, ""):
-                    out.setdefault(("idx", y, m), x.get("index"))
-                    continue
+                url = f"https://api.mospi.gov.in/api/cpi/getCPIIndex?base_year={base}&year={y}&limit=100000&Format=JSON"
             try:
-                out[(y, m)] = float(v)
-            except (TypeError, ValueError):
-                pass
-    idx = {k: v for k, v in out.items() if k[0] == "idx"}
-    vals = {pd.Timestamp(year=y, month=m, day=1): v for (y, m), v in ((k, v) for k, v in out.items() if k[0] != "idx")}
-    if not vals and idx:  # CPI index only: compute y/y
-        lv = pd.Series({pd.Timestamp(year=y, month=m, day=1): float(v) for (_, y, m), v in idx.items() if v not in (None, "")}).sort_index()
-        return (lv / lv.shift(12) - 1).dropna() * 100
-    return pd.Series(vals).sort_index()
+                rows = get(url, session=s, tries=2, timeout=90).json().get("data") or []
+            except Exception as e:  # noqa: BLE001
+                print(f"  mospi {kind} {base} {y}: {e}", flush=True)
+                continue
+            for x in rows:
+                m = MONTHS.get(str(x.get("month", "")).strip().title())
+                if not m:
+                    continue
+                if kind == "iip":
+                    if str(x.get("category", "")).lower() != "general":
+                        continue
+                    v = x.get("growth_rate")
+                else:
+                    seen.setdefault("groups", set()).add(str(x.get("group")))
+                    seen.setdefault("sectors", set()).add(str(x.get("sector")))
+                    if str(x.get("state", "All India")).lower() != "all india" or str(x.get("sector", "")).lower() != "combined":
+                        continue
+                    g = str(x.get("group", "")).lower()
+                    if not ("general" in g or "all group" in g):
+                        continue
+                    v = x.get("inflation")
+                try:
+                    out[pd.Timestamp(year=y, month=m, day=1)] = float(v)  # later (newer) base overwrites
+                except (TypeError, ValueError):
+                    pass
+    if kind == "cpi":
+        print(f"  mospi cpi groups seen: {sorted(seen.get('groups', []))[:30]} sectors: {sorted(seen.get('sectors', []))}", flush=True)
+        (OUT / "_debug_cpi_groups.json").write_text(json.dumps({k: sorted(v) for k, v in seen.items()}, indent=1))
+    return pd.Series(out).sort_index()
 
 
 def mospi_debug() -> None:

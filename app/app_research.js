@@ -25,7 +25,7 @@
   function evalLast(expr, f) { try { const v = E.evaluate(E.parse(expr), f, { frames: S.light }); return typeof v === "number" ? v : lastOf(v); } catch (e) { return null; } }
   function evalSeries(expr, f) { try { const v = E.evaluate(E.parse(expr), f, { frames: S.light }); return typeof v === "number" ? null : v; } catch (e) { return null; } }
   function pctRank(arr, v, fromDay, days) { const xs = []; for (let i = 0; i < arr.length; i++) if (days[i] >= fromDay && arr[i] === arr[i]) xs.push(arr[i]); if (!xs.length || v == null) return null; return Math.round(xs.filter((x) => x <= v).length / xs.length * 100); }
-  const isoQ = (d) => E.isoOf(d).slice(0, 7);
+  const ord = (n) => n == null ? "–" : `${n}${(n % 100 >= 11 && n % 100 <= 13) ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"}`;
 
   // ---- one company: results, valuation vs its own history and peers, shareholding, price, options, events, filings, headlines
   async function companyResearch(symIn) {
@@ -229,10 +229,10 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, news (pl
     box.innerHTML = `
       <div class="grid2">
         <div class="card"><h2>Indian equities</h2>${kv([["Nifty", `${px(n.close)} · 1m ${pct(n.ret_1m)} · 3m ${pct(n.ret_3m)} · 12m ${pct(n.ret_12m)}`], ["vs 200-day avg", pct(n.vs_200dma_pct)],
-          ["Nifty P/E", n.pe != null ? `${n.pe} (${n.pe_10y_percentile}th percentile of 10 years)` : null], ["Earnings yield − India 10y", n.equity_risk_premium_pp != null ? `${n.equity_risk_premium_pp} pp` : null],
-          ["Midcap 150 P/E", mk.nifty_midcap_150 ? `${mk.nifty_midcap_150.pe} (${mk.nifty_midcap_150.pe_10y_percentile}th pct) · 3m ${pct(mk.nifty_midcap_150.ret_3m)}` : null],
-          ["Smallcap 250 P/E", mk.nifty_smallcap_250 ? `${mk.nifty_smallcap_250.pe} (${mk.nifty_smallcap_250.pe_10y_percentile}th pct) · 3m ${pct(mk.nifty_smallcap_250.ret_3m)}` : null],
-          ["India VIX", mk.india_vix ? `${mk.india_vix.level} (${mk.india_vix.percentile_1y}th percentile of the year)` : null]])}</div>
+          ["Nifty P/E", n.pe != null ? `${n.pe} (${ord(n.pe_10y_percentile)} percentile of 10 years)` : null], ["Earnings yield − India 10y", n.equity_risk_premium_pp != null ? `${n.equity_risk_premium_pp} pp` : null],
+          ["Midcap 150 P/E", mk.nifty_midcap_150 ? `${mk.nifty_midcap_150.pe} (${ord(mk.nifty_midcap_150.pe_10y_percentile)} pct) · 3m ${pct(mk.nifty_midcap_150.ret_3m)}` : null],
+          ["Smallcap 250 P/E", mk.nifty_smallcap_250 ? `${mk.nifty_smallcap_250.pe} (${ord(mk.nifty_smallcap_250.pe_10y_percentile)} pct) · 3m ${pct(mk.nifty_smallcap_250.ret_3m)}` : null],
+          ["India VIX", mk.india_vix ? `${mk.india_vix.level} (${ord(mk.india_vix.percentile_1y)} percentile of the year)` : null]])}</div>
         <div class="card"><h2>Positioning, flows, breadth</h2>${kv([["FII index futures long %", mk.flows.fii_index_futures_long_pct != null ? `${mk.flows.fii_index_futures_long_pct}% (20 days ago ${mk.flows.fii_index_futures_long_pct_20d_ago}%)` : null],
           ["Clients index futures long %", mk.flows.client_index_futures_long_pct != null ? `${mk.flows.client_index_futures_long_pct}%` : null], ["FII cash, last 20 days", mk.flows.fii_cash_net_20d_cr != null ? inr(mk.flows.fii_cash_net_20d_cr * 1e7).replace("₹", "₹") : null],
           ["Stocks above 200-day avg", mk.breadth.pct_above_200dma != null ? `${mk.breadth.pct_above_200dma}%` : null], ["Stocks above 50-day avg", mk.breadth.pct_above_50dma != null ? `${mk.breadth.pct_above_50dma}%` : null],
@@ -261,7 +261,7 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, news (pl
     if (d.error) { cb.innerHTML = `<p class="flag">${esc(d.error)}</p>`; return; }
     const r = d.results, v = d.valuation || {}, pr = d.price || {}, pf = d.profile;
     const tiles = [["Price", px(pr.close), `1y ${pct(pr.ret_1y)} · vs 200d ${pct(pr.vs_sma200_pct)}`], ["Market cap", v.mcap_cr != null ? `₹${Math.round(v.mcap_cr).toLocaleString("en-IN")} cr` : "–", d.index_membership.join(" · ")],
-      ["P/E (TTM)", v.pe_ttm ?? "–", v.pe_5y_percentile != null ? `${v.pe_5y_percentile}th pct of 5y · median ${v.pe_5y_median}` : ""], ["Profit growth (TTM)", pct(r?.ttm.profit_growth_pct), `sales ${pct(r?.ttm.sales_growth_pct)} · 3y CAGR ${pct(r?.ttm.profit_cagr_3y_pct)}`],
+      ["P/E (TTM)", v.pe_ttm ?? "–", v.pe_5y_percentile != null ? `${ord(v.pe_5y_percentile)} pct of 5y · median ${v.pe_5y_median}` : ""], ["Profit growth (TTM)", pct(r?.ttm.profit_growth_pct), `sales ${pct(r?.ttm.sales_growth_pct)} · 3y CAGR ${pct(r?.ttm.profit_cagr_3y_pct)}`],
       ["Industry median P/E", d.peers?.industry_medians.pe ?? "–", `profit growth ${pct(d.peers?.industry_medians.profit_growth_ttm)}`], ["Promoter", d.shareholding ? `${d.shareholding.promoter_pct_history.slice(-1)[0][1]}%` : "–", d.shareholding && d.shareholding.promoter_pct_history.length > 1 ? `was ${d.shareholding.promoter_pct_history[0][1]}% (${d.shareholding.promoter_pct_history[0][0]})` : ""]];
     cb.innerHTML = `<div class="stack"><div><h2>${esc(d.name || d.symbol)} <span class="small muted" style="font-family:var(--font-body);font-weight:400">${esc(d.symbol)} · ${esc(d.industry)}</span></h2>${pf?.business ? `<p class="small muted" style="margin-top:6px;max-width:90ch">${esc(pf.business)}</p>` : ""}</div>
       <div class="stats">${tiles.map(([k, val, b]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${val}</span><span class="b">${esc(b)}</span></div>`).join("")}</div>
@@ -272,7 +272,7 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, news (pl
         <div class="card"><h2>Analysts, options, events</h2>${`<dl class="kv">${[
           pf?.analysts ? ["Consensus (Yahoo)", `${esc(pf.analysts.consensus || "")} · ${pf.analysts.count} analysts · target ${px(pf.analysts.target_mean)} (${px(pf.analysts.target_low)}–${px(pf.analysts.target_high)})`] : null,
           pf?.snapshot_ratios_yahoo?.roe_pct != null ? ["ROE · debt/equity", `${pf.snapshot_ratios_yahoo.roe_pct}% · ${pf.snapshot_ratios_yahoo.debt_to_equity ?? "–"}`] : null,
-          d.options ? ["Options", `IV ${d.options.iv30_pct}% (${d.options.iv_1y_percentile}th pct) · PCR ${d.options.put_call_oi}`] : null,
+          d.options ? ["Options", `IV ${d.options.iv30_pct}% (${ord(d.options.iv_1y_percentile)} pct) · PCR ${d.options.put_call_oi}`] : null,
           d.price?.beta_1y_vs_nifty != null ? ["Beta to Nifty (1y)", d.price.beta_1y_vs_nifty] : null,
           ...(d.upcoming_events || []).map((e) => ["Board meeting " + e.date, esc(e.purpose)])].filter(Boolean).map(([k, x]) => `<dt>${k}</dt><dd>${x}</dd>`).join("")}</dl>`}</div></div>
       ${d.recent_filings || d.headlines ? `<div class="card"><h2>Filings and headlines</h2><ul class="newslist">${[...(d.recent_filings || []).map((x) => ({ t: x.time, a: "NSE", h: `${x.filing}${x.detail ? " — " + x.detail : ""}` })), ...(d.headlines || []).map((x) => ({ t: x.time, a: x.source, h: x.headline }))].sort((a, b) => b.t.localeCompare(a.t)).slice(0, 20).map((x) => `<li><span class="small muted">${esc(x.t)} · ${esc(x.a)}</span><br>${esc(x.h)}</li>`).join("")}</ul></div>` : ""}</div>`;
@@ -285,3 +285,5 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, news (pl
       <div class="card"><h2>NSE filings</h2><ul class="newslist">${(res.filings?.items || []).filter((x) => !/^(Updates|General Updates|Disclosure under SEBI Takeover)/i.test(x.desc)).slice(0, 50).map((x) => `<li><span class="small muted">${esc(x.t)} · <b>${esc(x.sym)}</b></span><br>${esc(x.desc)}${x.text ? `<span class="small muted"> — ${esc(x.text.slice(0, 160))}</span>` : ""}</li>`).join("")}</ul></div></div></div>
       <p class="note">Headlines are titles from the publishers' RSS feeds; filings are NSE's own descriptions. Updated several times a day.</p>`;
   }
+  // read-only hooks for testing the research tools from the browser console
+  window.__tradeosResearch = { macroDashboard, companyResearch, screen: (a) => screenTool(a, null), sectorView, news: newsTool, brief: () => dataBrief() };
