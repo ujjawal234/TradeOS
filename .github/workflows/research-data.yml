@@ -1,0 +1,69 @@
+name: Research data (macro, company results, shareholding)
+
+# Macro series (FRED, BIS, OECD, MoSPI, World Bank) -> data/macro (committed, small).
+# Company quarterly results as filed with NSE (XBRL), shareholding and profiles -> the `research-data` release
+# (cache + app bundles). Incremental: the parsed cache is kept in the release, so each run only fetches what is new.
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_minutes:
+        description: "Time budget for company results (minutes)"
+        default: "300"
+  push:
+    branches: [main]
+    paths: ["data/REQUEST_RESEARCH", "scripts/fetch_fundamentals.py", "scripts/fetch_macro.py", ".github/workflows/research-data.yml"]
+  schedule:
+    - cron: "45 12 * * 1-5"          # 18:15 IST on weekdays (most results are filed in the evening; the 20:38 job publishes)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: research-data
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install pandas numpy requests yfinance
+      - name: Macro series
+        continue-on-error: true
+        run: python scripts/fetch_macro.py 2>&1 | tail -60
+      - name: Previous company-results cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release download research-data -p fund_cache.tar.gz -O fund_cache.tar.gz 2>/dev/null; then tar -xzf fund_cache.tar.gz; ls .fund_cache | head; else echo "no cache yet (first run)"; fi
+      - name: Company results, shareholding, profiles
+        run: |
+          MIN="${{ inputs.max_minutes }}"; [ -z "$MIN" ] && MIN=240
+          python scripts/fetch_fundamentals.py --max-minutes "$MIN" --out build_fund 2>&1 | tail -80
+      - name: Publish cache and app bundles
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -d .fund_cache || exit 0
+          tar -czf fund_cache.tar.gz .fund_cache
+          test -f build_fund/app/fund/index.json && tar -C build_fund/app -cf research_app.tar fund
+          ls -la fund_cache.tar.gz research_app.tar 2>/dev/null || true
+          gh release view research-data >/dev/null 2>&1 || gh release create research-data --title "Research data (daily)" --notes "Company quarterly results as filed with NSE (point in time), shareholding and profiles for TradeOS. fund_cache.tar.gz: parsed cache; research_app.tar: app bundles."
+          gh release upload research-data fund_cache.tar.gz --clobber
+          test -f research_app.tar && gh release upload research-data research_app.tar --clobber || true
+      - name: Commit macro data and reports
+        if: always()
+        run: |
+          git config user.name "tradeos-bot"
+          git config user.email "tradeos-bot@users.noreply.github.com"
+          git add data/macro data/research/_fund_report.json 2>/dev/null || true
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "data: macro and company results $(date -u +%Y-%m-%d)"
+          for i in 1 2 3 4; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 5; done

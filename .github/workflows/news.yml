@@ -1,0 +1,36 @@
+name: News, filings and results calendar
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["scripts/fetch_news.py", ".github/workflows/news.yml"]
+  schedule:
+    - cron: "20 2,5,8,11,14 * * 1-5"   # 07:50, 10:50, 13:50, 16:50, 19:50 IST
+    - cron: "20 6 * * 0,6"              # weekends once
+
+permissions:
+  contents: write
+
+concurrency:
+  group: news
+  cancel-in-progress: false
+
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests
+      - run: python scripts/fetch_news.py
+      - run: |
+          git config user.name "tradeos-bot"
+          git config user.email "tradeos-bot@users.noreply.github.com"
+          git add data/news
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "data: news $(date -u +%Y-%m-%dT%H:%M)"
+          for i in 1 2 3 4; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 5; done

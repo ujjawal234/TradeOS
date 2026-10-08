@@ -7,3 +7,5 @@ lab/build/
 build/
 .intraday/
 .options/
+.fund_cache/
+build_fund/
