@@ -1,11 +1,10 @@
-Bhavcopy: 4 weekdays to fetch (5761 calendar days since 2011-01-01)
-  0/4 scanned, 0 files
-Downloaded 1 new files; not available: {'http 404': 3}
+Bhavcopy: 3 weekdays to fetch (5761 calendar days since 2011-01-01)
+  0/3 scanned, 0 files
+Downloaded 0 new files; not available: {'http 404': 3}
 Loaded 3909 trading days, 6,551,379 rows, 3,837 tickers
 Symbol changes: 1056
-Corporate actions: 1 price-report files to fetch
-  0/1 scanned, 1 files
-Corporate actions: 51,623 distinct records from 3904 files (new 1; not available {})
+Corporate actions: 0 price-report files to fetch
+Corporate actions: 51,623 distinct records from 3904 files (new 0; not available {})
 Gap days ignored for adjustments: 0 []
 Reviews: 31 (2011-09-30 … 2026-09-30); stocks ever in the top 200: 1413
 Breadth: 3722 days, members per day 499 (median)
