@@ -1,5 +1,5 @@
 {
- "at": "2026-10-08T17:35:41Z",
+ "at": "2026-10-09T15:19:11Z",
  "symbols": 572,
  "failed": 44,
  "errors": {
@@ -30,7 +30,6 @@
   "BANKEX": "no data",
   "BSEMIDCAP": "no data",
   "BSESMALLCAP": "no data",
-  "SPX": "no data",
   "NASDAQ": "no data",
   "USVIX": "no data",
   "DAX": "no data",
@@ -38,6 +37,7 @@
   "MSCI_EM": "no data",
   "US10Y": "no data",
   "JPYINR": "no data",
+  "SILVER": "no data",
   "CRUDE": "no data",
   "BRENT": "no data",
   "NATGAS": "no data",
