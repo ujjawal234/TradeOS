@@ -1,10 +1,15 @@
 {
  "date": "2026-10-09",
- "done": true,
- "agents": {
-  "app_aintematrend1": {
-   "positions": {},
-   "trades": [
+ "agents": [
+  {
+   "id": "app_aintematrend1",
+   "name": "EMA 9/21 trend above VWAP (3-min)",
+   "trades": 10,
+   "wins": 3,
+   "open": 0,
+   "pnl": -1159.64,
+   "return_pct": -0.116,
+   "trade_list": [
     {
      "sym": "KOTAKBANK",
      "side": "long",
@@ -125,25 +130,17 @@
      "pnl": -219.09,
      "pnl_pct": -0.007
     }
-   ],
-   "realized": -1159.6382368345755,
-   "entries": {
-    "HCLTECH": 1,
-    "KOTAKBANK": 2,
-    "INDIGO": 1,
-    "ADANIENT": 1,
-    "SBILIFE": 1,
-    "SBIN": 1,
-    "NESTLEIND": 1,
-    "DRREDDY": 1,
-    "ASIANPAINT": 1
-   },
-   "last_bar": "2026-10-09 15:12:00",
-   "squared_off": true
+   ]
   },
-  "app_aintorblong01": {
-   "positions": {},
-   "trades": [
+  {
+   "id": "app_aintorblong01",
+   "name": "Opening-range breakout long (5-min)",
+   "trades": 9,
+   "wins": 4,
+   "open": 0,
+   "pnl": 2796.79,
+   "return_pct": 0.28,
+   "trade_list": [
     {
      "sym": "BHARTIARTL",
      "side": "long",
@@ -252,29 +249,17 @@
      "pnl": -257.96,
      "pnl_pct": -0.043
     }
-   ],
-   "realized": 2796.794626874237,
-   "entries": {
-    "BHARTIARTL": 1,
-    "AXISBANK": 1,
-    "POWERGRID": 1,
-    "BAJAJ-AUTO": 1,
-    "SBIN": 1,
-    "DRREDDY": 1,
-    "SBILIFE": 1,
-    "NTPC": 1,
-    "JIOFIN": 1
-   },
-   "last_bar": "2026-10-09 15:10:00",
-   "squared_off": true
+   ]
   },
-  "app_aintorbshort1": {
-   "positions": {},
-   "trades": [],
-   "realized": 0.0,
-   "entries": {},
-   "last_bar": "2026-10-09 15:10:00",
-   "squared_off": true
+  {
+   "id": "app_aintorbshort1",
+   "name": "Opening-range breakdown short (5-min)",
+   "trades": 0,
+   "wins": 0,
+   "open": 0,
+   "pnl": 0.0,
+   "return_pct": 0.0,
+   "trade_list": []
   }
- }
+ ]
 }
