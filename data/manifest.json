@@ -1662,15 +1662,15 @@
   },
   "HANGSENG": {
    "yahoo": "^HSI",
-   "rows": 3699,
+   "rows": 3698,
    "first": "2011-09-26",
-   "last": "2026-10-09"
+   "last": "2026-10-08"
   },
   "SHANGHAI": {
    "yahoo": "000001.SS",
-   "rows": 3645,
+   "rows": 3644,
    "first": "2011-09-26",
-   "last": "2026-10-09"
+   "last": "2026-10-08"
   },
   "KOSPI": {
    "yahoo": "^KS11",
@@ -3453,5 +3453,5 @@
   "DUMMYHEG": "no data",
   "NMDC": "no data"
  },
- "fetched_at": "2026-10-09T15:19:11Z"
+ "fetched_at": "2026-10-09T17:13:54Z"
 }
