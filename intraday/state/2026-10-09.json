@@ -1,0 +1,275 @@
+{
+ "date": "2026-10-09",
+ "done": false,
+ "agents": {
+  "app_aintematrend1": {
+   "positions": {
+    "NESTLEIND": {
+     "sym": "NESTLEIND",
+     "qty": 248,
+     "entry": 1329.27,
+     "t_entry": "2026-10-09 12:48:00",
+     "stop": 1338.72,
+     "target": null,
+     "best": 1346.8,
+     "hi_seen": 1346.8,
+     "lo_seen": 1314.3
+    },
+    "DRREDDY": {
+     "sym": "DRREDDY",
+     "qty": 275,
+     "entry": 1195.84,
+     "t_entry": "2026-10-09 13:39:00",
+     "stop": 1193.5,
+     "target": null,
+     "best": 1200.7,
+     "hi_seen": 1200.7,
+     "lo_seen": 1172.0
+    },
+    "ASIANPAINT": {
+     "sym": "ASIANPAINT",
+     "qty": 140,
+     "entry": 2350.87,
+     "t_entry": "2026-10-09 13:42:00",
+     "stop": 2346.34,
+     "target": null,
+     "best": 2360.5,
+     "hi_seen": 2362.9,
+     "lo_seen": 2322.2
+    }
+   },
+   "trades": [
+    {
+     "sym": "KOTAKBANK",
+     "side": "long",
+     "qty": 745,
+     "entry": 442.94,
+     "t_entry": "2026-10-09 10:54:00",
+     "exit": 441.91,
+     "t_exit": "2026-10-09 11:09:00",
+     "reason": "exit rule",
+     "pnl": -963.92,
+     "pnl_pct": -0.232
+    },
+    {
+     "sym": "HCLTECH",
+     "side": "long",
+     "qty": 273,
+     "entry": 1206.54,
+     "t_entry": "2026-10-09 10:24:00",
+     "exit": 1212.34,
+     "t_exit": "2026-10-09 11:15:26",
+     "reason": "stop",
+     "pnl": 1384.61,
+     "pnl_pct": 0.481
+    },
+    {
+     "sym": "KOTAKBANK",
+     "side": "long",
+     "qty": 744,
+     "entry": 443.39,
+     "t_entry": "2026-10-09 11:21:00",
+     "exit": 442.56,
+     "t_exit": "2026-10-09 11:51:00",
+     "reason": "exit rule",
+     "pnl": -814.17,
+     "pnl_pct": -0.187
+    },
+    {
+     "sym": "ADANIENT",
+     "side": "long",
+     "qty": 126,
+     "entry": 2614.82,
+     "t_entry": "2026-10-09 11:51:00",
+     "exit": 2609.18,
+     "t_exit": "2026-10-09 11:57:00",
+     "reason": "exit rule",
+     "pnl": -908.35,
+     "pnl_pct": -0.216
+    },
+    {
+     "sym": "SBILIFE",
+     "side": "long",
+     "qty": 193,
+     "entry": 1701.04,
+     "t_entry": "2026-10-09 11:57:00",
+     "exit": 1695.66,
+     "t_exit": "2026-10-09 12:21:00",
+     "reason": "exit rule",
+     "pnl": -1234.85,
+     "pnl_pct": -0.316
+    },
+    {
+     "sym": "SBIN",
+     "side": "long",
+     "qty": 345,
+     "entry": 954.54,
+     "t_entry": "2026-10-09 12:24:00",
+     "exit": 953.36,
+     "t_exit": "2026-10-09 13:09:00",
+     "reason": "exit rule",
+     "pnl": -604.81,
+     "pnl_pct": -0.124
+    },
+    {
+     "sym": "INDIGO",
+     "side": "long",
+     "qty": 68,
+     "entry": 4835.77,
+     "t_entry": "2026-10-09 11:15:00",
+     "exit": 4833.83,
+     "t_exit": "2026-10-09 13:39:00",
+     "reason": "exit rule",
+     "pnl": -328.97,
+     "pnl_pct": -0.04
+    }
+   ],
+   "realized": -3766.768081186617,
+   "entries": {
+    "HCLTECH": 1,
+    "KOTAKBANK": 2,
+    "INDIGO": 1,
+    "ADANIENT": 1,
+    "SBILIFE": 1,
+    "SBIN": 1,
+    "NESTLEIND": 1,
+    "DRREDDY": 1,
+    "ASIANPAINT": 1
+   },
+   "last_bar": "2026-10-09 14:30:00",
+   "squared_off": false
+  },
+  "app_aintorblong01": {
+   "positions": {
+    "POWERGRID": {
+     "sym": "POWERGRID",
+     "qty": 1004,
+     "entry": 248.95,
+     "t_entry": "2026-10-09 09:55:00",
+     "stop": 247.21,
+     "target": 252.44,
+     "best": 248.94978,
+     "hi_seen": 251.1,
+     "lo_seen": 246.15
+    },
+    "SBIN": {
+     "sym": "SBIN",
+     "qty": 262,
+     "entry": 953.69,
+     "t_entry": "2026-10-09 10:20:00",
+     "stop": 947.01,
+     "target": 967.04,
+     "best": 953.6907,
+     "hi_seen": 959.9,
+     "lo_seen": 938.1
+    },
+    "DRREDDY": {
+     "sym": "DRREDDY",
+     "qty": 209,
+     "entry": 1191.84,
+     "t_entry": "2026-10-09 11:05:00",
+     "stop": 1183.5,
+     "target": 1208.52,
+     "best": 1191.8383199999998,
+     "hi_seen": 1200.7,
+     "lo_seen": 1172.0
+    },
+    "JIOFIN": {
+     "sym": "JIOFIN",
+     "qty": 1163,
+     "entry": 214.8,
+     "t_entry": "2026-10-09 11:40:00",
+     "stop": 213.3,
+     "target": 217.81,
+     "best": 214.80295199999998,
+     "hi_seen": 215.74,
+     "lo_seen": 210.75
+    }
+   },
+   "trades": [
+    {
+     "sym": "BHARTIARTL",
+     "side": "long",
+     "qty": 137,
+     "entry": 1817.96,
+     "t_entry": "2026-10-09 09:45:00",
+     "exit": 1809.04,
+     "t_exit": "2026-10-09 10:20:00",
+     "reason": "exit rule",
+     "pnl": -1371.37,
+     "pnl_pct": -0.491
+    },
+    {
+     "sym": "BAJAJ-AUTO",
+     "side": "long",
+     "qty": 25,
+     "entry": 9771.95,
+     "t_entry": "2026-10-09 09:55:00",
+     "exit": 9908.76,
+     "t_exit": "2026-10-09 11:04:26",
+     "reason": "target",
+     "pnl": 3272.64,
+     "pnl_pct": 1.4
+    },
+    {
+     "sym": "AXISBANK",
+     "side": "long",
+     "qty": 197,
+     "entry": 1262.65,
+     "t_entry": "2026-10-09 09:45:00",
+     "exit": 1257.15,
+     "t_exit": "2026-10-09 11:10:00",
+     "reason": "exit rule",
+     "pnl": -1232.71,
+     "pnl_pct": -0.436
+    },
+    {
+     "sym": "SBILIFE",
+     "side": "long",
+     "qty": 147,
+     "entry": 1698.74,
+     "t_entry": "2026-10-09 11:10:00",
+     "exit": 1699.36,
+     "t_exit": "2026-10-09 11:25:00",
+     "reason": "exit rule",
+     "pnl": -58.71,
+     "pnl_pct": 0.037
+    },
+    {
+     "sym": "NTPC",
+     "side": "long",
+     "qty": 797,
+     "entry": 313.61,
+     "t_entry": "2026-10-09 11:25:00",
+     "exit": 312.59,
+     "t_exit": "2026-10-09 11:40:00",
+     "reason": "exit rule",
+     "pnl": -964.68,
+     "pnl_pct": -0.326
+    }
+   ],
+   "realized": -654.4395084487945,
+   "entries": {
+    "BHARTIARTL": 1,
+    "AXISBANK": 1,
+    "POWERGRID": 1,
+    "BAJAJ-AUTO": 1,
+    "SBIN": 1,
+    "DRREDDY": 1,
+    "SBILIFE": 1,
+    "NTPC": 1,
+    "JIOFIN": 1
+   },
+   "last_bar": "2026-10-09 14:25:00",
+   "squared_off": false
+  },
+  "app_aintorbshort1": {
+   "positions": {},
+   "trades": [],
+   "realized": 0.0,
+   "entries": {},
+   "last_bar": "2026-10-09 14:25:00",
+   "squared_off": false
+  }
+ }
+}
