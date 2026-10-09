@@ -1,60 +1,13 @@
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (0/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (5/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (10/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (15/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (20/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (25/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (30/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (35/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (40/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (45/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (50/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Today's bhavcopy (2026-10-09) isn't out yet; retrying in 5 minutes (55/60 min)
-Bhavcopy: 3 weekdays to fetch (5760 calendar days since 2011-01-01)
-  0/3 scanned, 0 files
-Downloaded 0 new files; not available: {'http 404': 3}
-Loaded 3908 trading days, 6,548,790 rows, 3,837 tickers
+Bhavcopy: 4 weekdays to fetch (5761 calendar days since 2011-01-01)
+  0/4 scanned, 0 files
+Downloaded 1 new files; not available: {'http 404': 3}
+Loaded 3909 trading days, 6,551,379 rows, 3,837 tickers
 Symbol changes: 1056
-Corporate actions: 0 price-report files to fetch
-Corporate actions: 51,595 distinct records from 3903 files (new 0; not available {})
+Corporate actions: 1 price-report files to fetch
+  0/1 scanned, 1 files
+Corporate actions: 51,623 distinct records from 3904 files (new 1; not available {})
 Gap days ignored for adjustments: 0 []
 Reviews: 31 (2011-09-30 … 2026-09-30); stocks ever in the top 200: 1413
-Breadth: 3721 days, members per day 499 (median)
-Corporate actions applied: {'dividends': 14672, 'ratio_applied': 630, 'inferred_splits': 13, 'rights': 125, 'outside_data': 172, 'demergers': 115, 'ratio_rejected': 82}; one-day moves beyond ±40% left: 263
-Wrote 1413 price files; 230 of them stopped trading (delisted, merged or suspended). Adjustments: {'tickers_adjusted': 839, 'events': 3097, 'small_events': 2028}
+Breadth: 3722 days, members per day 499 (median)
+Corporate actions applied: {'dividends': 14678, 'ratio_applied': 630, 'inferred_splits': 13, 'rights': 125, 'outside_data': 169, 'demergers': 115, 'ratio_rejected': 82}; one-day moves beyond ±40% left: 263
+Wrote 1413 price files; 230 of them stopped trading (delisted, merged or suspended). Adjustments: {'tickers_adjusted': 839, 'events': 3098, 'small_events': 2029}
