@@ -31,6 +31,7 @@
     if (pending.length) needs.push(["warn", "i-orders", `${pending.length} order${pending.length > 1 ? "s" : ""} need your approval`, `for ${fmtDate(pending[0].session)} · ${inrShort(pending.reduce((t, o) => t + (o.value || 0), 0))}`, "orders"]);
     for (const e of crit.slice(0, 3)) needs.push(["crit", "i-alerts", e.title, e.detail || fmtDate(e.date), "alerts"]);
     if (loose.length && desks.length) needs.push(["cio", "i-agent", `${loose.length} paper agent${loose.length > 1 ? "s are" : " is"} not on a desk`, "Their signals don't reach the book until they get a desk and an allocation", "desks"]);
+    for (const ag of [...S.agents.values()].filter((x) => x.type === "watchlist" && x.status === "paper")) { const t = (ag.inbox_log || []).slice(-1)[0]; if (!t || t.date < todayIST()) needs.push(["cio", "i-agent", `Send today's names to ${ag.name}`, t ? `last list ${fmtDate(t.date)} · ${t.syms.length} names` : "no list sent yet", `agent-${ag.id}`]); }
     if (!desks.length) needs.push(["cio", "i-desks", "Set up the fund", "Create desks with capital and limits, then allocate agents", "desks"]);
     const stale = (Date.now() - Date.parse(S.lastDay + "T10:00:00Z")) / 864e5 > 4; if (stale) needs.push(["warn", "i-markets", `Market data stops at ${fmtDate(S.lastDay)}`, "The evening data refresh may not have run", "research"]);
     const note = await researchNote();

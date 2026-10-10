@@ -3,95 +3,15 @@
 // agents.json: [{ id, name, status, paper: {version, since}, version: {spec, test} }]  (the paper version's spec)
 // Writes out.json with each paper agent's returns since it started, today's signals, and alert text.
 import fs from "node:fs";
-import zlib from "node:zlib";
-import path from "node:path";
-import { createRequire } from "node:module";
+import { E, loadData } from "./lib_frames.mjs";
 
-const require = createRequire(import.meta.url);
-const zlibM = require("node:zlib"), fsM = require("node:fs");
-// JSON file, gzip or plain (x.json.gz preferred when both could exist)
-const readJ = (f) => { const js = JSON.parse(fsM.readFileSync(f, "utf8")); return js && typeof js.b64gz === "string" ? JSON.parse(zlibM.gunzipSync(Buffer.from(js.b64gz, "base64")).toString("utf8")) : js; };
-const here = path.dirname(new URL(import.meta.url).pathname);
-const E = require(path.join(here, "..", "lab", "engine.js"));
 const [dir, agentsFile, outFile] = process.argv.slice(2);
 if (!dir || !agentsFile || !outFile) { console.error("usage: node scripts/daily_run.mjs <app_build_dir> <agents.json> <out.json>"); process.exit(2); }
+const D = loadData(dir), { man, light, lastDay } = D;
+const framesFor = (spec, extra = [], tolerant = false) => D.framesFor(spec, extra, tolerant);
+// the session calendar (NIFTY's days up to the latest close): daily-list names are live for their first list_days sessions
+const sessions = Array.from(light.NIFTY ? light.NIFTY.d : []).filter((d) => d <= E.dayOf(lastDay));
 
-const data = path.join(dir, "data");
-const man = JSON.parse(fs.readFileSync(path.join(data, "manifest.json"), "utf8"));
-const light = E.framesFromPack(JSON.parse(fs.readFileSync(path.join(data, "closes.json"), "utf8")));
-const lastDay = Object.values(man.symbols).map((s) => s.last).sort().pop();
-let shares = null; try { shares = JSON.parse(fs.readFileSync(path.join(data, "shares.json"), "utf8")); } catch (e) { /* optional */ }
-E.setData({ meta: man.symbols, shares, ...(man.options ? { optIndex: man.options.underlyings } : {}) });
-// NSE option prices (data/opt/*.json.gz): chains for option agents, summaries for iv/pcr/skew... in rules
-const optLoaded = { c: new Set(), s: new Set() }, optFiles = {};
-function ensureOptions(syms, kind) {
-  const U = (man.options && man.options.underlyings) || {};
-  for (const x of new Set(syms)) {
-    if (!U[x] || !U[x][kind] || optLoaded[kind].has(x)) continue;
-    const k = U[x][kind];
-    const js = (optFiles[k] ||= readJ(path.join(data, "opt", `${k}.json`)));
-    for (const [y, p] of Object.entries(js)) { if (kind === "c") E.setOptions(y, p); else E.setOptionSummary(y, p); optLoaded[kind].add(y); }
-  }
-}
-// intraday bars (data/intra/*.json) for intraday agents
-const intraLoaded = new Set();
-function ensureIntraday(spec) {
-  const I = man.intraday; if (!I) throw new Error("no intraday bars in this build");
-  const kind = spec.bar_minutes % 5 === 0 ? "5m" : "1m";
-  for (const k of new Set(spec.symbols.filter((s) => I.symbols[s] && I.symbols[s][kind]).map((s) => I.symbols[s][kind]))) {
-    if (intraLoaded.has(k)) continue; intraLoaded.add(k);
-    for (const [s, p] of Object.entries(readJ(path.join(data, "intra", `${k}.json`)))) E.setIntraday(s, p);
-  }
-}
-// company results (data/fund/*.json) for agents whose rules use fundamentals
-const fundLoaded = new Set();
-function ensureFund(syms) {
-  const C = (man.fund && man.fund.companies) || {};
-  for (const k of new Set(syms.filter((s) => C[s] && !fundLoaded.has(s)).map((s) => C[s].f))) {
-    for (const [s, p] of Object.entries(readJ(path.join(data, "fund", `${k}.json`)))) { if (!fundLoaded.has(s)) { E.setFundamentals(s, p); fundLoaded.add(s); } }
-  }
-}
-const specExprs = (spec) => spec.type === "rule" || spec.type === "intraday" ? [spec.entry, spec.exit, spec.rank_by] : spec.type === "rotation" ? E.exprsOf(spec) : [spec.entry, spec.exit];
-const full = {};
-const bundleCache = {};
-const fullFrame = (s) => {
-  if (full[s]) return full[s];
-  const pb = man.symbols[s] && man.symbols[s].pb; // NSE-sourced stocks live in the shared bundles (data/pit/full/<b>.json)
-  if (pb) { const js = (bundleCache[pb] ||= readJ(path.join(data, "pit", "full", `${pb}.json`))); full[s] = E.frame(js[s]); }
-  else full[s] = E.frame(JSON.parse(fs.readFileSync(path.join(data, "p", `${s}.json`), "utf8")));
-  full[s].sym = s; return full[s];
-};
-// survivorship-free universes (data/pit): separate NSE-bhavcopy price series for every stock ever in them
-const pitDir = path.join(data, "pit");
-let pitLight = null, pitBundles = {}; const pitFull = {};
-if (man.pit && fs.existsSync(path.join(pitDir, "membership.json"))) {
-  const mem = JSON.parse(fs.readFileSync(path.join(pitDir, "membership.json"), "utf8"));
-  E.setPit(mem); pitBundles = mem.bundles || {};
-  pitLight = E.framesFromPack(readJ(path.join(pitDir, "closes.json")));
-}
-const pitSyms = new Set(Object.entries(man.universes).filter(([k]) => /pit$/.test(k)).flatMap(([, v]) => v));
-function pitFrame(s) {
-  if (!pitFull[s]) for (const [k, raw] of Object.entries(readJ(path.join(pitDir, "full", `${pitBundles[s]}.json`)))) pitFull[k] = E.frame(raw);
-  return pitFull[s];
-}
-function framesFor(spec) {
-  const pk = E.usesPit(spec);
-  const need = [...new Set(E.symbolsNeeded(spec, man.universes).concat(["NIFTY"]))];
-  if (man.options) {
-    if (spec.type === "option_selling") ensureOptions([spec.underlying], "c");
-    if (specExprs(spec).some(E.usesOptionVars)) { E.initOptionSummaries(); ensureOptions(need.concat(specExprs(spec).flatMap((x) => E.refSymbols(x))), "s"); }
-  }
-  if (spec.type === "intraday") ensureIntraday(spec);
-  if (man.fund && specExprs(spec).some(E.usesFundVars)) ensureFund(need.concat(spec.type === "intraday" ? spec.symbols : []));
-  const out = {};
-  for (const s of need) {
-    if (pk && pitSyms.has(s)) { if (!pitLight) throw new Error("point-in-time data missing"); out[s] = E.needsFull(spec) ? pitFrame(s) : pitLight[s]; continue; }
-    if (!man.symbols[s]) throw new Error(`no data for ${s}`);
-    out[s] = E.needsFull(spec) && !["basket", "series"].includes(man.symbols[s].kind) ? fullFrame(s) : light[s];
-  }
-  return out;
-}
-// ------------------------------------------------------------------ stale-data gate
 // Sources update at different times (NSE bhavcopy for stocks ~19:00 IST, index files, flows, Yahoo). If one of them
 // hasn't published the latest session yet, an agent would trade today's index level against yesterday's stock prices.
 // A series that stopped within the last STALE_WINDOW days is "late"; one that stopped long ago is delisted/retired.
@@ -128,7 +48,18 @@ for (const a of agents) {
   if (a.status !== "paper" || !a.paper || !a.version?.spec) continue;
   const r = { id: a.id, name: a.name, version: a.paper.version, since: a.paper.since };
   try {
-    const spec = E.normalize(a.version.spec, man.universes), frames = framesFor(spec);
+    const spec = E.normalize(a.version.spec, man.universes);
+    if (spec.type === "watchlist") { // daily-list system: today's calls on the names that are live; the book holds its positions
+      const list = E.watchLive(a.inbox_log || [], sessions, spec.list_days), frames = framesFor(spec, list, true);
+      const stale = staleVerdict(spec, Object.fromEntries(Object.entries(frames).filter(([s]) => s === "NIFTY" || list.includes(s))));
+      if (stale) r.stale = stale;
+      r.list = list; r.signals = E.watchSignals(spec, frames, { list, over: a.auto_learn && a.learned?.params ? a.learned.params : null })
+        .map((x) => ({ symbol: x.symbol, action: x.action, price: x.price, note: x.note }));
+      r.actions = r.signals.filter((x) => x.action === "BUY");
+      if (stale && stale.blocked) { r.blocked_actions = r.actions.length; r.actions = []; }
+      results.push(r); continue;
+    }
+    const frames = framesFor(spec);
     const stale = staleVerdict(spec, frames);
     if (stale) r.stale = stale;
     const lastSession = spec.type === "intraday" ? (man.intraday?.asof || lastDay) : lastDay;

@@ -156,13 +156,15 @@
   let liveP = null; // the live paper runner's daily results (GitHub Actions, NSE live data), by runner agent id
   function liveResults() { if (!liveP) liveP = (S.man.intraday?.live ? fetch("data/intra/live.json").then((r) => r.ok ? r.json() : { agents: {} }) : Promise.resolve({ agents: {} })).catch(() => ({ agents: {} })); return liveP; }
   function specExprs(spec) {
+    if (spec.type === "watchlist") return E.watchExprs(spec);
     if (spec.type === "rule" || spec.type === "intraday") return [spec.entry, spec.exit, spec.rank_by].filter(Boolean);
     if (spec.type === "rotation") return E.exprsOf(spec);
     return [spec.entry, spec.exit];
   }
-  async function framesFor(spec, onProgress) {
+  // extra: more names to load (a daily list); names without data are skipped (the caller reports them)
+  async function framesFor(spec, onProgress, extra = []) {
     const pk = E.usesPit(spec), inPit = (s) => !!pk && S.pitSyms.has(s);
-    const need = [...new Set(E.symbolsNeeded(spec, S.man.universes).concat(["NIFTY"]))];
+    const need = [...new Set(E.symbolsNeeded(spec, S.man.universes).concat(["NIFTY"], extra.map(E.symKey).filter((s) => S.man.symbols[s] && !["basket", "series"].includes(S.man.symbols[s].kind))))];
     const missing = need.filter((s) => !inPit(s) && !S.man.symbols[s]);
     if (missing.length) throw new Error(`No data for ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? "…" : ""}. Check the ticker; for anything not in TradeOS yet, use the request_data tool.`);
     if (pk) await ensurePit();
@@ -198,7 +200,9 @@
     return h;
   }
   const PIT_LABEL = { top500pit: "Top 500 point-in-time", top200pit: "Top 200 point-in-time", top100pit: "Top 100 point-in-time" };
+  const watchExitWords = (s) => [s.hold_days ? `after ${s.hold_days} session${s.hold_days > 1 ? "s" : ""}` : "", s.target_pct ? `at +${s.target_pct}%` : "", s.stop_pct ? `at −${s.stop_pct}%` : "", s.exit ? `when ${E.fillParams(s.exit, s.params)}` : ""].filter(Boolean).join(", ") || "held until you say";
   function universeLabel(spec) {
+    if (spec.type === "watchlist") return `names you send${spec.symbols?.length ? ` + ${spec.symbols.length} always watched` : ""}`;
     if (spec.type === "rule") return spec.symbols.length > 3 ? `${spec.symbols.length} symbols` : spec.symbols.join(", ");
     if (spec.type === "intraday") return `${spec.symbols.length > 3 ? `${spec.symbols.length} symbols` : spec.symbols.join(", ")} · ${spec.bar_minutes}-min`;
     if (spec.type === "rotation") return Array.isArray(spec.universe) ? `${spec.universe.length} symbols` : (PIT_LABEL[spec.universe] || spec.universe);
@@ -206,7 +210,7 @@
   }
   // an actionable signal for the next session (rotation changes before their rebalance day are previews)
   const isAction = (s, withExited) => (withExited ? /BUY|SELL|SHORT|COVER|NEW|EXITED/ : /BUY|SELL|SHORT|COVER|NEW/).test(s.action) && s.due !== false;
-  const TYPE_LABEL = { rule: "Rule strategy", rotation: "Rotation", option_selling: "Options", intraday: "Intraday" };
+  const TYPE_LABEL = { watchlist: "Daily list", rule: "Rule strategy", rotation: "Rotation", option_selling: "Options", intraday: "Intraday" };
   // plain-words description of an options spec (bought or sold, strikes, exits, entry rule)
   function optStrikes(s) { return s.structure === "custom" ? "" : s.strike_mode === "atm" ? "at the money" : s.strike_mode === "delta" ? `${Math.round(s.delta * 100)} delta` : `${s.otm_pct}% ${s.otm_pct < 0 ? "in" : "out of"} the money`; }
   function optLegs(s) {
@@ -283,19 +287,21 @@
   const verId = (n) => "v" + String(n).padStart(3, "0");
   async function createAgent({ name, spec, meta, test, res }) {
     if (S.readOnly) throw new Error("You can view but not change agents on this page.");
-    const id = newId("a"), at = nowIso(), h = headline(res, test);
+    const id = newId("a"), at = nowIso(), h = res ? headline(res, test) : null;
     await S.db.doc(`agents/${id}/versions/${verId(1)}`).set({ n: 1, spec, meta, test, note: "Created", by: S.uid, at, headline: h });
     await saveAgent(id, { name, type: spec.type, status: "testing", version: 1, universe: universeLabel(spec), summary: meta.explanation || "",
       headline: h, created_by: S.uid, created_at: at, updated_at: at, updated_by: S.uid, paper: null, paper_runs: [], app: APP_VERSION });
-    await addAgentMsg(id, { role: "system", text: `Created by the CIO as v1. Backtest ${fmtDate(h.start)} – ${fmtDate(h.end)}: CAGR ${pct(h.cagr)} vs Nifty ${pct(h.nifty_cagr)}, worst fall ${pct(h.mdd)}.` });
+    await addAgentMsg(id, { role: "system", text: h ? `Created by the CIO as v1. Backtest ${fmtDate(h.start)} – ${fmtDate(h.end)}: CAGR ${pct(h.cagr)} vs Nifty ${pct(h.nifty_cagr)}, worst fall ${pct(h.mdd)}.` : "Created by the CIO as v1. No backtest was run; run one from its page whenever you want." });
     return id;
   }
   async function saveVersion(agent, { spec, meta, test, note }) {
     if (S.readOnly) throw new Error("You can view but not change agents on this page.");
-    const res = await runSpec(spec, test), n = (agent.version || 1) + 1, h = headline(res, test), at = nowIso();
+    // a new version never waits on a backtest: daily-list systems have none; others keep their headline when it computes
+    let h = null; if (spec.type !== "watchlist") { try { h = headline(await runSpec(spec, test), test); } catch (e) { h = null; } }
+    const n = (agent.version || 1) + 1, at = nowIso();
     await S.db.doc(`agents/${agent.id}/versions/${verId(n)}`).set({ n, spec, meta, test, note: note || "Updated", by: S.uid, at, headline: h, parent: agent.version });
     await patchAgent(agent.id, { version: n, universe: universeLabel(spec), summary: meta.explanation || agent.summary || "", headline: h });
-    await addAgentMsg(agent.id, { role: "system", text: `v${n} saved — ${note || "updated"}. CAGR ${pct(h.cagr)} (was ${pct(agent.headline?.cagr)}), worst fall ${pct(h.mdd)} (was ${pct(agent.headline?.mdd)}).` });
+    await addAgentMsg(agent.id, { role: "system", text: `v${n} saved — ${note || "updated"}.${h ? ` CAGR ${pct(h.cagr)} (was ${pct(agent.headline?.cagr)}), worst fall ${pct(h.mdd)} (was ${pct(agent.headline?.mdd)}).` : ""}` });
     return n;
   }
   async function setStatus(agent, status) {
@@ -323,6 +329,12 @@
     if (!vs.exists) return null;
     const v = vs.data(), spec = v.spec;
     let out;
+    if (spec.type === "watchlist") { // its record lives in the book; today's calls come from the live names
+      const w = await watchCalls(agent, E.normalize(spec, S.man.universes)).catch(() => null);
+      const sl = S.bookState?.sleeves?.[agent.id], eq = sl ? O.sleeveEquity(sl, pxFn) : null;
+      out = { watch: true, pending: !sl, since: agent.paper.since, version: agent.paper.version, ret: sl && sl.capital ? (eq / sl.capital - 1) * 100 : null, signals: (w?.rows || []).map((r) => ({ symbol: r.symbol, action: r.action, price: r.price, note: r.note })) };
+      S.paperCache.set(key, out); return out;
+    }
     const lastSession = spec.type === "intraday" ? (intraRange(spec.bar_minutes)?.last || S.lastDay) : S.lastDay;
     if (agent.paper.since >= lastSession) {
       const full = await runSpec(spec, { start: v.test?.start || "2012-01-01" });
@@ -463,6 +475,7 @@ MARKET BREADTH (point-in-time top 500 NSE stocks, daily; use via ref): ${b}` : "
     const live = st.filter(([, u]) => u.last >= o.asof).map(([k]) => k);
     return `OPTION PRICES (NSE F&O bhavcopy, real daily closes/settlement prices to ${o.asof}): index options ${idx.join(", ")}; stock options on ${st.length} stocks (${live.length} still in F&O today, the rest delisted or dropped from F&O — kept, no survivorship bias). Option strategies on these use market prices; any F&O stock can be an "underlying". Rule-language variables from the same data on any of these symbols: iv (30-day at-the-money implied volatility, %), iv_near, iv_next, straddle (nearest ATM straddle, % of price), pcr (put/call open interest), pcr_vol, skew (put IV at 95% minus call IV at 105%, vol points), max_pain, oi_calls, oi_puts, fut_oi, dte (days to nearest expiry) — NaN on days a symbol had no options.`;
   }
+  const WATCH_SCHEMA = `{"type":"watchlist","conditions":[{"label":"Price pop","expr":"roc(close,1) > {min_gain}","value":"roc(close,1)","unit":"%"},{"label":"Volume surge","expr":"volume > {vol_mult} * prev(volume)","value":"volume / prev(volume)","unit":"×"},{"label":"OI build-up","expr":"roc(fut_oi,1) > {oi_gain} and roc(close,1) > 0","value":"roc(fut_oi,1)","unit":"%"}],"need":"any"|"all"|2,"params":{"min_gain":{"value":2,"label":"Day gain above","unit":"%","min":0.5,"max":8,"step":0.5},"vol_mult":{"value":1.5,"label":"Volume vs yesterday","unit":"×","min":1,"max":4,"step":0.25},"oi_gain":{"value":3,"label":"Futures OI up","unit":"%","min":1,"max":15,"step":1}},"hold_days":2,"target_pct":null,"stop_pct":null,"exit":null or expr,"position_pct":10,"max_positions":null,"list_days":1,"symbols":[optional names always watched],"rank_by":optional expr,"view":["fundamentals"|"options"|"chart"],"capital":2500000,"cost_pct":0.12}`;
   const SCHEMAS = `STRATEGY SPEC — choose ONE "type". Every field beyond the basics is optional; omit what you don't need.
 1) "rule": entry/exit rules per symbol. {"type":"rule","symbols":[tickers or group names],"entry":expr,"exit":expr or "","side":"long"|"short","stop_loss_pct":num|null,"take_profit_pct":num|null,"position_size_pct":num (default 100),"capital":₹,"cost_pct":0.12,
    "trailing_stop_pct":num,"stop_atr_mult":num,"target_atr_mult":num,"atr_period":14,"max_hold_days":int,
@@ -499,6 +512,10 @@ MARKET BREADTH (point-in-time top 500 NSE stocks, daily; use via ref): ${b}` : "
    Intraday rule variables (only in this type): vwap (session VWAP; time-weighted for indices), day_open, prev_close, day_high, day_low (so far), or_high, or_low (opening range, NaN until it completes), minutes (minutes since 09:15 at the bar's end), day_ret (% vs prev_close). Indicators see only the same session's bars (sma(close,20) on 5-minute bars needs 20 bars of today), exactly as the live paper runner does. ref("SYMBOL", expr) and vix give the daily value as of YESTERDAY's close (no look-ahead). e.g. ORB: entry "close > or_high and close > vwap and volume > 1.5 * sma(volume, 3)", exit "close < vwap", stop 0.7, target 1.4.
    Test window for intraday: use {"start":null,"split":null} (or a split date inside the bar range); never the daily defaults like split 2021.
    An intraday agent put on paper trading is also traded live by the paper runner on NSE's live data every session (results appear on its page after the close).
+5) "watchlist": a DAILY-LIST system — the team sends names (a list a day, pasted or typed), named triggers on the latest close call BUY, the desk buys at the next open, exits by holding days / target / stop / an exit rule, and the system learns better thresholds from the record of every list sent. Use it whenever the user will hand over names (their own picks, a scanner, a research desk) and wants the system to act on them — short-term plays, breakouts, "price pops or build-up → buy". No history is needed to run it; never backtest it unless asked.
+   ${WATCH_SCHEMA}
+   Triggers are plain rule-language conditions with {setting} placeholders; put every number the user may tune in "params" (label, unit, min/max/step) — those numbers become knobs on its page and are what it learns. Short-term defaults: day gain roc(close,1), volume vs yesterday volume/prev(volume), futures OI build-up roc(fut_oi,1) with price up; avoid multi-week lookbacks unless asked.
+PAGES: every agent gets a page shaped by its type (daily lists: names box, calls with trigger chips, positions, record & learning, settings knobs; options: option chain; others: today's signals and rules). Add "view":["fundamentals","options","chart"] to a spec to give its page those panels when the system needs them.
 RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime and expression weights; evaluated each day on that symbol; rules signal at the close and fill at the next open):
  variables: open high low close volume hl2 hlc3 dow(0=Mon) dom(day of month) month(1-12) year; vix (India VIX close); option-market series where DATA lists option prices: iv iv_near iv_next straddle pcr pcr_vol skew max_pain oi_calls oi_puts fut_oi dte; pe pb dy for NSE indices marked (P/E,P/B,DY) (NaN elsewhere).
  functions: sma ema wma(x,n) rsi(x,14) atr(14) atr_pct(14) macd(x,12,26) macd_signal(x,12,26,9) bb_upper/bb_lower(x,20,2) keltner_upper/keltner_lower(20,2) supertrend(10,3) highest/lowest(x,n) (include today: breakouts use shift(highest(high,55),1))
@@ -508,7 +525,7 @@ RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime an
  Operators + - * / % **, comparisons, and/or/not. Company fundamentals and macro series: see COMPANY RESULTS and MACRO SERIES in DATA. Daily types run on daily bars; use type "intraday" for anything within the day.
  EXPRESSIVENESS: rotation with expression factors, filters, expression weighting, short_n, regime and target_vol is a general portfolio engine (long-only, long-short, market-neutral, factor tilts, macro-switching, risk parity, pairs via a two-symbol universe); rule strategies with ref() cross-asset and macro conditions cover event and timing systems; several agents together form a multi-strategy book. Build whatever the user describes from these.
 SURVIVORSHIP: nifty50/nifty200/nifty500/fno are TODAY's members over the whole history (flattering). top500pit/top200pit/top100pit (if listed in DATA) are survivorship-free — use them when the user asks to remove survivorship bias; don't say it can't be done.
-TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (train before, test from) or null}.`;
+TEST WINDOW (only when a backtest is asked for): {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (train before, test from) or null}.`;
 
   /*__RESEARCH__*/
   // ================================================================ tools Claude can call from the page
@@ -567,7 +584,7 @@ TEST WINDOW: {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (trai
   function agentBrief(a) { return { agent_id: a.id, name: a.name, type: a.type, status: a.status, version: a.version, universe: a.universe, cagr_pct: a.headline?.cagr, max_dd_pct: a.headline?.mdd, nifty_cagr_pct: a.headline?.nifty_cagr, paper_since: a.paper?.since || null }; }
   function makeTools(progress) {
     return [
-      { name: "backtest", description: "Backtest a strategy spec on NSE data (daily bars; intraday bars for type intraday). Returns CAGR, drawdown, Sharpe, trade/order counts, the benchmark comparison (Nifty unless spec.benchmark names another series, e.g. a real NSE factor index), train/test results when test.split is given, notes, and current signals. Use before proposing.",
+      { name: "backtest", description: "Backtest a strategy spec on NSE data (daily bars; intraday bars for type intraday). Returns CAGR, drawdown, Sharpe, trade/order counts, the benchmark comparison (Nifty unless spec.benchmark names another series, e.g. a real NSE factor index), train/test results when test.split is given, notes, and current signals. Only when the user asks for a backtest (or chose "Backtest first"); otherwise don't call it.",
         inputSchema: { type: "object", properties: { spec: { type: "object" }, test: { type: "object", properties: { start: { type: "string" }, end: { type: "string" }, split: { type: "string" } } } }, required: ["spec"] },
         execute: async (input) => { const spec = E.normalize(input.spec, S.man.universes), test = { start: "2012-01-01", ...(input.test || {}) };
           progress(`Backtesting ${TYPE_LABEL[spec.type].toLowerCase()} on ${universeLabel(spec)}…`); const res = await runSpec(spec, test); return compactRes(res, test); } },
@@ -783,8 +800,11 @@ ${fundBrief()}
 HOW YOU WORK
 - The user is the portfolio manager and makes the decisions. Build exactly what they ask, with exactly the numbers, stocks and rules they give. Their instruction beats your preference, every default and every "best practice".
 - Never add anything they did not ask for: no trend or regime filters, score floors, stop-losses, position caps, sector caps, diversification rules or "safety" tweaks. When they ask to remove something, remove it completely the first time (set that field to null) and confirm what the spec now contains.
-- If you believe another setting would make more money, you may add ONE short sentence after doing what they asked, with the backtest number that shows it. Never instead of doing it, never repeated once they have heard it.
-- Judge results by profit: CAGR, total return and final value against the benchmark; state drawdown as a number. No lectures, no moralising, no disclaimers — the app shows those.
+- If you believe another setting would make more money, you may add ONE short sentence after doing what they asked, with the number that shows it. Never instead of doing it, never repeated once they have heard it.
+- BUILD SYSTEMS, NOT PAPERWORK: pick the system type that fits what the user describes (a daily list they feed, a rule set, a ranking/rotation, options, intraday, or several agents together) and propose it straight away with sensible defaults and its page panels. Ask only what you can't default (at most 2 question cards).
+- BACKTESTS AND STRESS TESTS ARE OPTIONAL. Don't call the backtest tool and don't talk about CAGR, drawdowns or stress tests unless the user asks for them or chose "Backtest first" on a proposal. The proposal card itself asks the user: "Create & paper trade" (straight to paper, on a desk) / "Create" / "Backtest first". Live, present-day evidence (today's data, the team's own record) beats long history; the data now keeps about 6 months of daily bars and 20 sessions of minute bars, so long backtests aren't available anyway.
+- When the user says to go ahead ("do it", "start it", "put it on paper"), set "create_now": true on the proposal and name the desk ("desk_id" — an existing id or a key from a create_desk action in the same reply) and "alloc_pct"; the app creates the agent, puts it on paper and on the desk at once.
+- Judge results by money made on paper and the record; state numbers plainly. No lectures, no moralising, no disclaimers — the app shows those.
 - Ask questions only when a needed value is missing and has no sensible default: at most 3 question cards, each with a default. If the user says "just do it", use defaults. Never ask again what was already answered.
 - When the user states a lasting preference ("always…", "never…", "don't add…", "use ₹25 lakh", "no filters"), put it in "remember" so it applies from now on. If they cancel one, put its exact text in "forget".
 - OPEN BY DEFAULT: nothing is off-limits — any asset, market, instrument, horizon, style, structure, universe or question. Never answer "the system can't"; find the way: combine tools, use compute for any custom calculation, build it from the strategy types, approximate with a stated proxy, and call request_data for anything missing so it is there next time. Run as many tool calls, backtests and variations as the question needs.
@@ -795,12 +815,12 @@ HOW YOU WORK
 - When the user asks to delete the history, clear the chat or start fresh, add {"type":"new_chat"} to "actions": the app archives the earlier conversation (the user can delete it from the screen) and your reply opens the new chat. Standing orders and agents are kept unless they say otherwise.
 - Rotation activity: "orders" are individual buys/sells, "rebalances" are rebalance dates, "round_trips" are completed positions, "turnover_pct_yr" is one-sided annual turnover.
 
-RESEARCH METHOD (macro → sectors → stocks → expression → test). Use the tools; call several in one turn when needed.
+RESEARCH METHOD (macro → sectors → stocks → expression) — for research questions and ideas, not for building a system the user already described. Use the tools; call several in one turn when needed.
 1. Macro & regime (macro_dashboard): growth (GDP, IIP, OECD leading indicator), inflation (CPI vs the RBI's 4% target), policy and rates (repo path, India 10y, US yields and real yields, curve), liquidity and money (M3, Fed balance sheet), currency and external (USDINR, DXY, reserves, trade, current account), global risk (US VIX, credit spreads, financial stress, S&P 500, EM), commodities (Brent, copper, gold), and the market itself (Nifty/mid/small P/E percentiles, equity risk premium vs the 10y, India VIX, FII/DII positioning and flows, breadth). Say which regime we are in and what changed recently.
 2. Connect the dots to sectors (sector_view + sector indices in macro_dashboard): e.g. falling crude and a firm rupee help oil marketers, paints, tyres, aviation and chemicals users and hurt upstream oil; rate cuts and easy liquidity help banks/NBFCs, real estate, autos and capital-intensive sectors; a weak rupee and strong US demand help IT and pharma exporters; rising US real yields and a strong dollar mean FII outflows and pressure on expensive large caps; capex cycles favour capital goods, cement and metals; high P/E percentiles with falling earnings revisions are a warning. Confirm with data: sector earnings growth, valuation vs history, momentum and breadth — a story without numbers is not a view.
 3. Stocks (screen, company_research): find companies where growth, margins, valuation, price strength and positioning agree (e.g. profit_growth_ttm high, P/E below its own 5-year median or below peers, close above its 200-day average, promoter holding stable or rising, recent order wins or fund raising in filings). For each idea check the quarterly trend, peers, upcoming results date and recent filings/headlines.
 4. Expression: choose how to play it — single stocks, a basket or factor rotation, a pair (long the beneficiary, short the loser), sector/index rotation, options (use option_data: buy options when IV is low vs its history, sell premium when IV is rich; spreads to cap cost; protective puts/collars as hedges), or a systematic rule that uses fundamentals and macro series (ref("IN_CPI_YOY", close), ref("US_10Y_YIELD", change(close,21)), pe, profit_growth_ttm, result_day…). Prefer the survivorship-free universes (top100pit/top200pit/top500pit) for stock strategies.
-5. Test it (backtest): every idea that can be systematic gets a backtest with its numbers (CAGR vs benchmark, worst fall, trades, train/test). Report what works and what doesn't.
+5. Evidence: today's numbers and the recent record; a backtest only when the user asks for one.
 6. Deliver like a research note: the view in one line, the evidence (numbers with dates), the catalysts and timing (results dates, policy meetings), the risks and what would prove the view wrong, and the strategy as a proposal the user can create as an agent. For a quick question, answer quickly; for "ideas", "what should I buy", "research X", "what's the macro telling us", do the full method.
 - Be direct. Use ₹, lakh/crore and Indian market terms. Markdown bullets and headings are fine; no filler.
 
@@ -811,7 +831,7 @@ ${SCHEMAS}
 REPLY with ONE JSON object only — no text before or after it, no code fences. "reply" is as long as the question deserves: a line or two for a quick question, a full report when the user asks for research or ideas (strategy specs belong in proposals; propose as many as are useful). Escape quotes and newlines inside strings:
 {"reply":"markdown for the user",
  "questions":[{"id":"short_id","label":"Question","type":"number"|"date"|"select"|"multiselect"|"text","options":["for select types"],"default":value,"unit":"₹ or %","help":"one line"}],
- "proposals":[{"name":"Short name","spec":{...},"test":{"start":"2012-01-01","end":null,"split":"2021-01-01"},"explanation":"what the rules do","rationale":"why it may work and when it fails","assumptions":["..."]}],
+ "proposals":[{"name":"Short name","spec":{...},"explanation":"what it does, in plain words","rationale":"why it may work and when it fails","assumptions":["..."],"create_now":false,"desk_id":"desk id or create_desk key, optional","alloc_pct":100}],
  "attachment_notes":"only when images or page selections were attached: 1-3 lines of the key facts they show (tickers, numbers, dates, what the chart does)",
  "actions":[{"type":"update_agent","agent_id":"...","changes":{only the fields that change; null removes a setting},"note":"what changed"} or {"type":"set_status","agent_id":"...","status":"paper"|"paused"|"retired"|"testing"} or {"type":"new_chat"} or any fund action listed under CONTROLLING THE FUND],
  "apply_now": false,
@@ -844,7 +864,8 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
       const proposals = [];
       for (const p of (Array.isArray(out?.proposals) ? out.proposals : []).filter((x) => x && typeof x === "object").slice(0, 12)) {
         const prop = { id: newId("p"), name: String(p.name || "Strategy"), explanation: String(p.explanation || ""), rationale: String(p.rationale || ""), assumptions: Array.isArray(p.assumptions) ? p.assumptions.map(String) : [],
-          test: { start: p.test?.start || "2012-01-01", end: p.test?.end || null, split: p.test?.split || null }, raw: p.spec || {} };
+          test: { start: p.test?.start || "2012-01-01", end: p.test?.end || null, split: p.test?.split || null }, raw: p.spec || {},
+          ...(p.create_now === true ? { create_now: true } : {}), ...(p.desk_id ? { desk_id: String(p.desk_id).slice(0, 60) } : {}), ...(p.alloc_pct != null ? { alloc_pct: Math.max(1, Math.min(100, Number(p.alloc_pct) || 100)) } : {}) };
         try { prop.spec = E.normalize(p.spec || {}, S.man.universes); } catch (e) { prop.error = e.message; }
         proposals.push(prop);
       }
@@ -856,10 +877,16 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
       const learned = await applyOrderChanges("main", null, out);
       const mid = await addMainMsg({ role: "agent", text: reply + learned, questions, proposals, actions, ...(notes ? { att_notes: notes } : {}) });
       setMainBusy(false, "");
+      const keys = {};
       if (out?.apply_now === true && !S.readOnly && actions.length) {
         for (const a of actions.filter((x) => x.type === "set_status")) { try { const ag = S.agents.get(a.agent_id); if (ag) { await setStatus(ag, a.status); a.done = true; } } catch (e) { a.error = String(e.message || e); } }
         await applyFundActions({ id: mid, actions });
+        for (const a of actions) if (a.type === "create_desk" && a.created_id) keys[a.key] = a.created_id;
       }
+      // "do it": create the proposed systems now, straight onto paper and their desk
+      if (!S.readOnly) { const msgObj = { id: mid, proposals };
+        for (const p of proposals.filter((x) => x.create_now && x.spec && !x.error)) { try { await createFromProposal(msgObj, p, { mode: "paper", desk_id: keys[p.desk_id] || p.desk_id, alloc_pct: p.alloc_pct }); } catch (e) { toast(e.message || String(e)); } } }
+
     } catch (e) {
       if (e && e.code === "cancelled") setMainBusy(false, "Stopped.");
       else { setMainBusy(false, claudeError(e), true); if (!text && answers) {/* keep */} }
@@ -873,10 +900,10 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
   }
 
   const STARTERS = [
+    ["Daily list desk", "Set up a daily-list desk for me: I send stock names every day; buy at the next open when the price pops or volume / OI builds up, sell after a couple of sessions, and learn better thresholds from my record. No backtest — put it straight on paper."],
     ["Set up my fund", "Set up the fund for me: propose desks with mandates, capital and risk limits for ₹1 crore of paper capital, and assign the agents we already have to the right desks with allocations."],
     ["Morning brief", "Give me today's brief: the regime, what moved and why, what our book and desks are exposed to, the orders queued for the next open, and the 3 most interesting opportunities."],
     ["What's interesting?", "Scan the market for what's unusual right now — breakouts, volume surges, results surprises, option IV spikes, sector rotation — and tell me which are worth acting on."],
-    ["Stress my book", "Stress-test the book: concentration, sector and beta exposure, what happens if Nifty falls 10% or oil spikes, and which limits I should tighten."],
   ];
   function renderMain() {
     const box = $("convo"), msgs = S.mainMsgs;
@@ -900,7 +927,7 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
     }
     box.innerHTML = html;
     wireMain(box);
-    for (const m of msgs) for (const p of m.proposals || []) if (p.spec && !p.created) fillProposal(m, p);
+    for (const m of msgs) for (const p of m.proposals || []) if (p.spec && !p.created && S.cache.has(specKey(p.spec, p.test))) fillProposal(m, p);
     for (const m of msgs) for (const a of m.actions || []) if (a.type === "update_agent" && !a.done) fillAction(m, a);
     requestAnimationFrame(() => { if (!S.suppressScroll) box.scrollTop = box.scrollHeight; S.suppressScroll = false; });
   }
@@ -923,23 +950,26 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
     const pid = `${m.id}_${p.id}`;
     if (p.error) return `<div class="proposal"><h3>${esc(p.name)}</h3><p class="flag">These rules can't run: ${esc(p.error)} Ask the CIO to fix them.</p></div>`;
     const s = p.spec;
-    const rules = s.type === "rule" ? `<dt>Symbols</dt><dd>${esc(universeLabel(s))}${s.symbols.length > 3 ? ` <span class="muted">(${esc(s.symbols.slice(0, 8).join(", "))}${s.symbols.length > 8 ? "…" : ""})</span>` : ""}</dd><dt>Entry</dt><dd><code>${esc(s.entry)}</code></dd><dt>Exit</dt><dd>${s.exit ? `<code>${esc(s.exit)}</code>` : "stop / target only"}</dd><dt>Stops</dt><dd>${s.side === "short" ? "Short · " : ""}stop ${s.stop_loss_pct ? s.stop_loss_pct + "%" : "none"} · target ${s.take_profit_pct ? s.take_profit_pct + "%" : "none"}</dd>`
+    const rules = s.type === "watchlist" ? `<dt>Names</dt><dd>${s.symbols.length ? esc(s.symbols.join(", ")) + " + " : ""}the lists you send (each live ${s.list_days} session${s.list_days > 1 ? "s" : ""})</dd><dt>Buy when</dt><dd>${s.need === "any" ? "any" : s.need === "all" ? "all" : `at least ${s.need}`} of: ${s.conditions.map((c) => `<b>${esc(c.label)}</b> <code>${esc(E.fillParams(c.expr, s.params))}</code>`).join("; ")}</dd><dt>Sell</dt><dd>${esc(watchExitWords(s))}</dd><dt>Size</dt><dd>${s.position_pct}% of capital a name${s.max_positions ? `, at most ${s.max_positions} names` : ""}</dd>`
+      : s.type === "rule" ? `<dt>Symbols</dt><dd>${esc(universeLabel(s))}${s.symbols.length > 3 ? ` <span class="muted">(${esc(s.symbols.slice(0, 8).join(", "))}${s.symbols.length > 8 ? "…" : ""})</span>` : ""}</dd><dt>Entry</dt><dd><code>${esc(s.entry)}</code></dd><dt>Exit</dt><dd>${s.exit ? `<code>${esc(s.exit)}</code>` : "stop / target only"}</dd><dt>Stops</dt><dd>${s.side === "short" ? "Short · " : ""}stop ${s.stop_loss_pct ? s.stop_loss_pct + "%" : "none"} · target ${s.take_profit_pct ? s.take_profit_pct + "%" : "none"}</dd>`
       : s.type === "rotation" ? `<dt>Universe</dt><dd>${esc(universeLabel(s))}</dd><dt>Rule</dt><dd>${esc(rankWords(s))}</dd><dt>Filters</dt><dd>${filterWords(s)}</dd>`
       : s.type === "intraday" ? `<dt>Symbols</dt><dd>${esc(universeLabel(s))}${s.symbols.length > 3 ? ` <span class="muted">(${esc(s.symbols.slice(0, 8).join(", "))}${s.symbols.length > 8 ? "…" : ""})</span>` : ""}</dd><dt>Entry</dt><dd><code>${esc(s.entry)}</code>${s.side === "short" ? " · short" : ""}</dd><dt>Exit</dt><dd>${s.exit ? `<code>${esc(s.exit)}</code> · ` : ""}stop ${s.stop_loss_pct ? s.stop_loss_pct + "%" : "none"} · target ${s.target_pct ? s.target_pct + "%" : "none"}${s.trailing_stop_pct ? ` · trail ${s.trailing_stop_pct}%` : ""} · square-off ${esc(s.square_off)}</dd><dt>Window</dt><dd>entries ${esc(s.start_after)}–${esc(s.no_entry_after)} · max ${s.max_positions} × ${s.position_pct}%</dd>`
       : `<dt>Structure</dt><dd>${esc(s.underlying)} ${esc(optLegs(s))} · ${s.lots} lot(s) of ${s.lot_size}</dd>${s.entry ? `<dt>Entry</dt><dd><code>${esc(s.entry)}</code></dd>` : ""}<dt>Exits</dt><dd>${esc(optExits(s))}${s.min_vix ? ` · only when VIX ≥ ${s.min_vix}` : ""}${s.max_vix ? ` · skip when VIX &gt; ${s.max_vix}` : ""}</dd>`;
     return `<article class="proposal" id="prop_${esc(pid)}">
       <div class="top"><div><span class="eyebrow">Proposal · ${esc(TYPE_LABEL[s.type])}</span><h3>${esc(p.name)}</h3></div>${p.created ? `<button class="btn ghost small" type="button" data-open="${esc(p.created)}">Open agent</button>` : ""}</div>
       ${p.explanation ? `<p>${esc(p.explanation)}</p>` : ""}
-      <div data-res="${esc(pid)}">${p.created ? "" : '<p class="small muted">Backtesting…</p>'}</div>
+      <div data-res="${esc(pid)}">${p.created ? "" : s.type === "watchlist" ? '<p class="small muted">Runs on the names you send — no history needed.</p>' : '<p class="small muted">Not backtested. Run one only if you want it.</p>'}</div>
       <details class="fold"><summary>Rules and settings</summary><dl class="kv" style="margin-top:6px">${rules}${extraKV(s).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}<dt>Capital</dt><dd>${inr(s.capital)}</dd></dl>
         ${p.rationale ? `<p class="small muted" style="margin-top:8px">${esc(p.rationale)}</p>` : ""}
         ${p.assumptions.length ? `<ul class="small muted" style="margin:6px 0 0;padding-left:18px">${p.assumptions.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>` : ""}</details>
-      ${p.created ? "" : `<details class="fold"><summary>Test dates</summary><div class="testrow">
+      ${p.created || s.type === "watchlist" ? "" : `<details class="fold"><summary>Backtest dates</summary><div class="testrow">
         <div class="field"><label for="ts_${esc(pid)}">From</label><input class="input" type="date" id="ts_${esc(pid)}" value="${esc(p.test.start || "2012-01-01")}"></div>
         <div class="field"><label for="te_${esc(pid)}">To</label><input class="input" type="date" id="te_${esc(pid)}" value="${esc(p.test.end || S.lastDay)}"></div>
         <div class="field"><label for="tp_${esc(pid)}">Train until (optional)</label><input class="input" type="date" id="tp_${esc(pid)}" value="${esc(p.test.split || "")}"></div>
-        <button class="btn quiet small" type="button" data-retest="${esc(pid)}">Re-test</button></div></details>
-      <div class="actions"><button class="btn" type="button" data-create="${esc(pid)}" ${S.readOnly ? "disabled" : ""}>Create agent</button><span class="xs muted">Starts in testing. Give it a desk and an allocation to trade it in the book.</span></div>`}</article>`;
+        </div></details>`}
+      ${p.created ? "" : `<div class="actions">${S.desks.size ? `<select class="input" style="width:auto;min-height:34px;padding:4px 8px" data-pdesk="${esc(pid)}" aria-label="Desk"><option value="">No desk (calls only)</option>${[...S.desks.values()].map((d) => `<option value="${esc(d.id)}" ${d.id === p.desk_id ? "selected" : ""}>${esc(d.name)}</option>`).join("")}</select>` : ""}
+        <button class="btn" type="button" data-create="${esc(pid)}" data-mode="paper" ${S.readOnly ? "disabled" : ""}>Create &amp; paper trade</button><button class="btn ghost" type="button" data-create="${esc(pid)}" data-mode="testing" ${S.readOnly ? "disabled" : ""}>Create</button>
+        ${s.type === "watchlist" ? "" : `<button class="btn quiet small" type="button" data-retest="${esc(pid)}">Backtest first</button>`}</div>`}</article>`;
   }
   // which filters are on, in words ("None" when nothing screens the ranking)
   function filterWords(s) {
@@ -1012,12 +1042,11 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
     }));
     box.querySelectorAll("[data-retest]").forEach((b) => b.addEventListener("click", () => { const [mid, p] = findProp(b.dataset.retest); if (p) fillProposal(mid, p); }));
     box.querySelectorAll("[data-create]").forEach((b) => b.addEventListener("click", async () => {
-      const [m, p] = findProp(b.dataset.create); if (!p || b.disabled) return; b.disabled = true; b.textContent = "Creating…";
-      try { const test = testFromInputs(b.dataset.create, p), res = await runSpec(p.spec, test);
-        const id = await createAgent({ name: p.name, spec: p.spec, meta: { explanation: p.explanation, rationale: p.rationale, assumptions: p.assumptions }, test, res });
-        const props = m.proposals.map((x) => x.id === p.id ? { ...x, created: id, test } : x); await mainCol().doc(m.id).update({ proposals: props });
-        toast(`Agent “${p.name}” created`); }
-      catch (e) { b.disabled = false; b.textContent = "Create agent"; toast(e.message || String(e)); }
+      const [m, p] = findProp(b.dataset.create); if (!p || b.disabled) return; const label = b.textContent; b.disabled = true; b.textContent = "Creating…";
+      const deskSel = box.querySelector(`[data-pdesk="${CSS.escape(b.dataset.create)}"]`);
+      try { const id = await createFromProposal(m, p, { mode: b.dataset.mode, desk_id: deskSel?.value || null, test: testFromInputs(b.dataset.create, p) });
+        toast(b.dataset.mode === "paper" ? `“${p.name}” is paper trading${deskSel?.value ? ` on ${deskName(deskSel.value)}` : ""}` : `Agent “${p.name}” created`); go("agent-" + id); }
+      catch (e) { b.disabled = false; b.textContent = label; toast(e.message || String(e)); }
     }));
     box.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", async () => {
       const [mid, aid] = splitId(b.dataset.act), m = S.mainMsgs.find((x) => x.id === mid), a = m?.actions.find((x) => x.id === aid), ag = a && S.agents.get(a.agent_id);
@@ -1029,6 +1058,20 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
       } catch (e) { b.disabled = false; toast(e.message || String(e)); }
     }));
     box.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => go("agent-" + b.dataset.open)));
+  }
+  // Create an agent from a proposal: no backtest unless one was already run on the card; "paper" also starts paper trading
+  // and puts it on the chosen desk.
+  async function createFromProposal(m, p, { mode = "testing", desk_id = null, alloc_pct = null, test = null } = {}) {
+    const t = test || p.test || { start: null }, key = specKey(p.spec, t), res = S.cache.has(key) ? S.cache.get(key) : null;
+    const id = await createAgent({ name: p.name, spec: p.spec, meta: { explanation: p.explanation, rationale: p.rationale, assumptions: p.assumptions }, test: t, res });
+    if (mode === "paper") {
+      const d = desk_id && S.desks.has(desk_id) ? desk_id : null;
+      if (d) { const used = [...S.agents.values()].filter((a) => a.desk_id === d && a.status !== "retired").reduce((x, a) => x + (Number(a.alloc_pct) || 0), 0); await patchAgent(id, { desk_id: d, alloc_pct: alloc_pct || Math.max(1, Math.min(100, 100 - used)) || 100 }); }
+      await setStatus({ id, version: 1, type: p.spec.type, paper: null, paper_runs: [] }, "paper");
+    }
+    const props = (m.proposals || []).map((x) => x.id === p.id ? { ...x, created: id, test: t } : x);
+    try { await mainCol().doc(m.id).update({ proposals: props }); } catch (e) { /* message may be gone */ }
+    return id;
   }
   const splitId = (s) => { const i = s.lastIndexOf("_"); return [s.slice(0, i), s.slice(i + 1)]; };
   function findProp(pid) { const [mid, id] = splitId(pid), m = S.mainMsgs.find((x) => x.id === mid); return [m, m?.proposals?.find((p) => p.id === id)]; }

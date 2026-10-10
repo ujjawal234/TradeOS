@@ -54,13 +54,41 @@
       b.disabled = true; try { await setStatus(a, b.dataset.status); toast("Updated"); } catch (e) { toast(e.message || String(e)); b.disabled = false; } }));
   }
   let roomRenderSeq = 0;
+  // Each kind of system gets its own page: tabs come from the strategy type plus any panels its spec asks for ("view").
+  const VIEW_TABS = { fundamentals: "Fundamentals", options: "Option chain", chart: "Chart" };
+  function roomTabsFor(v) {
+    const sp = v?.spec || {}, extra = (Array.isArray(sp.view) ? sp.view : []).filter((x) => VIEW_TABS[x]).map((x) => [x, VIEW_TABS[x]]);
+    if (sp.type === "watchlist") return [...WATCH_TABS, ...extra];
+    const base = [["overview", "Today"], ...extra, ["performance", "Backtest"], ["stress", "Stress test"], ["trades", "Trades"], ["rules", "Rules & versions"]];
+    if ((sp.type === "option_selling") && !extra.some(([k]) => k === "options")) base.splice(1, 0, ["options", "Option chain"]);
+    return base;
+  }
+  function renderRoomTabs(v) {
+    const tabs = roomTabsFor(v);
+    if (!tabs.some(([k]) => k === S.room.tab)) S.room.tab = tabs[0][0];
+    $("roomTabs").innerHTML = tabs.map(([k, l]) => `<button role="tab" type="button" data-tab="${k}" aria-selected="${k === S.room.tab}">${esc(l)}</button>`).join("");
+  }
+  const ranKey = (a, v) => `${a.id}:${v.n}`;
+  // backtests and stress tests run only when asked for
+  function askToRun(a, v, body, t) {
+    const what = t === "stress" ? ["Stress test", "Crisis replays, Monte Carlo, parameter and cost sensitivity — on demand."] : ["Backtest", "Not run unless you ask. Runs this version over the history in the data."];
+    body.innerHTML = `<div class="card empty"><h2>${what[0]}</h2><p>${what[1]}</p><button class="btn" type="button" id="runBt">Run ${what[0].toLowerCase()}</button></div>`;
+    $("runBt").addEventListener("click", () => { (S.ranAll ||= new Set()).add(ranKey(a, v)); if (t === "stress") (S.stressAsked ||= new Set()).add(ranKey(a, v)); renderRoomBody(); });
+  }
   async function renderRoomBody() {
     const a = curAgent(), v = curVersion(), body = $("roomBody"), seq = ++roomRenderSeq;
-    document.querySelectorAll("#roomTabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === S.room.tab)));
     if (!a || !v) { body.innerHTML = '<p class="muted">Loading…</p>'; return; }
+    renderRoomTabs(v);
+    if (v.spec?.type === "watchlist") return renderWatchRoom(a, v, body, seq, S.room.tab);
+    const ran = (S.ranAll ||= new Set()).has(ranKey(a, v)), t0 = S.room.tab;
+    if ((t0 === "performance" || t0 === "trades") && !ran) return askToRun(a, v, body, t0);
+    if (t0 === "stress" && !(S.stressAsked ||= new Set()).has(ranKey(a, v))) return askToRun(a, v, body, t0);
+    if (t0 === "fundamentals") return panelFundamentals(v.spec, body, seq);
+    if (t0 === "options") return panelOptions(v.spec, body, seq);
+    if (t0 === "chart") return panelChart(v.spec, body);
     const test = v.test || { start: "2012-01-01" };
     let res;
-    try { if (!S.cache.has(specKey(v.spec, test))) body.innerHTML = '<p class="muted">Running the backtest…</p>'; res = await runSpec(v.spec, test, (d, n) => { if (seq === roomRenderSeq) body.innerHTML = `<p class="muted">Loading prices ${d} of ${n}…</p>`; }); }
+    try { if (!S.cache.has(specKey(v.spec, test))) body.innerHTML = `<p class="muted">${t0 === "overview" ? "Working out today's signals…" : "Running the backtest…"}</p>`; res = await runSpec(v.spec, test, (d, n) => { if (seq === roomRenderSeq) body.innerHTML = `<p class="muted">Loading prices ${d} of ${n}…</p>`; }); }
     catch (e) { body.innerHTML = `<p class="flag">${esc(e.message || e)}</p>`; return; }
     if (seq !== roomRenderSeq) return;
     const t = S.room.tab;
@@ -112,11 +140,12 @@
       ? `<p class="note">Backtest uses today's index members for the whole period, which flatters results.${pitTarget(v.spec) ? ` <button class="linkbtn" type="button" id="pitCmpBtn">Compare without survivorship bias</button>` : ""}</p><div id="pitCmp"></div>` : "";
     body.innerHTML = `${paperHtml}
       ${liveHtml}<div class="stack"><div class="row"><h2>${intra ? (a.status === "paper" ? "Last session (replayed on bars)" : "Last session if this had run") : a.status === "paper" ? "Today's signals" : "Signals if this ran today"}</h2><span class="grow"></span><span class="note">${intra ? `${fmtDate(res.intraState?.lastDate)} · in and out the same day` : `close of ${fmtDate(S.lastDay)} · act at next open`}</span></div>${intra ? intraSessionTable(signals) : sigGroups(signals.map((s) => ({ s, a })), false)}</div>
-      <div class="card stack"><div class="row"><h2>Backtest v${v.n}</h2><span class="small muted">${fmtDate(h.start)} – ${fmtDate(h.end)}</span></div>${verdictLine(res)}${survivor}${kpiTiles(res)}
+      ${!(S.ranAll || new Set()).has(ranKey(a, v)) ? `<p class="note">No backtest shown for v${v.n}. <button class="linkbtn" type="button" data-tabgo="performance">Run one</button> or a <button class="linkbtn" type="button" data-tabgo="stress">stress test</button> when you want them.</p>` : `<div class="card stack"><div class="row"><h2>Backtest v${v.n}</h2><span class="small muted">${fmtDate(h.start)} – ${fmtDate(h.end)}</span></div>${verdictLine(res)}${survivor}${kpiTiles(res)}
         ${split ? `<div class="grid2">${["train", "test"].map((k) => { const s = split[k].strategy, n = split[k].nifty || {}; return `<div class="mini" style="padding:12px"><span class="k">${k === "train" ? "Training" : "Test (unseen)"} · ${fmtDate(s.start)} – ${fmtDate(s.end)}</span><span class="v">${pct(s.cagr_pct)} <span class="small muted" style="font-family:var(--font-ui);font-weight:400">vs ${esc(benchLabel(res))} ${pct(n.cagr_pct)}</span></span><span class="b">worst fall ${pct(s.max_drawdown_pct)} · Sharpe ${n2(s.sharpe)}${s.trades != null && v.spec.type !== "rotation" ? ` · ${s.trades} ${v.spec.type === "option_selling" ? "cycles" : "trades"}` : ""}</span></div>`; }).join("")}</div>
-          ${split.flags.length ? `<p class="note">Train vs test: ${esc(split.flags.join("; ").toLowerCase())}.</p>` : `<p class="note">Test period results are in line with training.</p>`}` : ""}</div>
+          ${split.flags.length ? `<p class="note">Train vs test: ${esc(split.flags.join("; ").toLowerCase())}.</p>` : `<p class="note">Test period results are in line with training.</p>`}` : ""}</div>`}
       ${runs.length ? `<div class="card"><h2>Earlier paper runs</h2><div class="tablewrap"><table><thead><tr><th>Version</th><th>From</th><th>Until</th></tr></thead><tbody>${runs.map((r) => `<tr><td>v${r.version}</td><td>${fmtDate(r.since)}</td><td>${fmtDate(r.until)}</td></tr>`).join("")}</tbody></table></div></div>` : ""}`;
     $("pitCmpBtn")?.addEventListener("click", () => pitCompare(a, v, test, $("pitCmp")));
+    body.querySelectorAll("[data-tabgo]").forEach((b) => b.addEventListener("click", () => { S.room.tab = b.dataset.tabgo; renderRoomBody(); }));
     const pc = document.getElementById("paperChart");
     if (pc) { const p = await paperResult(a); if (p && !p.pending) chart(pc, p.res.days, [{ short: benchLabel(p.res), color: "var(--series-b)", values: p.res.bench || [], width: 1.6 }, { short: "Paper", color: "var(--series-a)", values: p.res.eq, width: 2 }], { height: 200, endLabels: true, aria: "Paper equity", fmt: inrShort, fmtEnd: inrShort, fmtTip: inr }); }
   }
@@ -273,7 +302,7 @@
       if (m.proposal) { const pr = m.proposal; prop = `<div class="proposal" style="margin-top:6px;padding:10px"><b>${pr.status === "saved" ? "Change applied" : pr.status === "discarded" ? "Change discarded" : "Suggested change"}</b><p class="small">${esc(pr.note || "")}</p><div data-chatres="${esc(m.id)}" class="small muted">${pr.status === "saved" ? `Saved as v${pr.saved_version}.` : pr.status === "discarded" ? "Discarded." : "Testing…"}</div>
         ${pr.status ? "" : `<div class="row"><button class="btn small" type="button" data-save-prop="${esc(m.id)}" ${S.readOnly ? "disabled" : ""}>Save as new version</button><button class="btn ghost small" type="button" data-drop-prop="${esc(m.id)}">Discard</button></div>`}</div>`; }
       return `<div class="msg ${m.role === "user" ? "user" : ""}"><div class="meta">${esc(who)} · ${esc(fmtWhen(m.at))}</div><div class="body">${md(m.text)}${attHtml(m.attachments)}${prop}</div></div>`;
-    }).join("") : "") + (msgs.length ? "" : `<p class="small muted">Ask this agent anything — how it behaved in 2020, why a stock is in the list, what to change. It can propose edits and you decide whether to keep them.</p>`);
+    }).join("") : "") + (msgs.length ? "" : `<p class="small muted">${curAgent()?.type === "watchlist" ? "Send names here too (“today: RELIANCE, TRENT”), ask why something was called, or tell it what to change." : "Ask this agent anything — why a stock is in, what to change. It can propose edits and you decide whether to keep them."}</p>`);
     log.scrollTop = log.scrollHeight;
     for (const m of msgs) if (m.proposal && !m.proposal.status) fillChatProposal(m);
     log.querySelectorAll("[data-save-prop]").forEach((b) => b.addEventListener("click", async () => {
@@ -294,6 +323,10 @@
   async function fillChatProposal(m) {
     const box = document.querySelector(`[data-chatres="${CSS.escape(m.id)}"]`), a = curAgent(); if (!box || !a) return;
     try { const cur = S.room.versions.find((x) => x.n === a.version) || {}, spec = E.normalize(m.proposal.spec, S.man.universes), test = m.proposal.test || cur.test || { start: "2012-01-01" };
+      if (spec.type === "watchlist") { // compare on the team's own record, not a backtest
+        const log = a.inbox_log || [], names = [...new Set(log.flatMap((x) => x.syms || []))], fr = await framesFor(spec, null, names);
+        const o = E.watchLearn(E.normalize(cur.spec, S.man.universes), fr, log).stats, h = E.watchLearn(spec, fr, log).stats;
+        box.innerHTML = `<table><thead><tr><th>On your lists</th><th class="r">v${a.version}</th><th class="r">Proposed</th></tr></thead><tbody><tr><td>Calls</td><td class="r">${o.signals}</td><td class="r">${h.signals}</td></tr><tr><td>Won</td><td class="r">${pct(o.win_pct, 0, false)}</td><td class="r">${pct(h.win_pct, 0, false)}</td></tr><tr><td>Avg a call</td><td class="r">${pct(o.avg_pct, 2)}</td><td class="r">${pct(h.avg_pct, 2)}</td></tr></tbody></table>${specDiff(cur.spec || {}, spec)}`; return; }
       const res = await runSpec(spec, test), h = headline(res, test), o = cur.headline || {};
       box.innerHTML = `<table><thead><tr><th></th><th class="r">v${a.version}</th><th class="r">Proposed</th></tr></thead><tbody><tr><td>CAGR</td><td class="r">${pct(o.cagr)}</td><td class="r">${pct(h.cagr)}</td></tr><tr><td>Worst fall</td><td class="r">${pct(o.mdd)}</td><td class="r">${pct(h.mdd)}</td></tr><tr><td>Sharpe</td><td class="r">${n2(o.sharpe)}</td><td class="r">${n2(h.sharpe)}</td></tr>${h.test_cagr != null ? `<tr><td>Test CAGR</td><td class="r">${pct(o.test_cagr)}</td><td class="r">${pct(h.test_cagr)}</td></tr>` : ""}</tbody></table>${specDiff(cur.spec || {}, spec)}`; }
     catch (e) { box.innerHTML = `<span class="neg">${esc(e.message || e)}</span>`; }
@@ -345,9 +378,15 @@ USER NOW: ${text}${attachmentText(atts)}`;
     S.busyRoom = true; $("roomSend").disabled = true; const st = $("roomStatusLine"); st.classList.remove("err"); st.innerHTML = '<span class="thinking">Thinking<span class="dots"></span></span>';
     try {
       await addAgentMsg(a.id, { role: "user", text: text || "", attachments: attMeta(atts) });
-      const test = v.test || { start: "2012-01-01" }, res = await runSpec(v.spec, test);
-      const risk = E.riskStats(res), cr = E.crises(res).map((c) => ({ name: c.name, s: c.strategy_pct, n: c.nifty_pct }));
-      const out = await callClaude(agentPrompt(a, v, res, { risk, crises: cr }, text || "(no text — see what I attached or selected)", atts), imagesOf(atts), (msg) => { st.innerHTML = `<span class="thinking">${esc(msg)}<span class="dots"></span></span>`; }, new AbortController().signal);
+      const prog = (msg) => { st.innerHTML = `<span class="thinking">${esc(msg)}<span class="dots"></span></span>`; };
+      let out;
+      if (v.spec.type === "watchlist") out = await callClaude(await watchAgentPrompt(a, v, text || "(no text — see what I attached or selected)", atts), imagesOf(atts), prog, new AbortController().signal);
+      else {
+        const test = v.test || { start: "2012-01-01" }, res = await runSpec(v.spec, test);
+        const ran = (S.ranAll || new Set()).has(ranKey(a, v));
+        const stats = ran ? { risk: E.riskStats(res), crises: E.crises(res).map((c) => ({ name: c.name, s: c.strategy_pct, n: c.nifty_pct })) } : { note: "no backtest or stress test was asked for on this version; run the backtest tool only if the user asks for one" };
+        out = await callClaude(agentPrompt(a, v, res, stats, text || "(no text — see what I attached or selected)", atts), imagesOf(atts), prog, new AbortController().signal);
+      }
       const msg = { role: "agent", text: (typeof out?.reply === "string" && out.reply.trim() ? out.reply : "…") + (out?._unstructured ? "\n\n_(Answer came back without structure, so any proposed change couldn't be attached. Ask me to “propose that as a change”.)_" : "") };
       if (atts.some((x) => x.kind === "image" || x.kind === "snippet") && typeof out?.attachment_notes === "string" && out.attachment_notes.trim()) msg.att_notes = out.attachment_notes.slice(0, 1200);
       const pr = out?.proposal; let applyNow = false;
@@ -360,6 +399,11 @@ USER NOW: ${text}${attachmentText(atts)}`;
         } catch (e) { msg.text += `\n\n_(That change couldn't be applied: ${e.message}. Say it again or edit the rules under Rules.)_`; }
       }
       msg.text += await applyOrderChanges("agent", a, out);
+      if (v.spec.type === "watchlist" && out?.list && Array.isArray(out.list.syms) && !S.readOnly) {
+        const { known, unknown } = parseNames(out.list.syms.join(" "));
+        if (known.length) { await saveList(a, known, out.list.mode === "add" ? "add" : "replace"); const w2 = await watchCalls(a, E.normalize(v.spec, S.man.universes)); const r = await ordersNow(a, E.normalize(v.spec, S.man.universes), w2.rows).catch(() => ({ made: 0 }));
+          msg.text += `\n\n_Today's list ${out.list.mode === "add" ? "added to" : "set to"}: ${known.join(", ")}${unknown.length ? ` (no data: ${unknown.join(", ")})` : ""}. ${r.made ? `${r.made} order(s) set for ${fmtDate(r.session)}.` : ""}_`; S.paperCache.clear(); }
+      }
       if (out?.new_chat === true && !S.readOnly) await startNewRoomChat(true);
       const mid = await addAgentMsg(a.id, msg); st.textContent = "";
       if (applyNow && msg.proposal) { st.innerHTML = '<span class="thinking">Applying your change<span class="dots"></span></span>'; const n = await saveChatProposal(a, mid, msg.proposal); st.textContent = ""; toast(`Applied as v${n}${a.status === "paper" ? " — paper trading now runs v" + n : ""}`); }

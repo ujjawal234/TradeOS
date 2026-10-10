@@ -7,7 +7,7 @@
   "use strict";
   const DEFAULT_LIMITS = { max_position_pct: 15, max_gross_pct: 100, max_dd_pct: 25, max_names: 60 };
   const COST_PCT = 0.1, SLIP_PCT = 0.05;       // per side, % of traded value
-  const OMS_TYPES = new Set(["rule", "rotation"]); // options and intraday agents keep their own paper records
+  const OMS_TYPES = new Set(["rule", "rotation", "watchlist"]); // options and intraday agents keep their own paper records
   const r2 = (x) => Math.round(x * 100) / 100;
   const limitsOf = (desk) => ({ ...DEFAULT_LIMITS, ...((desk && desk.limits) || {}) });
   const isWhole = (meta, s) => !meta || !meta[s] || meta[s].kind === "stock" || meta[s].kind == null;
@@ -62,6 +62,15 @@
       for (const h of rs.holdings) scope.add(h.symbol);
       for (const [s, x] of Object.entries(w || {})) { scope.add(s); const p = px(s); if (p > 0) out[s] = roundQty(sleeveEq * x * 0.995 / p, isWhole(meta, s)); }
       return { targets: out, rebalance: due, scope };
+    }
+    if (spec.type === "watchlist") { // today's calls on the names sent: BUY gets a slot, HOLD keeps what the sleeve has, SELL goes to zero
+      for (const r of res.watch || []) {
+        const s = r.symbol, p = px(s); scope.add(s);
+        if (r.action === "SELL") out[s] = 0;
+        else if (r.action === "HOLD") out[s] = r.qty;
+        else if (r.action === "BUY" && p > 0) out[s] = roundQty(sleeveEq * spec.position_pct / 100 * 0.995 / p, isWhole(meta, s));
+      }
+      return { targets: out, rebalance: false, scope };
     }
     const states = res.states || [], n = Math.max(1, spec.symbols.length);
     const slice = spec.max_positions ? (spec.position_size_pct || 100 / spec.max_positions) / 100 : (spec.position_size_pct || 100) / 100 / n;

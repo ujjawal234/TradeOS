@@ -1457,7 +1457,7 @@
   function normalize(spec, universes) {
     if (!spec || typeof spec !== "object") throw new RuleError("No strategy given");
     const t = groupKey(spec.type || "rule");
-    const type = t.includes("intraday") || t.includes("daytrad") || t === "intra" ? "intraday" : t.startsWith("rot") || t.includes("momentum") ? "rotation" : t.includes("option") ? "option_selling" : t === "rule" || t === "" ? "rule" : spec.type;
+    const type = /watch|dailylist|namelist|^list|inbox/.test(t) ? "watchlist" : t.includes("intraday") || t.includes("daytrad") || t === "intra" ? "intraday" : t.startsWith("rot") || t.includes("momentum") ? "rotation" : t.includes("option") ? "option_selling" : t === "rule" || t === "" ? "rule" : spec.type;
     if (type === "rule") {
       const s = Object.assign({}, RULE_DEF, clean(spec, RULE_DEF), { type });
       const pk = (Array.isArray(spec.symbols) ? spec.symbols : String(spec.symbols || "").split(/[,;\s]+/)).map(groupKey).find((k) => isPitKey(k) && universes[k]);
@@ -1652,7 +1652,8 @@
       normBenchmark(s);
       return s;
     }
-    throw new RuleError(`Unknown strategy type '${spec.type}'. Use rule, rotation, options or intraday.`);
+    if (type === "watchlist") return normWatch(spec, universes);
+    throw new RuleError(`Unknown strategy type '${spec.type}'. Use rule, rotation, options, intraday or watchlist.`);
   }
   function optNum(s, k, ok, msg, int) {
     if (s[k] == null || s[k] === false) { delete s[k]; return; }
@@ -1666,6 +1667,7 @@
   function symbolsNeeded(s, universes) {
     const extra = [s.benchmark].filter(Boolean);
     if (s.type === "rule") return [...new Set(s.symbols.concat(refSymbols(s.entry), refSymbols(s.exit), refSymbols(s.rank_by), extra))];
+    if (s.type === "watchlist") return [...new Set((s.symbols || []).concat(watchExprs(s).flatMap(refSymbols), extra))];
     if (s.type === "intraday") return [...new Set(refSymbols(s.entry).concat(refSymbols(s.exit), refSymbols(s.rank_by), extra))]; // daily frames: ref()/vix/benchmark only (bars come from the intraday store)
     if (s.type === "rotation") {
       const u = Array.isArray(s.universe) ? s.universe : (universes[s.universe] || []);
@@ -1677,7 +1679,7 @@
   // does this spec need full OHLCV (open/high/low/volume/valuation) rather than closes only?
   const OHLCV_RX = /\b(open|high|low|volume|hl2|hlc3|pe|pb|dy|atr|atr_pct|adx|plus_di|minus_di|stoch_k|stoch_d|cci|mfi|williams_r|obv|vwap|supertrend|keltner_upper|keltner_lower)\b/;
   function needsFull(s) {
-    if (s.type === "rule") return true;
+    if (s.type === "rule" || s.type === "watchlist") return true;
     if (s.type === "intraday") return [s.entry, s.exit, s.rank_by].filter(Boolean).some((e) => /ref\s*\(/.test(e) && OHLCV_RX.test(e));
     if (s.type === "rotation") return exprsOf(s).some((e) => OHLCV_RX.test(e)) || factorList(s).some((f) => f.name === "liquidity");
     return false;
@@ -1688,6 +1690,7 @@
     if (spec.type === "rule") res = runRule(spec, frames, o);
     else if (spec.type === "rotation") res = runRotation(spec, frames, o, Array.isArray(spec.universe) ? spec.universe : universes[spec.universe]);
     else if (spec.type === "intraday") res = runIntraday(spec, frames, o);
+    else if (spec.type === "watchlist") res = runWatchReplay(spec, frames, o);
     else res = runOptions(spec, frames, o);
     // benchmark: NIFTY (or spec.benchmark) buy & hold on the same dates
     const bsym = spec.benchmark || "NIFTY"; res.benchName = bsym;
@@ -1933,7 +1936,198 @@
     return { risk: riskStats(res), crises: crises(res), monteCarlo: monteCarlo(res), sensitivity: sensitivity(spec, frames, universes, opt), costs: costShock(spec, frames, universes, opt) };
   }
 
-  const api = { setFundamentals, usesFundVars, FUNDVARS, fundQuarterly, fundSeries, setIntraday, intradayData, decodeIntra, INTRA_VARS, runIntraday, parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, decodeOptions, setOptionSummary, initOptionSummaries, usesOptionVars, OPTVARS, OPT_BUY, OPT_SELL,
+  // ================================================================= daily-list systems ("watchlist")
+  // The team sends names (a list a day, or a fixed core list); named conditions on the latest close decide which to buy at the
+  // next open; exits by rule, holding days, target or stop. No history is needed to run one — only to learn from it.
+  // {"type":"watchlist","conditions":[{"label":"Price pop","expr":"roc(close,1) > {min_gain}","value":"roc(close,1)","unit":"%"}],
+  //  "need":"any"|"all"|k,"params":{"min_gain":{"value":2,"label":"Day gain above","unit":"%","min":0.5,"max":10,"step":0.5}},
+  //  "exit":expr|null,"hold_days":n|null,"target_pct":n|null,"stop_pct":n|null,"position_pct":10,"max_positions":n|null,
+  //  "list_days":1,"symbols":[core names, optional],"rank_by":expr,"capital":₹,"cost_pct":0.12}
+  // Expressions may use {param} placeholders: they are filled with the numbers in "params" (plain numbers only).
+  const WATCH_DEF = { conditions: [], need: "any", exit: null, hold_days: null, target_pct: null, stop_pct: null, position_pct: 10, max_positions: null,
+    list_days: 1, side: "long", symbols: [], capital: 2500000, cost_pct: 0.12 };
+  const paramVal = (p) => p == null ? NaNv : typeof p === "object" ? Number(p.value) : Number(p);
+  function fillParams(expr, params, over) {
+    return String(expr).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, k) => {
+      const v = over && over[k] != null ? Number(over[k]) : paramVal((params || {})[k]);
+      if (!isFinite(v)) throw new RuleError(`Unknown setting {${k}} — add it to "params"`);
+      return String(v);
+    });
+  }
+  function watchExprs(s) { return [...(s.conditions || []).flatMap((c) => [c.expr, c.value]), s.exit, s.rank_by].filter(Boolean).map((x) => fillParams(x, s.params)); }
+  function normWatch(spec, universes) {
+    const s = Object.assign({}, WATCH_DEF, clean(spec, WATCH_DEF), { type: "watchlist" });
+    const P = {};
+    for (const [k, v] of Object.entries(spec.params || {})) {
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) throw new RuleError(`Setting names are letters, digits and _ (got "${k}")`);
+      const o = typeof v === "object" && v ? v : { value: v }, val = Number(o.value);
+      if (!isFinite(val)) throw new RuleError(`Setting ${k} needs a number`);
+      P[k] = { value: val, label: String(o.label || k).slice(0, 60), ...(o.unit ? { unit: String(o.unit).slice(0, 12) } : {}) };
+      for (const q of ["min", "max", "step"]) if (o[q] != null && isFinite(Number(o[q]))) P[k][q] = Number(o[q]);
+    }
+    s.params = P;
+    let conds = spec.conditions;
+    if ((!conds || !conds.length) && spec.entry) conds = [{ label: "Entry", expr: spec.entry }];
+    s.conditions = (Array.isArray(conds) ? conds : []).map((c, i) => {
+      if (typeof c === "string") c = { expr: c };
+      const o = { id: String(c.id || `c${i + 1}`).replace(/[^\w-]/g, "").slice(0, 24) || `c${i + 1}`, label: String(c.label || c.name || `Condition ${i + 1}`).slice(0, 60), expr: String(c.expr || c.rule || "") };
+      if (!o.expr) throw new RuleError(`Condition "${o.label}" needs an expression`);
+      validate(fillParams(o.expr, P));
+      if (c.value) { o.value = String(c.value); validate(fillParams(o.value, P)); }
+      if (c.unit) o.unit = String(c.unit).slice(0, 12);
+      return o;
+    });
+    delete s.entry;
+    if (!s.conditions.length) throw new RuleError('A daily-list system needs at least one condition, e.g. {"label":"Price pop","expr":"roc(close,1) > 2"}.');
+    const nd = String(s.need ?? "any").toLowerCase();
+    s.need = /all|every/.test(nd) ? "all" : /any|one|or/.test(nd) ? "any" : Math.max(1, Math.min(s.conditions.length, Math.trunc(numOr(s.need, 1))));
+    if (s.need === 1) s.need = "any"; if (s.need === s.conditions.length && s.conditions.length > 1) s.need = "all";
+    if (s.exit) { s.exit = String(s.exit); validate(fillParams(s.exit, P)); } else s.exit = null;
+    if (s.rank_by) { s.rank_by = String(s.rank_by); validate(fillParams(s.rank_by, P)); } else delete s.rank_by;
+    for (const k of ["target_pct", "stop_pct"]) s[k] = numOrNull(s[k]) > 0 ? numOrNull(s[k]) : null;
+    s.hold_days = numOrNull(s.hold_days) >= 1 ? Math.trunc(numOrNull(s.hold_days)) : null;
+    s.max_positions = numOrNull(s.max_positions) >= 1 ? Math.trunc(numOrNull(s.max_positions)) : null;
+    s.position_pct = Math.min(100, Math.max(0.5, numOr(s.position_pct, 10)));
+    s.list_days = Math.max(1, Math.min(60, Math.trunc(numOr(s.list_days, 1))));
+    s.symbols = expandSymbols(s.symbols || [], universes).sort();
+    s.side = "long";
+    s.capital = numOr(s.capital, WATCH_DEF.capital); s.cost_pct = numOr(s.cost_pct, WATCH_DEF.cost_pct);
+    if (!s.exit && !s.hold_days && !s.target_pct && !s.stop_pct) s.hold_days = null; // no exit: holds until told otherwise
+    if (Array.isArray(spec.view)) s.view = spec.view.map(String).slice(0, 12);
+    normBenchmark(s);
+    return s;
+  }
+  // The names live on the latest session: each list counts for its first list_days sessions on or after its date.
+  // sessions: ascending session days up to the evaluation close. future: also count lists dated after the last session
+  // (sent after the close or on a holiday, before the next session's data exists) — the app previews them on the latest close.
+  function watchLive(log, sessions, list_days = 1, future = false) {
+    const out = new Set(), n = sessions.length; if (!n) return [];
+    const last = sessions[n - 1];
+    for (const e of log || []) {
+      const d = dayOf(String(e.date).slice(0, 10)); let i = 0, lo = 0, hi = n - 1; i = n;
+      while (lo <= hi) { const m = (lo + hi) >> 1; if (sessions[m] >= d) { i = m; hi = m - 1; } else lo = m + 1; }
+      const live = i < n ? (n - 1) - i < list_days : future && d > last;
+      if (live) for (const s of e.syms || []) out.add(symKey(s));
+    }
+    return [...out];
+  }
+  // per-symbol series cache for one evaluation pass
+  function watchSeries(s, f, ctx, over) {
+    const key = (x) => fillParams(x, s.params, over), L = f.c.length;
+    const cs = s.conditions.map((c) => toB(evaluate(parse(key(c.expr)), f, ctx), L));
+    const vs = s.conditions.map((c) => c.value ? toF(evaluate(parse(key(c.value)), f, ctx), L) : null);
+    const ex = s.exit ? toB(evaluate(parse(key(s.exit)), f, ctx), L) : null;
+    const rk = s.rank_by ? toF(evaluate(parse(key(s.rank_by)), f, ctx), L) : null;
+    const k = s.need === "all" ? s.conditions.length : s.need === "any" ? 1 : s.need;
+    const en = new Uint8Array(L); for (let i = 0; i < L; i++) { let n = 0; for (const c of cs) n += c[i]; en[i] = n >= k ? 1 : 0; }
+    return { cs, vs, ex, rk, en };
+  }
+  const barIndexOn = (f, day) => { let lo = 0, hi = f.d.length - 1, r = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (f.d[m] <= day) { r = m; lo = m + 1; } else hi = m - 1; } return r; };
+  // Exit check for a held position at bar i: [reason] or null. since = index of the fill bar.
+  function watchExit(s, f, S, i, avg, since) {
+    if (S.ex && S.ex[i]) return "exit rule";
+    if (s.target_pct && f.c[i] >= avg * (1 + s.target_pct / 100)) return "target";
+    if (s.stop_pct && f.c[i] <= avg * (1 - s.stop_pct / 100)) return "stop";
+    if (s.hold_days && i - since + 1 >= s.hold_days) return `held ${s.hold_days} day${s.hold_days > 1 ? "s" : ""}`;
+    return null;
+  }
+  // Today's calls. list: names live today; held: {sym: {qty, avg, since: "YYYY-MM-DD"}}; over: param overrides (learned values).
+  function watchSignals(spec, frames, { list = [], held = {}, over = null, ctx = {} } = {}) {
+    const s = spec, names = [...new Set([...(s.symbols || []), ...list.map(symKey), ...Object.keys(held)])], rows = [];
+    for (const sym of names) {
+      const f0 = frames[sym];
+      if (!f0 || f0.c.length < 2) { rows.push({ symbol: sym, action: "NO DATA", note: "no price data for this name yet" }); continue; }
+      const f = f0.sym ? f0 : Object.assign(f0, { sym });
+      let S; try { S = watchSeries(s, f, { frames, ...ctx }, over); } catch (e) { rows.push({ symbol: sym, action: "ERROR", note: String(e.message || e) }); continue; }
+      const i = f.c.length - 1, h = held[sym], row = { symbol: sym, date: isoOf(f.d[i]), price: r2(f.c[i]), day_pct: r2((f.c[i] / f.c[i - 1] - 1) * 100),
+        conditions: s.conditions.map((c, k) => ({ id: c.id, label: c.label, on: !!S.cs[k][i], value: S.vs[k] ? r2(S.vs[k][i]) : null, unit: c.unit || null })), rank: S.rk ? r2(S.rk[i]) : null, listed: list.map(symKey).includes(sym) || (s.symbols || []).includes(sym) };
+      if (h && h.qty) {
+        const since = Math.max(0, barIndexOn(f, dayOf(h.since)));
+        const why = watchExit(s, f, S, i, h.avg, since);
+        Object.assign(row, { held: true, qty: h.qty, avg: r2(h.avg), pnl_pct: r2((f.c[i] / h.avg - 1) * 100), days_held: i - since + 1 });
+        row.action = why ? "SELL" : "HOLD"; row.note = why ? `Sell at the next open (${why})` : "Holding";
+      } else if (row.listed && S.en[i]) { row.action = "BUY"; row.note = `Buy at the next open: ${row.conditions.filter((c) => c.on).map((c) => c.label).join(" + ")}`; }
+      else { row.action = "WAIT"; row.note = row.listed ? "No trigger on the latest close" : "Not on today's list"; }
+      rows.push(row);
+    }
+    if (s.max_positions) {
+      let free = s.max_positions - rows.filter((r) => r.action === "HOLD").length;
+      rows.filter((r) => r.action === "BUY").sort((a, b) => (b.rank ?? b.conditions.filter((c) => c.on).length) - (a.rank ?? a.conditions.filter((c) => c.on).length) || (b.day_pct ?? 0) - (a.day_pct ?? 0))
+        .forEach((r) => { if (free > 0) free--; else { r.action = "WAIT"; r.slotOk = false; r.note = `Triggered, but all ${s.max_positions} slots are full`; } });
+    }
+    const ord = { BUY: 0, SELL: 1, HOLD: 2, WAIT: 3, "NO DATA": 4, ERROR: 5 };
+    return rows.sort((a, b) => (ord[a.action] ?? 9) - (ord[b.action] ?? 9) || String(a.symbol).localeCompare(b.symbol));
+  }
+  // The record: what the system's calls on the names actually sent would have made. log: [{date, syms}].
+  // Each name is live for list_days sessions from its list date; the first trigger buys at the next open; exits follow the rules.
+  function watchLearn(spec, frames, log, { over = null, ctx = {}, horizon = 5, maxHold = 20 } = {}) {
+    const s = spec, trades = [], quiet = [], cache = new Map(), cost = s.cost_pct / 100;
+    const ser = (sym) => { if (!cache.has(sym)) { const f = frames[sym]; let v = null; if (f && f.c.length > 2) { if (!f.sym) f.sym = sym; try { v = { f, S: watchSeries(s, f, { frames, ...ctx }, over) }; } catch (e) { v = null; } } cache.set(sym, v); } return cache.get(sym); };
+    for (const ent of log || []) {
+      const d0 = dayOf(String(ent.date).slice(0, 10));
+      for (const sym0 of ent.syms || []) {
+        const sym = symKey(sym0), x = ser(sym); if (!x) continue;
+        const { f, S } = x; let i = barIndexOn(f, d0); if (i < 0) continue;
+        if (f.d[i] < d0) i++; // a list sent on a holiday or before the session: first live session is the next bar
+        let hit = -1; for (let k = i; k < Math.min(f.c.length, i + s.list_days); k++) if (S.en[k]) { hit = k; break; }
+        if (hit < 0) { const j = Math.min(f.c.length - 1, i + horizon); if (j > i && i < f.c.length) quiet.push({ symbol: sym, date: isoOf(f.d[Math.min(i, f.c.length - 1)]), fwd_pct: r2((f.c[j] / f.c[i] - 1) * 100) }); continue; }
+        if (hit + 1 >= f.c.length) { trades.push({ symbol: sym, list_date: ent.date, signal_date: isoOf(f.d[hit]), pending: true, fired: s.conditions.filter((c, k) => S.cs[k][hit]).map((c) => c.id) }); continue; }
+        const e = hit + 1, entry = f.o[e] === f.o[e] && f.o[e] > 0 ? f.o[e] : f.c[hit];
+        let j = e, why = null;
+        for (; j < f.c.length - 1 && j < e + maxHold; j++) { why = watchExit(s, f, S, j, entry, e); if (why) break; }
+        const done = !!why && j + 1 < f.c.length, exitPx = done ? (f.o[j + 1] > 0 ? f.o[j + 1] : f.c[j]) : f.c[Math.min(j, f.c.length - 1)];
+        const ret = (exitPx * (1 - cost)) / (entry * (1 + cost)) - 1;
+        trades.push({ symbol: sym, list_date: ent.date, signal_date: isoOf(f.d[hit]), entry_date: isoOf(f.d[e]), entry: r2(entry), exit_date: isoOf(f.d[done ? j + 1 : Math.min(j, f.c.length - 1)]),
+          exit: r2(exitPx), ret_pct: r2(ret * 100), days: (done ? j + 1 : j) - e, reason: done ? why : (j >= e + maxHold ? `still open after ${maxHold} days` : "still open"), open: !done,
+          fired: s.conditions.filter((c, k) => S.cs[k][hit]).map((c) => c.id), values: Object.fromEntries(s.conditions.filter((c, k) => S.vs[k]).map((c) => [c.id, r2(S.vs[s.conditions.indexOf(c)][hit])])) });
+      }
+    }
+    return { trades, quiet, stats: watchStats(s, trades, quiet) };
+  }
+  function watchStats(s, trades, quiet) {
+    const done = trades.filter((t) => t.ret_pct != null), rs = done.map((t) => t.ret_pct), n = rs.length;
+    const sum = (a) => a.reduce((x, y) => x + y, 0), med = (a) => { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
+    const block = (xs) => { const r = xs.map((t) => t.ret_pct); return { n: r.length, win_pct: r.length ? r2(r.filter((x) => x > 0).length / r.length * 100) : null, avg_pct: r.length ? r2(sum(r) / r.length) : null, median_pct: r2(med(r)) }; };
+    const out = { signals: trades.length, closed: done.filter((t) => !t.open).length, ...block(done), best: n ? done.reduce((a, b) => b.ret_pct > a.ret_pct ? b : a) : null, worst: n ? done.reduce((a, b) => b.ret_pct < a.ret_pct ? b : a) : null,
+      avg_days: n ? r2(sum(done.map((t) => t.days || 0)) / n) : null, names_without_signal: quiet.length,
+      missed_movers: quiet.filter((q) => q.fwd_pct > 5).sort((a, b) => b.fwd_pct - a.fwd_pct).slice(0, 10), quiet_avg_fwd_pct: quiet.length ? r2(sum(quiet.map((q) => q.fwd_pct)) / quiet.length) : null };
+    out.by_condition = (s.conditions || []).map((c) => ({ id: c.id, label: c.label, ...block(done.filter((t) => t.fired.includes(c.id))) }));
+    out.edge = n ? r2(out.avg_pct * Math.sqrt(Math.min(n, 60))) : null;
+    return out;
+  }
+  // Learn better settings from the record: nudge each setting through its range (one at a time, two passes), keep a change
+  // only when it improves average return × √trades with at least min_trades calls. Returns the suggestion and the evidence.
+  function watchTune(spec, frames, log, { over = null, ctx = {}, min_trades = 8 } = {}) {
+    const s = spec, keys = Object.keys(s.params || {});
+    const base = Object.fromEntries(keys.map((k) => [k, over && over[k] != null ? Number(over[k]) : s.params[k].value]));
+    const score = (st) => st.n >= min_trades ? st.avg_pct * Math.sqrt(Math.min(st.n, 60)) : -Infinity;
+    const run1 = (p) => watchLearn(s, frames, log, { over: p, ctx }).stats;
+    const cur = run1(base); let best = { p: { ...base }, st: cur, sc: score(cur) }; const grid = {};
+    const valuesFor = (k) => { const P = s.params[k], v = base[k]; let lo = P.min ?? v * 0.5, hi = P.max ?? v * 1.5, st = P.step ?? Math.max(Math.abs(v) * 0.25, 1e-6);
+      if (hi < lo) [lo, hi] = [hi, lo]; const out = []; for (let x = lo; x <= hi + st * 1e-9 && out.length < 15; x += st) out.push(+x.toFixed(6)); if (!out.some((x) => Math.abs(x - v) < 1e-9)) out.push(v); return out.sort((a, b) => a - b); };
+    for (let pass = 0; pass < 2; pass++) for (const k of keys) {
+      const rows = [];
+      for (const v of valuesFor(k)) { const p = { ...best.p, [k]: v }, st = run1(p), sc = score(st); rows.push({ value: v, n: st.n, win_pct: st.win_pct, avg_pct: st.avg_pct }); if (sc > best.sc + 1e-9) best = { p, st, sc }; }
+      grid[k] = rows;
+    }
+    const changed = keys.filter((k) => Math.abs(best.p[k] - base[k]) > 1e-9);
+    return { current: { params: base, stats: cur }, suggestion: changed.length ? { params: best.p, changed, stats: best.st } : null, grid, min_trades, enough: cur.n >= min_trades };
+  }
+  // "Check on past data" for a fixed list: every name is treated as sent every session from the start date.
+  function runWatchReplay(spec, frames, o) {
+    const syms = (spec.symbols || []).filter((x) => frames[x]), days = new Set();
+    for (const x of syms) for (const d of frames[x].d) if ((o.startDay == null || d >= o.startDay) && (o.endDay == null || d <= o.endDay)) days.add(d);
+    const D = [...days].sort((a, b) => a - b), log = D.map((d) => ({ date: isoOf(d), syms }));
+    const L = watchLearn(spec, frames, log);
+    // equity: equal slots of position_pct, trades compounded in entry order (a rough curve for the replay)
+    const eq = new Float64Array(D.length).fill(spec.capital), byExit = new Map();
+    for (const t of L.trades.filter((t) => t.ret_pct != null)) { const k = dayOf(t.exit_date); byExit.set(k, (byExit.get(k) || 0) + t.ret_pct / 100 * spec.position_pct / 100); }
+    let v = spec.capital; D.forEach((d, i) => { v *= 1 + (byExit.get(d) || 0); eq[i] = v; });
+    const m = computeMetrics(Float64Array.from(D), eq, L.trades.filter((t) => t.ret_pct != null).map((t) => ({ pnl: t.ret_pct })), o.rf);
+    return { days: Float64Array.from(D), eq, trades: L.trades, metrics: { ...m, watch: L.stats }, watch: L };
+  }
+
+  const api = { fillParams, watchLive, watchSignals, watchLearn, watchTune, watchExprs, setFundamentals, usesFundVars, FUNDVARS, fundQuarterly, fundSeries, setIntraday, intradayData, decodeIntra, INTRA_VARS, runIntraday, parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, decodeOptions, setOptionSummary, initOptionSummaries, usesOptionVars, OPTVARS, OPT_BUY, OPT_SELL,
     signals, splitMetrics, riskStats, crises, monteCarlo, sensitivity, costShock, stressAll, scaleWindows, unparse, CRISES,
     setData, setPit, usesPit, pitAt, needsFull, refSymbols, periodKey, nextRebalanceDay, factorList, exprsOf, PRESETS, WEIGHTINGS, symKey };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.TradeEngine = api;

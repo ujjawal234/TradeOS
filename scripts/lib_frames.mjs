@@ -42,7 +42,7 @@ export function loadData(dir) {
       for (const [s, p] of Object.entries(readJ(path.join(data, "fund", `${k}.json`)))) { if (!fundLoaded.has(s)) { E.setFundamentals(s, p); fundLoaded.add(s); } }
     }
   }
-  const specExprs = (spec) => spec.type === "rule" || spec.type === "intraday" ? [spec.entry, spec.exit, spec.rank_by] : spec.type === "rotation" ? E.exprsOf(spec) : [spec.entry, spec.exit];
+  const specExprs = (spec) => spec.type === "watchlist" ? E.watchExprs(spec) : spec.type === "rule" || spec.type === "intraday" ? [spec.entry, spec.exit, spec.rank_by] : spec.type === "rotation" ? E.exprsOf(spec) : [spec.entry, spec.exit];
   const full = {}, bundleCache = {};
   function fullFrame(s) {
     if (full[s]) return full[s];
@@ -64,8 +64,9 @@ export function loadData(dir) {
     if (!pitFull[s] && pitBundles[s]) for (const [k, raw] of Object.entries(readJ(path.join(pitDir, "full", `${pitBundles[s]}.json`)))) pitFull[k] = E.frame(raw);
     return pitFull[s] || (pitLight && pitLight[s]) || null;
   }
-  function framesFor(spec) {
-    const pk = E.usesPit(spec), need = [...new Set(E.symbolsNeeded(spec, man.universes).concat(["NIFTY"]))];
+  // extra: more names to load (a daily list); tolerant: skip names without data instead of failing
+  function framesFor(spec, extra = [], tolerant = false) {
+    const pk = E.usesPit(spec), need = [...new Set(E.symbolsNeeded(spec, man.universes).concat(["NIFTY"], extra.map(E.symKey)))];
     if (man.options) {
       if (spec.type === "option_selling") ensureOptions([spec.underlying], "c");
       if (specExprs(spec).some(E.usesOptionVars)) { E.initOptionSummaries(); ensureOptions(need.concat(specExprs(spec).flatMap((x) => E.refSymbols(x))), "s"); }
@@ -75,7 +76,7 @@ export function loadData(dir) {
     const out = {};
     for (const s of need) {
       if (pk && pitSyms.has(s)) { if (!pitLight) throw new Error("point-in-time data missing"); out[s] = E.needsFull(spec) ? pitFrame(s) : pitLight[s]; continue; }
-      if (!man.symbols[s]) throw new Error(`no data for ${s}`);
+      if (!man.symbols[s]) { if (tolerant) continue; throw new Error(`no data for ${s}`); }
       out[s] = E.needsFull(spec) && !["basket", "series"].includes(man.symbols[s].kind) ? fullFrame(s) : light[s];
     }
     return out;

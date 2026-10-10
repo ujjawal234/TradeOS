@@ -1,7 +1,7 @@
   // ================================================================ CIO CONTROL: the fund the CIO sees and the changes it can make
   // Every change the CIO proposes is a typed action. It shows as a card the team applies with one tap, or applies at once
   // when the user told the CIO to go ahead. Actions are data validated here; nothing the model writes is executed as code.
-  const FUND_ACTIONS = new Set(["create_desk", "update_desk", "close_desk", "assign_agent", "unassign_agent", "create_alert", "delete_alert", "watch", "unwatch", "set_book", "decide_orders"]);
+  const FUND_ACTIONS = new Set(["create_desk", "update_desk", "close_desk", "assign_agent", "unassign_agent", "create_alert", "delete_alert", "watch", "unwatch", "set_book", "decide_orders", "set_list"]);
   const numOr = (v, d) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -15,6 +15,7 @@
 Structure: CIO (you) → desks (sub-funds with capital, mandate, limits, approval rule, status active|paused|halted) → agents (strategies) with alloc_pct of their desk's capital. Each evening after the close, every paper-trading agent on an active desk turns its targets into orders for the next session, checked against the desk's limits (max_position_pct per name, max_gross_pct invested, max_dd_pct drawdown halt that flattens the desk, max_names). Manual desks' orders wait for the team's approval until 09:15 IST; auto desks' orders are approved. Fills are at the next open with costs. Options and intraday agents keep their own paper record and are mirrored into the book.
 Book: ${b ? `equity ₹${Math.round(b.equity)} · capital ₹${Math.round(b.capital)} · since start ${b.since == null ? "–" : b.since.toFixed(2) + "%"} · today ${b.day == null ? "–" : b.day.toFixed(2) + "%"} · from peak ${b.dd.toFixed(2)}% · invested ₹${Math.round(b.gross)} (${b.equity ? (b.gross / b.equity * 100).toFixed(0) : 0}%) · cash ₹${Math.round(b.cash)} · marked ${b.asof || "–"}` : "no capital deployed yet"}. Kill switch: ${S.bookCfg?.kill_switch ? "ON (everything closes at the next open)" : "off"}${S.bookCfg?.max_dd_pct ? ` · book drawdown limit ${S.bookCfg.max_dd_pct}%` : ""}.
 Desks: ${desks.length ? JSON.stringify(desks.map((d) => { const f = deskFigs(b, d.id); return { desk_id: d.id, name: d.name, mandate: d.mandate || "", capital: d.capital, status: d.status || "active", approval: d.approval || "auto", limits: O.limitsOf(d), equity: Math.round(f.equity) || null, invested: Math.round(f.gross) || 0, agents: agents.filter((a) => a.desk_id === d.id).map((a) => ({ agent_id: a.id, name: a.name, alloc_pct: a.alloc_pct || 0, status: a.status })) }; })) : "none yet"}
+Daily-list systems: ${JSON.stringify(agents.filter((a) => a.type === "watchlist").map((a) => { const t = (a.inbox_log || []).slice(-1)[0]; return { agent_id: a.id, name: a.name, status: a.status, last_list: t ? { date: t.date, syms: t.syms.slice(0, 40) } : null, lists_sent: (a.inbox_log || []).length, auto_learn: !!a.auto_learn, learned: a.learned?.params || null }; }))}
 Agents not on a desk: ${JSON.stringify(agents.filter((a) => !a.desk_id || !S.desks.has(a.desk_id)).map((a) => ({ agent_id: a.id, name: a.name, type: a.type, status: a.status, cagr_pct: a.headline?.cagr, max_dd_pct: a.headline?.mdd })))}
 Positions (${pos.length}, largest first): ${pos.slice(0, 60).map((p) => `${p.sym} ${p.qty}@${p.avg.toFixed(1)} now ${Number(p.price).toFixed(1)} ₹${Math.round(p.value)} ${p.pnl_pct >= 0 ? "+" : ""}${p.pnl_pct.toFixed(1)}% [${deskName(p.desk)}]`).join("; ") || "none"}
 Exposure by industry: ${Object.entries(bySec).sort((x, y) => Math.abs(y[1]) - Math.abs(x[1])).slice(0, 12).map(([k, v]) => `${k} ₹${Math.round(v)}`).join("; ") || "none"}
@@ -34,6 +35,7 @@ CONTROLLING THE FUND — put changes in "actions" (they show as cards; the team 
 {"type":"delete_alert","alert_id":"..."}
 {"type":"watch","syms":["..."]} / {"type":"unwatch","syms":["..."]}
 {"type":"set_book","kill_switch":true|false,"max_dd_pct":number|null,"note":"why"}
+{"type":"set_list","agent_id":"a daily-list agent","syms":["RELIANCE","TRENT"],"mode":"replace"|"add"}   (today's names for a daily-list system; apply_now when the user sends names)
 {"type":"decide_orders","order_ids":["ids from the list above"] or "all_pending","decision":"approved"|"rejected","note":"why"}
 Rules: capital sums are rupees. Allocations in a desk should add to ≤100%. To turn an agent on in the book it must be paper trading (set_status "paper") AND assigned to an active desk. Set "apply_now": true only when the user told you to make the change ("do it", "set it up", "go ahead", "approve them"); otherwise propose and let them apply. Always explain the structure in "reply" (mandates, capital split, limits, why) — the cards carry the mechanics.`;
   }
@@ -67,6 +69,7 @@ Rules: capital sums are rupees. Allocations in a desk should add to ≤100%. To 
       case "delete_alert": return S.alertRules.some((r) => r.id === a.alert_id) ? { type: a.type, alert_id: a.alert_id } : null;
       case "watch": case "unwatch": { const syms = (Array.isArray(a.syms) ? a.syms : [a.sym]).map((s) => E.symKey(String(s || ""))).filter((s) => S.man.symbols[s]).slice(0, 50); return syms.length ? { type: a.type, syms } : null; }
       case "set_book": { const o = { type: a.type, note }; if (typeof a.kill_switch === "boolean") o.kill_switch = a.kill_switch; if (a.max_dd_pct === null || a.max_dd_pct != null) o.max_dd_pct = a.max_dd_pct == null ? null : clamp(numOr(a.max_dd_pct, 20), 1, 95); return Object.keys(o).length > 2 ? o : null; }
+      case "set_list": { const ag = S.agents.get(a.agent_id); if (!ag || ag.type !== "watchlist") return null; const { known } = parseNames((Array.isArray(a.syms) ? a.syms : [a.syms]).join(" ")); return known.length ? { type: a.type, agent_id: ag.id, syms: known.slice(0, 200), mode: a.mode === "add" ? "add" : "replace" } : null; }
       case "decide_orders": { const pend = S.ordersList.filter((o) => o.status === "pending").map((o) => o.id); const ids = a.order_ids === "all_pending" ? pend : (Array.isArray(a.order_ids) ? a.order_ids : []).filter((id) => pend.includes(id));
         return ids.length ? { type: a.type, order_ids: ids, decision: a.decision === "rejected" ? "rejected" : "approved", note } : null; }
     }
@@ -92,6 +95,7 @@ Rules: capital sums are rupees. Allocations in a desk should add to ≤100%. To 
       case "watch": return ["Add to the watchlist", a.syms.join(", ")];
       case "unwatch": return ["Remove from the watchlist", a.syms.join(", ")];
       case "set_book": return ["Book controls", [a.kill_switch === true && "kill switch ON — every position closes at the next open", a.kill_switch === false && "kill switch off", "max_dd_pct" in a && (a.max_dd_pct == null ? "no book drawdown limit" : `book drawdown limit ${a.max_dd_pct}%`)].filter(Boolean).join(" · ") + (a.note ? ` — ${a.note}` : "")];
+      case "set_list": return [`${a.mode === "add" ? "Add to" : "Today's names for"} ${agentName(a.agent_id)}`, a.syms.join(", ")];
       case "decide_orders": return [`${a.decision === "approved" ? "Approve" : "Reject"} ${a.order_ids.length} order${a.order_ids.length > 1 ? "s" : ""}`, a.order_ids.slice(0, 6).map((id) => { const o = S.ordersList.find((x) => x.id === id); return o ? `${o.side} ${o.qty} ${o.sym}` : id; }).join(", ") + (a.order_ids.length > 6 ? "…" : "") + (a.note ? ` — ${a.note}` : "")];
     }
     return [a.type, ""];
@@ -111,6 +115,7 @@ Rules: capital sums are rupees. Allocations in a desk should add to ≤100%. To 
       case "watch": { const cur = (S.watch || DEFAULT_WATCH).filter((s) => S.man.symbols[s]); await saveWatch([...cur, ...a.syms.filter((s) => !cur.includes(s))]); return {}; }
       case "unwatch": await saveWatch((S.watch || DEFAULT_WATCH).filter((s) => !a.syms.includes(s))); return {};
       case "set_book": { const c = { ...S.bookCfg }; if ("kill_switch" in a) { c.kill_switch = a.kill_switch; c.kill_reason = a.kill_switch ? `CIO, applied by ${nameOf(S.uid)}${a.note ? ": " + a.note : ""}` : null; c.kill_at = nowIso(); } if ("max_dd_pct" in a) c.max_dd_pct = a.max_dd_pct; await S.db.doc("book/config").set(c); return {}; }
+      case "set_list": { const ag = S.agents.get(a.agent_id); if (!ag) return {}; await saveList(ag, a.syms, a.mode); const v = await S.db.doc(`agents/${ag.id}/versions/${verId(ag.version)}`).get(); if (v.exists) { const spec = E.normalize(v.data().spec, S.man.universes), w = await watchCalls(ag, spec); const r = await ordersNow(ag, spec, w.rows).catch(() => ({ made: 0 })); S.paperCache.clear(); return { orders: r.made || 0, buys: w.rows.filter((x) => x.action === "BUY").map((x) => x.symbol) }; } return {}; }
       case "decide_orders": { let n = 0; for (const id of a.order_ids) { const o = S.ordersList.find((x) => x.id === id); if (!o || o.status !== "pending") continue; await S.db.doc(`orders/${id}`).update({ status: a.decision, decided_by: S.uid, decided_at: nowIso(), note: a.note ? `CIO: ${a.note}` : "on the CIO's advice" }); n++; } return { n }; }
     }
     return {};

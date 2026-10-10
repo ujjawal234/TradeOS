@@ -76,6 +76,7 @@ while (history.length > 3000) history.shift();
 // ---- 5. tomorrow's orders
 let nx = E.dayOf(lastDay) + 1; while (((new Date(nx * 864e5).getUTCDay() + 6) % 7) > 4) nx++;
 const nextSession = E.isoOf(nx);
+const sessions = Array.from(D.light.NIFTY ? D.light.NIFTY.d : []).filter((d) => d <= E.dayOf(lastDay));
 const plans = {};
 const specs = Object.fromEntries(paperAgents.map((a) => [a.id, a.version]));
 for (const [aid, sl] of Object.entries(state.sleeves)) {
@@ -83,8 +84,25 @@ for (const [aid, sl] of Object.entries(state.sleeves)) {
   if (!sl.oms || sl.closing || !a || a.status !== "paper" || !specs[aid]?.spec) continue;
   if (R[aid]?.stale?.blocked) { log.push(`${a.name}: no orders, data not updated for ${R[aid].stale.symbols.slice(0, 3).join(", ")}`); continue; }
   try {
-    const spec = E.normalize(specs[aid].spec, man.universes), frames = D.framesFor(spec);
-    const res = E.run(spec, frames, man.universes, { start: specs[aid].test?.start || "2012-01-01" });
+    const spec = E.normalize(specs[aid].spec, man.universes);
+    let res;
+    if (spec.type === "watchlist") { // daily list: live names + what the sleeve holds; learned settings when the team turned learning on
+      const list = E.watchLive(a.inbox_log || [], sessions, spec.list_days), held = {};
+      for (const [s, p] of Object.entries(sl.positions || {})) if (p.qty) held[s] = { qty: p.qty, avg: p.avg, since: p.since || lastDay };
+      const frames = D.framesFor(spec, [...list, ...Object.keys(held)], true);
+      if (a.auto_learn && (a.inbox_log || []).length) {
+        const T = E.watchTune(spec, frames, a.inbox_log, { over: a.learned?.params || null });
+        if (T.suggestion && JSON.stringify(T.suggestion.params) !== JSON.stringify(a.learned?.params || null)) {
+          const learned = { params: T.suggestion.params, at: lastDay, from: T.current.params, stats: { n: T.suggestion.stats.n, win_pct: T.suggestion.stats.win_pct, avg_pct: T.suggestion.stats.avg_pct }, before: { n: T.current.stats.n, win_pct: T.current.stats.win_pct, avg_pct: T.current.stats.avg_pct } };
+          writes.push({ op: "update", collection: "agents", doc_id: aid, data: { learned } }); a.learned = learned;
+          events.push({ kind: "learned", agent: aid, severity: "info", title: `${a.name} adjusted its settings from its record`, detail: T.suggestion.changed.map((k) => `${k} ${T.current.params[k]} → ${T.suggestion.params[k]}`).join(", ") + ` (avg ${T.current.stats.avg_pct}% → ${T.suggestion.stats.avg_pct}% a call)` });
+        }
+      }
+      res = { watch: E.watchSignals(spec, frames, { list, held, over: a.auto_learn && a.learned?.params ? a.learned.params : null }) };
+    } else {
+      const frames = D.framesFor(spec);
+      res = E.run(spec, frames, man.universes, { start: specs[aid].test?.start || "2012-01-01" });
+    }
     plans[aid] = O.agentTargets(a, spec, res, O.sleeveEquity(sl, px), px, man.symbols, nextSession);
   } catch (e) { log.push(`${a.name}: ${e.message || e}`); }
 }
@@ -108,7 +126,7 @@ for (const f of fired) {
   if (!f.error) writes.push({ op: "update", collection: "alerts", doc_id: f.alert_id, data: { last_fired: lastDay, last_checked: new Date().toISOString().slice(0, 16).replace("T", " ") } });
 }
 for (const a of alerts.filter((x) => x.kind === "news" && !fired.some((f) => f.alert_id === x.id))) writes.push({ op: "update", collection: "alerts", doc_id: a.id, data: { last_checked: new Date().toISOString().slice(0, 16).replace("T", " ") } });
-events.forEach((e, i) => { if (e.kind && /halt|kill/.test(e.kind) || e.kind?.startsWith("sleeve") || e.kind === "capital_changed") writes.push({ op: "set", collection: "alert_events", doc_id: `${lastDay}_sys_${i}_${e.kind}`, data: { date: lastDay, at: new Date().toISOString(), severity: e.severity || "info", title: e.title, detail: e.detail || "", system: true } }); });
+events.forEach((e, i) => { if (e.kind && /halt|kill/.test(e.kind) || e.kind?.startsWith("sleeve") || e.kind === "capital_changed" || e.kind === "learned") writes.push({ op: "set", collection: "alert_events", doc_id: `${lastDay}_sys_${i}_${e.kind}`, data: { date: lastDay, at: new Date().toISOString(), severity: e.severity || "info", title: e.title, detail: e.detail || "", system: e.kind !== "learned" } }); });
 
 // ---- 7. book state and history
 state.next_session = nextSession; state.updated_at = new Date().toISOString();
