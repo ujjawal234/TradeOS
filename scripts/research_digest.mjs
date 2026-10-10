@@ -9,10 +9,10 @@ if (!dir || !outFile) { console.error("usage: node scripts/research_digest.mjs <
 const data = path.join(dir, "data");
 const readJ = (f) => { const js = JSON.parse(fs.readFileSync(f, "utf8")); return js && typeof js.b64gz === "string" ? JSON.parse(zlib.gunzipSync(Buffer.from(js.b64gz, "base64")).toString("utf8")) : js; };
 const man = JSON.parse(fs.readFileSync(path.join(data, "manifest.json"), "utf8"));
-const light = E.framesFromPack(JSON.parse(fs.readFileSync(path.join(data, "closes.json"), "utf8")));
+const light = E.framesFromPack(readJ(path.join(data, "closes.json")));
 E.setData({ meta: man.symbols, frames: light });
 const res = fs.existsSync(path.join(data, "research.json")) ? readJ(path.join(data, "research.json")) : {};
-const full = (s) => { try { const pb = man.symbols[s]?.pb; const raw = pb ? readJ(path.join(data, "pit", "full", `${pb}.json`))[s] : readJ(path.join(data, "p", `${s}.json`)); const f = E.frame(raw); f.sym = s; return f; } catch (e) { return light[s] || null; } };
+const full = (s) => { try { const pb = man.symbols[s]?.pb; const raw = pb ? readJ(path.join(data, man.keep_days ? "s" : path.join("pit", "full"), `${pb}.json`))[s] : readJ(path.join(data, "p", `${s}.json`)); const f = E.frame(raw); f.sym = s; return f; } catch (e) { return light[s] || null; } };
 const C = man.fund?.companies || {};
 for (const k of new Set(Object.values(C).map((c) => c.f))) { try { for (const [s, p] of Object.entries(readJ(path.join(data, "fund", `${k}.json`)))) E.setFundamentals(s, p); } catch (e) { /* missing bundle */ } }
 const lastOf = (a) => { if (!a) return null; for (let i = a.length - 1; i >= 0; i--) if (a[i] === a[i]) return a[i]; return null; };

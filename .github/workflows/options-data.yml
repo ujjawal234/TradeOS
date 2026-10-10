@@ -1,4 +1,4 @@
-name: Option prices (NSE F&O bhavcopy)
+name: Option prices (NSE and BSE F&O bhavcopy)
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,12 +26,12 @@ jobs:
           python-version: "3.11"
       - name: Install
         run: pip install pandas numpy scipy requests
-      - name: Restore cash-market bhavcopy cache (trading days, stock spot prices)
+      - name: Restore cash-market cache (trading days, stock spot prices; built by eod-data.yml)
         uses: actions/cache/restore@v4
         with:
-          path: .bhav_cache
-          key: bhav-${{ github.run_id }}
-          restore-keys: bhav-
+          path: .eod_cache
+          key: eod-${{ github.run_id }}
+          restore-keys: eod-
       - name: Restore F&O cache
         uses: actions/cache/restore@v4
         with:
@@ -42,13 +42,10 @@ jobs:
         run: |
           python - <<'PY'
           import sys; sys.path.insert(0, "scripts")
-          from datetime import date, timedelta
+          from datetime import timedelta
           from pathlib import Path
-          import fetch_bhavcopy as B
-          cache = Path(".bhav_cache"); cache.mkdir(exist_ok=True)
-          have = sorted(f.name[:8] for f in cache.glob("*.csv.gz"))
-          start = date.fromisoformat(f"{have[-1][:4]}-{have[-1][4:6]}-{have[-1][6:8]}") if have else date(2011, 1, 1)
-          B.download(start - timedelta(days=3), cache, 8)
+          import fetch_eod as F
+          F.download("NSE", F.ist_today() - timedelta(days=190), Path(".eod_cache/nse"), 8)
           PY
       - name: Restore participant cache
         uses: actions/cache/restore@v4
@@ -73,7 +70,7 @@ jobs:
           set -o pipefail
           ARGS="$(grep -E '^--' data/REQUEST_OPTIONS 2>/dev/null | tr '\n' ' ' || true)"
           if [ "${{ github.event_name }}" = "schedule" ]; then ARGS="--wait-today 50"; fi
-          python scripts/fetch_fo.py $ARGS 2>&1 | tee data/options/_log.txt
+          python scripts/fetch_fo.py --days 190 $ARGS 2>&1 | tee data/options/_log.txt
       - name: Save F&O cache
         if: always()
         uses: actions/cache/save@v4

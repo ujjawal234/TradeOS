@@ -10,3 +10,11 @@ build/
 .fund_cache/
 build_fund/
 .research/
+.eod/
+.eod_cache/
+build_eod/
+build_intra/
+build_opt/
+.intra/
+.fo_cache/
+.part_cache/

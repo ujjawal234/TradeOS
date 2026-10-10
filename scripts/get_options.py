@@ -1,6 +1,7 @@
 """Download the latest option-price bundles (built daily by .github/workflows/options-data.yml and published as the
-`options-data` release asset) into .options/opt, and the intraday bar bundles (.github/workflows/intraday-bars.yml,
-`intraday-data` release) into .intraday/intra, where scripts/build_app_data.py picks them up.
+`options-data` release asset) into .options/opt, the daily prices of every NSE and BSE stock (eod-data.yml, `eod-data`
+release) into .eod/eod, the intraday bar bundles (.github/workflows/intraday-bars.yml, `intraday-data` release) into
+.intraday/intra and company results into .research/fund, where scripts/build_app_data.py picks them up.
 Usage: python scripts/get_options.py [--repo ujjawal234/TradeOS]"""
 import argparse
 import io
@@ -17,6 +18,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", default="ujjawal234/TradeOS")
     args = ap.parse_args()
+    try:
+        get_eod(args.repo)
+    except Exception as e:  # noqa: BLE001
+        print(f"daily stock prices: not downloaded ({e})")
     url = f"https://github.com/{args.repo}/releases/download/options-data/options_app.tar"
     with urllib.request.urlopen(url, timeout=300) as r:
         data = r.read()
@@ -37,6 +42,20 @@ def main() -> None:
         get_research(args.repo)
     except Exception as e:  # noqa: BLE001
         print(f"company results: not downloaded ({e})")
+
+
+def get_eod(repo: str) -> None:
+    url = f"https://github.com/{repo}/releases/download/eod-data/eod_data.tar"
+    with urllib.request.urlopen(url, timeout=300) as r:
+        data = r.read()
+    dst = ROOT / ".eod"
+    if dst.exists():
+        shutil.rmtree(dst)
+    dst.mkdir(parents=True)
+    with tarfile.open(fileobj=io.BytesIO(data)) as t:
+        t.extractall(dst, filter="data")
+    meta = json.loads((dst / "eod" / "meta.json").read_text())
+    print(f"daily stock prices: {len(meta.get('symbols', {}))} stocks {meta.get('first')} to {meta.get('asof')}, {len(data) / 1e6:.1f} MB -> {dst / 'eod'}")
 
 
 def get_research(repo: str) -> None:

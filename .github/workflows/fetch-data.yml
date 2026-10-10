@@ -28,10 +28,10 @@ jobs:
         run: pip install pandas numpy yfinance requests
       - name: Update universe and daily prices
         continue-on-error: true    # NSE index history and the commit still run if Yahoo fails; data/_fetch_report.json says what failed
-        run: python scripts/fetch_data.py --years 15 ${{ github.event_name == 'workflow_dispatch' && '--full' || '' }}
+        run: python scripts/fetch_data.py --days 190 ${{ github.event_name == 'workflow_dispatch' && '--full' || '' }}
       - name: Update every NSE index (history, P/E, P/B, dividend yield)
         continue-on-error: true
-        run: python scripts/fetch_indices.py --years 15
+        run: python scripts/fetch_indices.py --days 190
       - name: Share counts for market-cap weights (weekly)
         continue-on-error: true
         run: python scripts/fetch_shares.py --max-age 7

@@ -13,7 +13,7 @@ export const readJ = (f) => { const js = JSON.parse(fs.readFileSync(f, "utf8"));
 export function loadData(dir) {
   const data = path.join(dir, "data");
   const man = JSON.parse(fs.readFileSync(path.join(data, "manifest.json"), "utf8"));
-  const light = E.framesFromPack(JSON.parse(fs.readFileSync(path.join(data, "closes.json"), "utf8")));
+  const light = E.framesFromPack(readJ(path.join(data, "closes.json")));
   const lastDay = Object.values(man.symbols).map((s) => s.last).sort().pop();
   let shares = null; try { shares = JSON.parse(fs.readFileSync(path.join(data, "shares.json"), "utf8")); } catch (e) { /* optional */ }
   E.setData({ meta: man.symbols, shares, frames: light, ...(man.options ? { optIndex: man.options.underlyings } : {}) });
@@ -29,6 +29,20 @@ export function loadData(dir) {
   const intraLoaded = new Set();
   function ensureIntraday(spec) {
     const I = man.intraday; if (!I) throw new Error("no intraday bars in this build");
+    if (I.layout === "day-group") { // 1-minute bars, one file per session and symbol group
+      const groups = [...new Set(spec.symbols.filter((s) => I.symbols[s] && !intraLoaded.has("g" + I.symbols[s].g)).map((s) => I.symbols[s].g))];
+      const days = {};
+      for (const g of groups) {
+        intraLoaded.add("g" + g);
+        for (const d of I.sessions || []) {
+          const f = path.join(data, "intra", `${d.replace(/-/g, "")}_${String(g).padStart(2, "0")}.json`);
+          if (!fs.existsSync(f)) continue;
+          for (const [s, arr] of Object.entries(readJ(f))) (days[s] ||= []).push(arr);
+        }
+      }
+      for (const [s, list] of Object.entries(days)) { list.sort((a, b) => a[0] - b[0]); E.setIntraday(s, { step: 1, days: list }); }
+      return;
+    }
     const kind = spec.bar_minutes % 5 === 0 ? "5m" : "1m";
     for (const k of new Set(spec.symbols.filter((s) => I.symbols[s] && I.symbols[s][kind]).map((s) => I.symbols[s][kind]))) {
       if (intraLoaded.has(k)) continue; intraLoaded.add(k);
@@ -48,7 +62,7 @@ export function loadData(dir) {
     if (full[s]) return full[s];
     const meta = man.symbols[s]; if (!meta || ["basket", "series"].includes(meta.kind)) return light[s] || null;
     try {
-      if (meta.pb) { const js = (bundleCache[meta.pb] ||= readJ(path.join(data, "pit", "full", `${meta.pb}.json`))); full[s] = E.frame(js[s]); }
+      if (meta.pb) { const js = (bundleCache[meta.pb] ||= readJ(path.join(data, man.keep_days ? "s" : path.join("pit", "full"), `${meta.pb}.json`))); full[s] = E.frame(js[s]); }
       else full[s] = E.frame(JSON.parse(fs.readFileSync(path.join(data, "p", `${s}.json`), "utf8")));
     } catch (e) { return light[s] || null; }
     full[s].sym = s; return full[s];

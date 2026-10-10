@@ -1,26 +1,29 @@
-"""Intraday price history for TradeOS backtests (runs on GitHub Actions after the close).
+"""1-minute bars for every NSE and BSE stock, rolling last 20 sessions (runs on GitHub Actions after the close).
 
-Yahoo Finance serves 5-minute bars for the last ~60 days and 1-minute bars for the last ~7 days. Nothing older is
-free, so this job keeps everything it has ever fetched: it downloads the previous history (the `intraday-data`
-release asset), adds the newest bars and publishes it again. History therefore grows by one day every trading day.
+Yahoo Finance serves 1-minute bars for the last ~30 days (at most 8 days per request). Each run fetches the newest
+sessions for every stock (incremental: the last 5 days; the first run backfills ~4 weeks), merges them into the
+stored sessions, and keeps only the latest --sessions (default 20). Bars are NSE/BSE session bars 09:15–15:30 IST,
+labelled by their start minute; minutes without a trade are filled flat at the last price with zero volume.
 
-Symbols: Nifty 50 + the latest point-in-time top 100 + F&O stocks named in intraday/agents.json, and the main indices.
-Bars are NSE session bars, 09:15-15:30 IST, labelled by their start time.
+Symbols: every stock in the daily price list (scripts/fetch_eod.py -> eod/meta.json): NSE stocks as SYMBOL.NS,
+BSE-only stocks as <scrip code>.BO; plus NIFTY, BANKNIFTY, FINNIFTY, SENSEX and INDIAVIX. If the result would be
+larger than --max-mb, the least-traded stocks are left out (the report lists how many).
 
-Outputs (in --out, uploaded by the workflow; nothing large is committed):
-  hist/5m/<SYM>.csv.gz, hist/1m/<SYM>.csv.gz   full history (date-time, open, high, low, close, volume)
-  app/intra/i5_NN.json.gz, i1_NN.json.gz          app bundles: last --app-days-5m / --app-days-1m sessions
-  app/intra/index.json                            per symbol: bundle keys, first/last day, number of days
-Usage: python scripts/fetch_intraday_bars.py [--prev prev.tar] [--out build_intra]
+Storage = the app's own files (uploaded by the workflow as the `intraday-data` release; nothing large is committed):
+  intra/<YYYYMMDD>_<g>.json.gz   one session, one group of symbols: {SYM: [epochDay, firstMinute, c0, dc[], do[], dh[], dl[], v[]]}
+                                 (prices ×100 as ints: close as deltas within the day, open/high/low as offsets from close)
+  intra/index.json               {asof, sessions: [dates], groups, symbols: {SYM: {g, 1m, 1m_first, 1m_last, 1m_days}}}
+A symbol's group is crc32(symbol) % groups, so each day adds new files and old days are simply dropped.
+Usage: python scripts/fetch_intraday_bars.py [--prev intraday_app.tar] [--eod .eod/eod] [--out build_intra] [--sessions 20]
 """
 from __future__ import annotations
 
 import argparse
 import gzip
-import io
 import json
 import tarfile
 import time
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -28,170 +31,204 @@ import pandas as pd
 import yfinance as yf
 
 ROOT = Path(__file__).resolve().parents[1]
-INDEX_TICKERS = {"NIFTY": "^NSEI", "BANKNIFTY": "^NSEBANK", "FINNIFTY": "NIFTY_FIN_SERVICE.NS", "INDIAVIX": "^INDIAVIX"}
-YAHOO_SYM = {"M&M": "M&M.NS", "M&MFIN": "M&MFIN.NS", "BAJAJ-AUTO": "BAJAJ-AUTO.NS"}
+INDEX_TICKERS = {"NIFTY": "^NSEI", "BANKNIFTY": "^NSEBANK", "FINNIFTY": "NIFTY_FIN_SERVICE.NS", "INDIAVIX": "^INDIAVIX", "SENSEX": "^BSESN"}
+GROUPS = 12
+EPOCH = pd.Timestamp("1970-01-01")
 
 
-def symbols() -> list[str]:
-    uni = json.loads((ROOT / "data" / "universe.json").read_text()).get("stocks", {})
-    out = {s for s, m in uni.items() if m.get("nifty50")}
-    mem = ROOT / "data" / "pit" / "membership.json"
-    if mem.exists():
-        u = json.loads(mem.read_text())["universes"].get("top100pit") or []
-        if u:
-            out |= set(u[-1][1]) & set(uni)
-    cfg = ROOT / "intraday" / "agents.json"
-    if cfg.exists():  # whatever the live paper agents trade (universe names or symbols), up to Nifty 200
-        for a in json.loads(cfg.read_text()).get("agents", []):
-            for s in a.get("symbols", []):
-                k = str(s).lower()
-                if k in ("nifty50", "nifty200", "fno"):
-                    out |= {x for x, m in uni.items() if m.get(k) and m.get("nifty200")}
-                elif str(s).upper() in uni:
-                    out.add(str(s).upper())
-    return sorted(out)
+def group_of(sym: str) -> int:
+    return zlib.crc32(sym.encode()) % GROUPS
 
 
-def yahoo(sym: str) -> str:
-    return INDEX_TICKERS.get(sym) or YAHOO_SYM.get(sym) or f"{sym}.NS"
+def symbol_list(eod_dir: Path) -> tuple[dict, dict]:
+    """{SYM: yahoo ticker} for every stock, and {SYM: average daily traded value} (for ordering by liquidity)"""
+    tick, liq = {}, {}
+    mf = eod_dir / "meta.json"
+    if mf.exists():
+        meta = json.loads(mf.read_text())["symbols"]
+        for s, m in meta.items():
+            if m.get("ex") == "NSE":
+                tick[s] = f"{s}.NS"
+            elif m.get("code"):
+                tick[s] = f"{m['code']}.BO"
+        pf = eod_dir / "prices.csv.gz"
+        if pf.exists():
+            p = pd.read_csv(pf, usecols=["sym", "date", "value"])
+            p = p[p["date"] >= sorted(p["date"].unique())[-20]]
+            liq = p.groupby("sym")["value"].mean().to_dict()
+    else:  # no daily list yet: the app's stock list
+        uni = json.loads((ROOT / "data" / "universe.json").read_text()).get("stocks", {})
+        tick = {s: f"{s}.NS" for s in uni}
+    for s, t in INDEX_TICKERS.items():
+        tick[s] = t
+        liq[s] = float("inf")
+    return tick, liq
 
 
-def fetch(syms: list[str], interval: str, period: str) -> dict[str, pd.DataFrame]:
+def to_frames(df: pd.DataFrame, tick: dict) -> dict:
     out = {}
-    for i in range(0, len(syms), 25):
-        chunk = syms[i:i + 25]
-        tick = {yahoo(s): s for s in chunk}
-        for attempt in range(3):
-            try:
-                df = yf.download(list(tick), period=period, interval=interval, group_by="ticker", auto_adjust=False,
-                                 prepost=False, threads=True, progress=False)
-                break
-            except Exception as e:  # noqa: BLE001
-                print(f"  {interval} chunk {i}: {e}", flush=True)
-                time.sleep(5 * (attempt + 1))
-        else:
-            continue
-        for t, s in tick.items():
-            try:
-                g = df[t] if isinstance(df.columns, pd.MultiIndex) else df
-            except KeyError:
-                continue
+    for t, s in tick.items():
+        try:
+            g = df[t] if isinstance(df.columns, pd.MultiIndex) else df
             g = g.rename(columns=str.lower)[["open", "high", "low", "close", "volume"]].dropna(subset=["close"])
-            if g.empty:
-                continue
-            idx = g.index.tz_convert("Asia/Kolkata") if g.index.tz is not None else g.index.tz_localize("UTC").tz_convert("Asia/Kolkata")
-            g.index = idx.tz_localize(None)
-            t_ = g.index.time
-            g = g[(t_ >= pd.Timestamp("09:15").time()) & (t_ < pd.Timestamp("15:30").time())]
-            g.index.name = "t"
+        except KeyError:
+            continue
+        if g.empty:
+            continue
+        idx = g.index.tz_convert("Asia/Kolkata") if g.index.tz is not None else g.index.tz_localize("UTC").tz_convert("Asia/Kolkata")
+        g.index = idx.tz_localize(None)
+        t_ = g.index.time
+        g = g[(t_ >= pd.Timestamp("09:15").time()) & (t_ < pd.Timestamp("15:30").time())]
+        if len(g):
             out[s] = g.astype(float)
-        time.sleep(1)
     return out
 
 
-def merge(old: pd.DataFrame | None, new: pd.DataFrame | None) -> pd.DataFrame | None:
-    if old is None:
-        return new
-    if new is None:
-        return old
-    # new data wins for the days it covers (Yahoo sometimes revises the last bars of a day)
-    days = set(new.index.normalize())
-    keep = old[~old.index.normalize().isin(days)]
-    return pd.concat([keep, new]).sort_index()
+def dedup(x: pd.DataFrame) -> pd.DataFrame:
+    x = x.sort_index()
+    return x[~x.index.duplicated(keep="last")]
 
 
-def pack_sym(df: pd.DataFrame, step: int, ndays: int) -> dict:
-    """{step, days: [[epochDay, firstBarIndex, c0, dc[], do[], dh[], dl[], v[]], ...]} — prices ×100 as ints:
-    close as deltas within the day, open/high/low as offsets from close; bar index = minutes since 09:15 / step"""
-    days = []
-    dates = sorted(set(df.index.normalize()))[-ndays:]
-    for d in dates:
-        g = df[df.index.normalize() == d]
-        if len(g) < 3:
-            continue
-        mins = ((g.index - (d + pd.Timedelta(hours=9, minutes=15))).total_seconds() // 60).astype(int)
-        bi = (mins // step).to_numpy()
-        # put bars on a full grid (missing bars = no trade: flat at the last close, zero volume)
-        n = int(bi.max()) + 1 - int(bi[0])
-        c = np.full(n, np.nan); o = c.copy(); h = c.copy(); lo = c.copy(); v = np.zeros(n)
-        k = bi - bi[0]
-        c[k], o[k], h[k], lo[k], v[k] = g["close"], g["open"], g["high"], g["low"], g["volume"].fillna(0)
-        c = pd.Series(c).ffill().to_numpy()
-        for a in (o, h, lo):
-            m = np.isnan(a)
-            a[m] = c[m]
-        ci = np.round(c * 100).astype(np.int64)
-        days.append([int((d - pd.Timestamp("1970-01-01")).days), int(bi[0]), int(ci[0]), np.diff(ci, prepend=ci[0]).tolist(),
-                     (np.round(o * 100).astype(np.int64) - ci).tolist(), (np.round(h * 100).astype(np.int64) - ci).tolist(),
-                     (np.round(lo * 100).astype(np.int64) - ci).tolist(), np.round(v).astype(np.int64).tolist()])
-    return {"step": step, "days": days}
+def fetch(tick: dict, windows: list, chunk: int = 50) -> dict:
+    """yahoo 1m bars for {SYM: ticker} over each (start, end) window (or a period string); {SYM: DataFrame}"""
+    out: dict[str, list] = {}
+    items = list(tick.items())
+    t0 = time.time()
+    for i in range(0, len(items), chunk):
+        part = {t: s for s, t in items[i:i + chunk]}
+        for w in windows:
+            kw = {"period": w} if isinstance(w, str) else {"start": w[0], "end": w[1]}
+            df = None
+            for attempt in range(3):
+                try:
+                    df = yf.download(list(part), interval="1m", group_by="ticker", auto_adjust=False, prepost=False, threads=True, progress=False, **kw)
+                    break
+                except Exception as e:  # noqa: BLE001
+                    print(f"  chunk {i} {w}: {str(e)[:120]}", flush=True)
+                    time.sleep(5 * (attempt + 1))
+            if df is None or df.empty:
+                continue
+            for s, g in to_frames(df, part).items():
+                out.setdefault(s, []).append(g)
+        if (i // chunk) % 10 == 0:
+            print(f"  {i + len(part)}/{len(items)} tickers, {len(out)} with bars, {time.time() - t0:.0f}s", flush=True)
+        time.sleep(0.5)
+    return {s: dedup(pd.concat(v)) for s, v in out.items()}
+
+
+def pack_day(g: pd.DataFrame, d: pd.Timestamp) -> list | None:
+    if len(g) < 2:
+        return None
+    mins = ((g.index - (d + pd.Timedelta(hours=9, minutes=15))).total_seconds() // 60).astype(int).to_numpy()
+    n = int(mins.max()) + 1 - int(mins[0])
+    c = np.full(n, np.nan); o = c.copy(); h = c.copy(); lo = c.copy(); v = np.zeros(n)
+    k = mins - mins[0]
+    c[k], o[k], h[k], lo[k], v[k] = g["close"], g["open"], g["high"], g["low"], g["volume"].fillna(0)
+    c = pd.Series(c).ffill().to_numpy()
+    for a in (o, h, lo):
+        m = np.isnan(a)
+        a[m] = c[m]
+    ci = np.round(c * 100).astype(np.int64)
+    return [int((d - EPOCH).days), int(mins[0]), int(ci[0]), np.diff(ci, prepend=ci[0]).tolist(),
+            (np.round(o * 100).astype(np.int64) - ci).tolist(), (np.round(h * 100).astype(np.int64) - ci).tolist(),
+            (np.round(lo * 100).astype(np.int64) - ci).tolist(), np.round(v).astype(np.int64).tolist()]
+
+
+def load_prev(path: str) -> dict:
+    """{YYYYMMDD: {SYM: dayArray}} from a previous intraday_app.tar (files intra/<date>_<g>.json.gz)"""
+    days: dict[str, dict] = {}
+    if not path or not Path(path).exists():
+        return days
+    with tarfile.open(path) as t:
+        for m in t.getmembers():
+            name = m.name.split("/")[-1]
+            if name.endswith(".json.gz") and name[:8].isdigit() and "_" in name:
+                days.setdefault(name[:8], {}).update(json.loads(gzip.decompress(t.extractfile(m).read())))
+    return days
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--prev", default="", help="previous intraday_data.tar (history so far)")
+    ap.add_argument("--prev", default="", help="previous intraday_app.tar")
+    ap.add_argument("--eod", default=".eod/eod", help="folder with meta.json and prices.csv.gz from the eod-data release")
     ap.add_argument("--out", default="build_intra")
-    ap.add_argument("--app-days-5m", type=int, default=120)
-    ap.add_argument("--app-days-1m", type=int, default=20)
+    ap.add_argument("--sessions", type=int, default=20)
+    ap.add_argument("--max-mb", type=float, default=140, help="size cap for all sessions together (gzip)")
+    ap.add_argument("--max-symbols", type=int, default=0, help="0 = every stock")
     args = ap.parse_args()
-    out = ROOT / args.out
-    hist = {"5m": {}, "1m": {}}
-    if args.prev and Path(args.prev).exists():
-        with tarfile.open(args.prev) as t:
-            for m in t.getmembers():
-                parts = m.name.split("/")
-                if len(parts) == 3 and parts[0] == "hist" and parts[2].endswith(".csv.gz"):
-                    df = pd.read_csv(io.BytesIO(gzip.decompress(t.extractfile(m).read())), index_col=0, parse_dates=True)
-                    hist[parts[1]][parts[2][:-7]] = df
-        print(f"previous history: {len(hist['5m'])} symbols at 5m, {len(hist['1m'])} at 1m", flush=True)
-    syms = symbols()
-    idx_syms = list(INDEX_TICKERS)
-    print(f"fetching {len(syms)} stocks + {len(idx_syms)} indices", flush=True)
-    new5 = fetch(syms + idx_syms, "5m", "60d")
-    n50 = [s for s, m in json.loads((ROOT / "data" / "universe.json").read_text())["stocks"].items() if m.get("nifty50")]
-    new1 = fetch(sorted(set(n50)) + idx_syms, "1m", "7d")
-    print(f"got 5m: {len(new5)}, 1m: {len(new1)}", flush=True)
-    for k, new in (("5m", new5), ("1m", new1)):
-        for s, df in new.items():
-            hist[k][s] = merge(hist[k].get(s), df)
-    # write history and app bundles
-    for k in ("5m", "1m"):
-        (out / "hist" / k).mkdir(parents=True, exist_ok=True)
-        for s, df in hist[k].items():
-            (out / "hist" / k / f"{s}.csv.gz").write_bytes(gzip.compress(df.to_csv(float_format="%.2f").encode()))
-    app = out / "app" / "intra"
-    app.mkdir(parents=True, exist_ok=True)
-    index = {}
-    for k, step, nd, cap in (("5m", 5, args.app_days_5m, 3_500_000), ("1m", 1, args.app_days_1m, 3_500_000)):
-        cur, size, b = {}, 0, 0
-
-        def flush():
-            nonlocal cur, size, b
-            if cur:
-                key = f"i{step}_{b:02d}"
-                (app / f"{key}.json.gz").write_bytes(gzip.compress(json.dumps(cur, separators=(",", ":")).encode(), 9))
-                for s in cur:
-                    index.setdefault(s, {})[k] = key
-                b += 1; cur = {}; size = 0
-        for s in sorted(hist[k]):
-            p = pack_sym(hist[k][s], step, nd)
-            if not p["days"]:
-                continue
-            z = len(gzip.compress(json.dumps(p, separators=(",", ":")).encode(), 6))
-            if cur and size + z > cap:
-                flush()
-            cur[s] = p; size += z
-            d0, d1 = p["days"][0][0], p["days"][-1][0]
-            index.setdefault(s, {})[f"{k}_days"] = len(p["days"])
-            index[s][f"{k}_first"] = str((pd.Timestamp("1970-01-01") + pd.Timedelta(days=d0)).date())
-            index[s][f"{k}_last"] = str((pd.Timestamp("1970-01-01") + pd.Timedelta(days=d1)).date())
-            index[s][f"{k}_history_from"] = str(hist[k][s].index[0].date())
-        flush()
-    last = max((v.get("5m_last", "") for v in index.values()), default="")
-    (app / "index.json").write_text(json.dumps({"asof": last, "source": "Yahoo Finance intraday bars (5-minute: last ~60 days when first fetched, kept and extended every day; 1-minute: last ~7 days, kept and extended)",
+    out = ROOT / args.out / "app" / "intra"
+    out.mkdir(parents=True, exist_ok=True)
+    days = load_prev(args.prev)
+    print(f"previous: {len(days)} sessions", flush=True)
+    tick, liq = symbol_list(ROOT / args.eod)
+    order = sorted(tick, key=lambda s: -(liq.get(s) or 0))
+    if args.max_symbols:
+        order = order[:args.max_symbols]
+    tick = {s: tick[s] for s in order}
+    print(f"fetching 1-minute bars for {len(tick)} symbols", flush=True)
+    today = pd.Timestamp.now(tz="Asia/Kolkata").normalize().tz_localize(None)
+    have = {s for v in days.values() for s in v}
+    fresh = [s for s in tick if s not in have]
+    got: dict = {}
+    if len(days) >= 5 and len(fresh) < len(tick) * 0.5:  # incremental: the last 5 days for everyone, a backfill for newcomers
+        got.update(fetch(tick, ["5d"]))
+        back = {s: tick[s] for s in fresh if s not in got or got[s].index.normalize().nunique() < 3}
+    else:
+        back = tick
+    if back:
+        wins, end = [], today + pd.Timedelta(days=1)
+        for _ in range(4):  # ~4 weeks back in 7-day windows (Yahoo: <= 8 days per 1m request, last 30 days)
+            st = end - pd.Timedelta(days=7)
+            wins.append((st.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")))
+            end = st
+        print(f"backfilling {len(back)} symbols over {len(wins)} windows", flush=True)
+        for s, g in fetch(back, wins).items():
+            got[s] = dedup(pd.concat([got[s], g])) if s in got else g
+    print(f"got bars for {len(got)} symbols", flush=True)
+    for s, g in got.items():  # newly fetched days replace stored ones (Yahoo revises the last bars of a day)
+        for d, gd in g.groupby(g.index.normalize()):
+            arr = pack_day(gd, d)
+            if arr:
+                days.setdefault(d.strftime("%Y%m%d"), {})[s] = arr
+    # a session = a day with bars for a fair share of symbols (stray days with a handful of symbols are dropped)
+    big = max((len(x) for x in days.values()), default=0)
+    sess = sorted(d for d, v in days.items() if len(v) >= max(3, 0.2 * big))[-args.sessions:]
+    days = {d: days[d] for d in sess}
+    # size cap: drop the least-traded symbols until everything fits
+    size_of: dict = {}
+    for v in days.values():
+        for s, arr in v.items():
+            size_of[s] = size_of.get(s, 0) + len(json.dumps(arr, separators=(",", ":"))) * 0.27  # ≈ gzip ratio for these arrays
+    keep, total, dropped = set(), 0.0, 0
+    for s in sorted(size_of, key=lambda x: -(liq.get(x) or 0)):
+        if total + size_of[s] > args.max_mb * 1e6:
+            dropped += 1
+            continue
+        keep.add(s)
+        total += size_of[s]
+    for f in out.glob("*.json.gz"):
+        f.unlink()
+    index: dict = {}
+    for d, v in days.items():
+        groups: dict[int, dict] = {}
+        for s, arr in v.items():
+            if s in keep:
+                groups.setdefault(group_of(s), {})[s] = arr
+        for g, objs in groups.items():
+            (out / f"{d}_{g:02d}.json.gz").write_bytes(gzip.compress(json.dumps(objs, separators=(",", ":")).encode(), 9))
+        iso = f"{d[:4]}-{d[4:6]}-{d[6:]}"
+        for s in v:
+            if s in keep:
+                x = index.setdefault(s, {"g": group_of(s), "1m": "d", "1m_days": 0, "1m_first": iso})
+                x["1m_days"] += 1
+                x["1m_last"] = iso
+    sessions = [f"{d[:4]}-{d[4:6]}-{d[6:]}" for d in sess]
+    (out / "index.json").write_text(json.dumps({"asof": sessions[-1] if sessions else None, "sessions": sessions, "groups": GROUPS, "layout": "day-group",
+                                                "source": f"Yahoo Finance 1-minute bars, every NSE and BSE stock with trades, last {args.sessions} sessions (rolling)",
                                                 "symbols": index}, separators=(",", ":")))
-    rep = {"asof": last, "symbols": len(index), "5m": len(hist["5m"]), "1m": len(hist["1m"]),
-           "fetched_5m": len(new5), "fetched_1m": len(new1), "app_bytes": sum(f.stat().st_size for f in app.glob("*"))}
+    nbytes = sum(f.stat().st_size for f in out.glob("*.json.gz"))
+    rep = {"asof": sessions[-1] if sessions else None, "sessions": len(sessions), "symbols": len(index), "requested": len(tick), "fetched": len(got),
+           "left_out_for_size": dropped, "files": len(list(out.glob("*.json.gz"))), "app_bytes": nbytes}
     (ROOT / "data" / "intraday_bars").mkdir(parents=True, exist_ok=True)
     (ROOT / "data" / "intraday_bars" / "_report.json").write_text(json.dumps(rep, indent=1))
     print(json.dumps(rep), flush=True)

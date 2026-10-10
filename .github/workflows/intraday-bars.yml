@@ -1,7 +1,8 @@
-name: Intraday bars (5-minute and 1-minute history)
+name: Intraday bars (1-minute, every stock, last 20 sessions)
 
-# Yahoo serves only the last ~60 days of 5-minute bars and ~7 days of 1-minute bars, so this job keeps every bar it
-# has ever fetched in the `intraday-data` release and adds each new day. The app backtests intraday agents on it.
+# Yahoo serves 1-minute bars for the last ~30 days. This job keeps the latest 20 sessions of 1-minute bars for every
+# NSE and BSE stock (the list comes from the eod-data release) in the `intraday-data` release, adding each new session
+# and dropping the oldest. The app backtests intraday agents on it.
 
 on:
   workflow_dispatch:
@@ -21,7 +22,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,26 +30,28 @@ jobs:
           python-version: "3.11"
       - name: Install
         run: pip install pandas numpy yfinance requests
-      - name: Previous history
+      - name: Previous sessions and the stock list
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download intraday-data -p intraday_data.tar -O prev.tar 2>/dev/null && ls -la prev.tar || echo "no previous history (first run)"
-      - name: Fetch the latest bars and merge
+          gh release download intraday-data -p intraday_app.tar -O prev.tar 2>/dev/null && ls -la prev.tar || echo "no previous sessions (first run)"
+          mkdir -p .eod
+          gh release download eod-data -p eod_data.tar -O eod.tar 2>/dev/null && tar -C .eod -xf eod.tar && ls -la .eod/eod || echo "no stock list yet (falls back to the app's list)"
+      - name: Fetch the latest 1-minute bars and merge
         run: |
           ARGS=""
           if [ -f prev.tar ]; then ARGS="--prev prev.tar"; fi
-          python scripts/fetch_intraday_bars.py $ARGS --out build_intra
-      - name: Publish history and app bundles
+          python scripts/fetch_intraday_bars.py $ARGS --eod .eod/eod --out build_intra --sessions 20
+      - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           test -f build_intra/app/intra/index.json || { echo "no output"; exit 1; }
-          tar -C build_intra -cf intraday_data.tar hist
           tar -C build_intra/app -cf intraday_app.tar intra
-          ls -la intraday_data.tar intraday_app.tar
-          gh release view intraday-data >/dev/null 2>&1 || gh release create intraday-data --title "Intraday bars (daily)" --notes "5-minute and 1-minute NSE bars kept by .github/workflows/intraday-bars.yml. intraday_data.tar: full history (CSV per symbol). intraday_app.tar: bundles for the TradeOS app."
-          gh release upload intraday-data intraday_data.tar intraday_app.tar --clobber
+          ls -la intraday_app.tar
+          gh release view intraday-data >/dev/null 2>&1 || gh release create intraday-data --title "Intraday bars (daily)" --notes "1-minute NSE/BSE bars, last 20 sessions, kept by .github/workflows/intraday-bars.yml. intraday_app.tar: bundles for the TradeOS app."
+          gh release upload intraday-data intraday_app.tar --clobber
+          gh release delete-asset intraday-data intraday_data.tar -y 2>/dev/null || true
       - name: Commit report
         if: always()
         run: |

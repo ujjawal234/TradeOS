@@ -73,24 +73,25 @@
   // ================================================================ data
   async function loadBase() {
     const [m, pack] = await Promise.all([fetch("data/manifest.json").then((r) => { if (!r.ok) throw new Error("Market data is missing from this page."); return r.json(); }),
-      fetch("data/closes.json").then((r) => r.json())]);
+      fetchJsonGz("data/closes.json")]);
     S.man = m; S.light = E.framesFromPack(pack);
     S.pitSyms = new Set(Object.entries(m.universes || {}).filter(([k]) => /pit$/.test(k)).flatMap(([, v]) => v)); S.pitFull = {}; S.bundleP = {};
     let shares = null; if (m.shares) try { const r = await fetch("data/shares.json"); if (r.ok) shares = await r.json(); } catch (e) { /* optional */ }
     E.setData({ meta: m.symbols, shares, ...(m.options ? { optIndex: m.options.underlyings } : {}) }); S.sharesCount = shares ? Object.keys(shares).length : 0;
     const lasts = Object.values(m.symbols).map((s) => s.last).sort(); S.lastDay = lasts[lasts.length - 1];
     const stocks = Object.values(m.symbols).filter((s) => s.kind === "stock").length;
-    $("dataChip").textContent = `Close of ${fmtDate(S.lastDay)}`; $("dataStat").title = `${stocks} stocks and ${Object.keys(m.symbols).length - stocks} indices and series, NSE data to ${fmtDate(S.lastDay)}`;
+    $("dataChip").textContent = `Close of ${fmtDate(S.lastDay)}`; $("dataStat").title = `${stocks} NSE and BSE stocks and ${Object.keys(m.symbols).length - stocks} indices and series, ${m.window ? `${fmtDate(m.window.first)} to ` : "data to "}${fmtDate(S.lastDay)}`;
     const age = (Date.now() - Date.parse(S.lastDay + "T10:00:00Z")) / 864e5; $("dataStat").querySelector(".dot").className = "dot" + (age > 4 ? " stale" : "");
   }
   async function ensureFull(symbols, onProgress) {
     const need = symbols.filter((s) => !S.full[s] && S.man.symbols[s] && !["basket", "series"].includes(S.man.symbols[s].kind));
     let done = 0;
     const one = async (s) => { const r = await fetch(`data/p/${encodeURIComponent(s)}.json`); if (!r.ok) throw new Error(`No price file for ${s}`); S.full[s] = E.frame(await r.json()); S.full[s].sym = s; done++; if (onProgress && need.length > 4) onProgress(done, need.length); };
-    // NSE-sourced stocks live in the shared bundles of 25 (data/pit/full/<b>.json)
+    // every priced symbol lives in a shared bundle (data/s/<b>.json, 100 symbols each); older builds used data/pit/full
     const byBundle = need.filter((s) => S.man.symbols[s].pb), own = need.filter((s) => !S.man.symbols[s].pb);
     const keys = [...new Set(byBundle.map((s) => S.man.symbols[s].pb))];
-    const oneB = async (k) => { if (!S.bundleP[k]) S.bundleP[k] = fetchJsonGz(`data/pit/full/${k}.json`).catch((e) => { delete S.bundleP[k]; throw e; });
+    const dir = S.man.keep_days ? "data/s" : "data/pit/full";
+    const oneB = async (k) => { if (!S.bundleP[k]) S.bundleP[k] = fetchJsonGz(`${dir}/${k}.json`).catch((e) => { delete S.bundleP[k]; throw e; });
       const js = await S.bundleP[k]; for (const [s, raw] of Object.entries(js)) { if (!S.full[s]) { S.full[s] = E.frame(raw); S.full[s].sym = s; } if (!S.pitFull[s]) S.pitFull[s] = S.full[s]; } done += byBundle.filter((s) => S.man.symbols[s].pb === k).length; if (onProgress && need.length > 4) onProgress(done, need.length); };
     for (let i = 0; i < keys.length; i += 6) await Promise.all(keys.slice(i, i + 6).map(oneB));
     for (let i = 0; i < own.length; i += 10) await Promise.all(own.slice(i, i + 10).map(one));
@@ -98,7 +99,7 @@
   // survivorship-free (point-in-time) data: NSE bhavcopy prices for every stock that was ever in the universe, loaded on first use
   let pitReady = null;
   function ensurePit() {
-    if (!S.man.pit) return Promise.reject(new Error("The point-in-time (survivorship-free) data hasn't been built yet."));
+    if (!S.man.pit) return Promise.reject(new Error("Point-in-time universes (top100pit/top200pit/top500pit) were retired when TradeOS moved to the last ~6 months of data for every NSE and BSE stock. Use nifty50, nifty200, nifty500, fno, nse, all or a list of stocks."));
     if (!pitReady) pitReady = (async () => {
       const [mem, pack] = await Promise.all([fetch("data/pit/membership.json").then((r) => r.json()), fetchJsonGz("data/pit/closes.json")]);
       E.setPit(mem); S.pitLight = E.framesFromPack(pack); S.pitBundles = mem.bundles || {};
@@ -132,11 +133,30 @@
       delete S.optFiles[k]; done++; if (onProgress && keys.length > 1) onProgress(done, keys.length);
     }));
   }
-  // ---- intraday bars (data/intra): 5-minute bars (1-minute for bar sizes that aren't multiples of 5), loaded on first use
+  // ---- intraday bars (data/intra), loaded on first use. Current layout ("day-group"): 1-minute bars, one file per session
+  // and symbol group (data/intra/<YYYYMMDD>_<gg>.json, {SYM: dayArray}); any bar size is built from them by the engine.
   S.intraFiles = {}; S.intraLoaded = new Set();
+  const intraKind = (I, m) => I.layout === "day-group" ? "1m" : m % 5 === 0 ? "5m" : "1m";
   async function ensureIntraday(syms, m, onProgress) {
     const I = S.man.intraday;
     if (!I) throw new Error("Intraday bars aren't in this build of the page yet.");
+    if (I.layout === "day-group") {
+      const have = syms.filter((s) => I.symbols[s]);
+      if (!have.length) throw new Error(`No 1-minute bars for ${syms.slice(0, 6).join(", ")}${syms.length > 6 ? "…" : ""}. Bars cover ${Object.keys(I.symbols).length} NSE and BSE stocks and indices (those that traded), last ${(I.sessions || []).length} sessions.`);
+      const groups = [...new Set(have.filter((s) => !S.intraLoaded.has("1m" + s)).map((s) => I.symbols[s].g))];
+      const files = groups.flatMap((g) => (I.sessions || []).map((d) => `${d.replace(/-/g, "")}_${String(g).padStart(2, "0")}`));
+      const days = {}; let done = 0;
+      for (let i = 0; i < files.length; i += 8) {
+        await Promise.all(files.slice(i, i + 8).map(async (k) => {
+          let js = null; try { js = await fetchJsonGz(`data/intra/${k}.json`); } catch (e) { js = null; } // a group with no trades that day has no file
+          for (const [x, arr] of Object.entries(js || {})) (days[x] ||= []).push(arr);
+          done++; if (onProgress && files.length > 8) onProgress(done, files.length);
+        }));
+      }
+      for (const [x, list] of Object.entries(days)) { list.sort((a, b) => a[0] - b[0]); E.setIntraday(x, { step: 1, days: list }); S.intraLoaded.add("1m" + x); }
+      for (const g of groups) for (const s of Object.keys(I.symbols)) if (I.symbols[s].g === g) S.intraLoaded.add("1m" + s);
+      return;
+    }
     const kind = m % 5 === 0 ? "5m" : "1m";
     const have = syms.filter((s) => I.symbols[s] && I.symbols[s][kind]);
     if (!have.length) throw new Error(`No ${kind === "1m" ? "1-minute" : "5-minute"} bars for ${syms.slice(0, 6).join(", ")}${syms.length > 6 ? "…" : ""}. Intraday bars cover ${Object.keys(I.symbols).length} symbols (Nifty 100 stocks and NIFTY, BANKNIFTY, FINNIFTY, INDIAVIX)${kind === "1m" ? "; 1-minute bars only Nifty 50 stocks and the indices" : ""}.`);
@@ -149,7 +169,7 @@
     }));
   }
   function intraRange(m) { // first/last session of the bars an m-minute strategy uses
-    const I = S.man.intraday; if (!I) return null; const kind = m % 5 === 0 ? "5m" : "1m";
+    const I = S.man.intraday; if (!I) return null; const kind = intraKind(I, m);
     const v = Object.values(I.symbols).filter((x) => x[kind]); if (!v.length) return null;
     return { kind, first: v.map((x) => x[kind + "_first"]).sort()[0], last: v.map((x) => x[kind + "_last"]).sort().pop(), days: Math.max(...v.map((x) => x[kind + "_days"] || 0)) };
   }
@@ -436,12 +456,14 @@
   // ================================================================ prompt pieces shared by Main Agent and agent chats
   function dataBrief() {
     const m = S.man, st = Object.entries(m.symbols).filter(([, v]) => v.kind === "stock");
-    const tick = st.map(([s, v]) => `${s}=${v.name.replace(/ (Ltd|Limited)\.?$/i, "")}`).join("; ");
+    // the prompt names only the Nifty 500 / F&O companies; every other NSE and BSE stock is still there under its ticker
+    const tick = st.filter(([, v]) => v.n500 || v.fno).map(([s, v]) => `${s}=${v.name.replace(/ (Ltd|Limited)\.?$/i, "")}`).join("; ");
+    const nB = st.filter(([, v]) => v.ex === "BSE").length, win = m.window;
     const byGroup = (g) => Object.entries(m.symbols).filter(([, v]) => v.kind === "index" && !v.alias_of && (v.group || "broad") === g).map(([s, v]) => `${s}=${v.name}${v.val ? " (P/E,P/B,DY)" : ""}`).join("; ");
     const groups = Object.entries(m.universes).map(([k, v]) => `${k} (${v.length})`).join(", ");
     const secs = Object.entries(m.sectors || {}).map(([k, v]) => `${k}=${v.label}`).join(", ");
     const nSh = S.sharesCount || 0;
-    return `DATA: daily OHLCV ${Object.values(m.symbols).map((s) => s.first).sort()[0]} to ${S.lastDay}. Stocks (Nifty 500 + F&O, ${st.length} names): NSE's own daily prices adjusted for splits, bonuses, dividends, demergers and rights. Every symbol below can be traded, ranked, used in ref("SYMBOL", ...) or as a benchmark.
+    return `DATA: daily OHLCV ${win ? `${win.first} to ${win.last} (${win.sessions} sessions — TradeOS keeps only the last ~6 months of daily data, by the user's choice: lookbacks longer than ~120 trading days, e.g. sma(close,200), 52-week highs or 1-year returns, have no values; use shorter windows and say so)` : `${Object.values(m.symbols).map((s) => s.first).sort()[0]} to ${S.lastDay}`}. Stocks: EVERY stock listed on NSE and BSE (${st.length - nB} on NSE including SME and trade-for-trade, ${nB} BSE-only), from the exchanges' own daily files; NSE stocks adjusted for splits, bonuses, dividends, demergers and rights. A company listed on both is under its NSE ticker; a BSE-only company uses its BSE ticker (with _BSE added when an NSE stock already has that ticker). Any ticker can be traded, ranked, used in ref("SYMBOL", ...) or as a benchmark — not only the names listed below. Universes "nse", "nse_main", "sme", "bse_only" and "all" cover them all.
 Broad indices: ${byGroup("broad")}
 Sector indices: ${byGroup("sector")}
 Factor / strategy indices (real NSE series — use them as benchmarks to check a replica, e.g. "benchmark":"NIFTY200_MOMENTUM_30"): ${byGroup("factor")}
@@ -457,10 +479,12 @@ ${intradayBrief(m)}
 ${m.options ? optionsBrief(m.options) : "OPTION PRICES: not loaded in this build — option strategies use the Black-Scholes model on India VIX (index options only)."}
 Market-cap weights: ${nSh ? `share counts available for ${nSh} stocks (Yahoo; free float = today's ratio)` : "no share-count data loaded yet — mcap weights fall back to equal"}.
 ${researchBrief(m)}
-Stocks (ticker=company): ${tick}`;
+Nifty 500 and F&O stocks (ticker=company; every other listed stock works too): ${tick}`;
   }
   function intradayBrief(m) {
     const I = m.intraday; if (!I) return "INTRADAY BARS: not in this build — intraday strategies can't be backtested here yet.";
+    if (I.layout === "day-group") { const r = intraRange(1), n = Object.keys(I.symbols).length;
+      return `INTRADAY BARS (Yahoo Finance, 09:15–15:30 IST): 1-minute bars for ${n} symbols — every NSE and BSE stock that traded, plus NIFTY, BANKNIFTY, FINNIFTY, SENSEX and INDIAVIX (indices have no volume) — for the last ${(I.sessions || []).length} sessions (${r?.first} to ${r?.last}), rolled forward every trading day. Any bar size (1, 3, 5, 15 min…) is built from them. Intraday backtests therefore cover only these sessions: judge them by trades, win rate, profit factor and average P&L per session rather than CAGR, and don't over-fit. Yahoo reports no volume for the 09:15 bar (treated as unknown).`; }
     const r5 = intraRange(5), r1 = intraRange(1), syms = Object.keys(I.symbols), one = syms.filter((s) => I.symbols[s]["1m"]);
     return `INTRADAY BARS (Yahoo Finance, NSE session 09:15–15:30 IST, kept and extended every trading day): 5-minute bars for ${syms.length} symbols (Nifty 100 stocks plus NIFTY, BANKNIFTY, FINNIFTY, INDIAVIX index levels — indices have no volume) from ${r5?.first} to ${r5?.last} (${r5?.days} sessions); 1-minute bars for ${one.length} symbols (Nifty 50 + indices) from ${r1?.first} (${r1?.days} sessions) — only bar sizes that aren't multiples of 5 (1, 3 min) use them. Free intraday history only goes back ~60 days, so intraday backtests are short: say so, judge them by trades, win rate, profit factor and average P&L per session rather than CAGR, and don't over-fit. Yahoo reports no volume for the 09:15 bar (treated as unknown). Intraday symbols: ${syms.join(", ")}.`;
   }
@@ -524,7 +548,7 @@ RULE LANGUAGE (used for entry, exit, rank_by, score, factors, filters, regime an
   ref("SYMBOL", expr): expr computed on another symbol, aligned by date — e.g. entry "close > sma(close,50) and ref(\\"NIFTY\\", close > sma(close,200))", or beta(ret(close,1), ref("NIFTY", ret(close,1)), 252).
  Operators + - * / % **, comparisons, and/or/not. Company fundamentals and macro series: see COMPANY RESULTS and MACRO SERIES in DATA. Daily types run on daily bars; use type "intraday" for anything within the day.
  EXPRESSIVENESS: rotation with expression factors, filters, expression weighting, short_n, regime and target_vol is a general portfolio engine (long-only, long-short, market-neutral, factor tilts, macro-switching, risk parity, pairs via a two-symbol universe); rule strategies with ref() cross-asset and macro conditions cover event and timing systems; several agents together form a multi-strategy book. Build whatever the user describes from these.
-SURVIVORSHIP: nifty50/nifty200/nifty500/fno are TODAY's members over the whole history (flattering). top500pit/top200pit/top100pit (if listed in DATA) are survivorship-free — use them when the user asks to remove survivorship bias; don't say it can't be done.
+UNIVERSES: nifty50/nifty200/nifty500/fno are today's index members; "nse", "nse_main", "sme", "bse_only" and "all" are every listed stock. Over a ~6-month window survivorship bias is small; say so if asked.
 TEST WINDOW (only when a backtest is asked for): {"start":"YYYY-MM-DD","end":null or date,"split":"YYYY-MM-DD" (train before, test from) or null}.`;
 
   /*__RESEARCH__*/
@@ -819,7 +843,7 @@ RESEARCH METHOD (macro → sectors → stocks → expression) — for research q
 1. Macro & regime (macro_dashboard): growth (GDP, IIP, OECD leading indicator), inflation (CPI vs the RBI's 4% target), policy and rates (repo path, India 10y, US yields and real yields, curve), liquidity and money (M3, Fed balance sheet), currency and external (USDINR, DXY, reserves, trade, current account), global risk (US VIX, credit spreads, financial stress, S&P 500, EM), commodities (Brent, copper, gold), and the market itself (Nifty/mid/small P/E percentiles, equity risk premium vs the 10y, India VIX, FII/DII positioning and flows, breadth). Say which regime we are in and what changed recently.
 2. Connect the dots to sectors (sector_view + sector indices in macro_dashboard): e.g. falling crude and a firm rupee help oil marketers, paints, tyres, aviation and chemicals users and hurt upstream oil; rate cuts and easy liquidity help banks/NBFCs, real estate, autos and capital-intensive sectors; a weak rupee and strong US demand help IT and pharma exporters; rising US real yields and a strong dollar mean FII outflows and pressure on expensive large caps; capex cycles favour capital goods, cement and metals; high P/E percentiles with falling earnings revisions are a warning. Confirm with data: sector earnings growth, valuation vs history, momentum and breadth — a story without numbers is not a view.
 3. Stocks (screen, company_research): find companies where growth, margins, valuation, price strength and positioning agree (e.g. profit_growth_ttm high, P/E below its own 5-year median or below peers, close above its 200-day average, promoter holding stable or rising, recent order wins or fund raising in filings). For each idea check the quarterly trend, peers, upcoming results date and recent filings/headlines.
-4. Expression: choose how to play it — single stocks, a basket or factor rotation, a pair (long the beneficiary, short the loser), sector/index rotation, options (use option_data: buy options when IV is low vs its history, sell premium when IV is rich; spreads to cap cost; protective puts/collars as hedges), or a systematic rule that uses fundamentals and macro series (ref("IN_CPI_YOY", close), ref("US_10Y_YIELD", change(close,21)), pe, profit_growth_ttm, result_day…). Prefer the survivorship-free universes (top100pit/top200pit/top500pit) for stock strategies.
+4. Expression: choose how to play it — single stocks, a basket or factor rotation, a pair (long the beneficiary, short the loser), sector/index rotation, options (use option_data: buy options when IV is low vs its history, sell premium when IV is rich; spreads to cap cost; protective puts/collars as hedges), or a systematic rule that uses fundamentals and macro series (ref("IN_CPI_YOY", close), ref("US_10Y_YIELD", change(close,21)), pe, profit_growth_ttm, result_day…). Any NSE or BSE stock can be used; screen the whole market ("all", "nse_main") when looking for ideas.
 5. Evidence: today's numbers and the recent record; a backtest only when the user asks for one.
 6. Deliver like a research note: the view in one line, the evidence (numbers with dates), the catalysts and timing (results dates, policy meetings), the risks and what would prove the view wrong, and the strategy as a proposal the user can create as an agent. For a quick question, answer quickly; for "ideas", "what should I buy", "research X", "what's the macro telling us", do the full method.
 - Be direct. Use ₹, lakh/crore and Indian market terms. Markdown bullets and headings are fine; no filler.
@@ -911,7 +935,7 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
     $("newChatBtn").hidden = !msgs.length;
     if (!msgs.length) {
       html += `<div class="welcome"><h1>What are we working on?</h1>
-        <p>I run the fund for you: macro and markets, research on any company, strategies built exactly your way and backtested on 15 years of NSE data, desks with capital and limits, and the orders that go out each evening. Ask, decide or delegate.</p>
+        <p>I run the fund for you: macro and markets, research on any company, systems built exactly your way on every NSE and BSE stock (the last 6 months daily, 1-minute bars for the last 20 sessions), desks with capital and limits, and the orders that go out each evening. Ask, decide or delegate.</p>
         <div class="starters">${STARTERS.map(([t, s], i) => `<button type="button" class="starter" data-starter="${i}"><b>${esc(t)}</b>${esc(s)}</button>`).join("")}</div></div>`;
     }
     for (const m of msgs) {

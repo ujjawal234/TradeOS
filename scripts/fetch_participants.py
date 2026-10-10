@@ -2,12 +2,12 @@
 
  1. Participant-wise open interest (contracts) and volume from NSE's daily NSCCL files
       /content/nsccl/fao_participant_oi_DDMMYYYY.csv  and  fao_participant_vol_DDMMYYYY.csv
-    for every trading day (days come from the cash-market cache .bhav_cache). Rows: Client, DII, FII, Pro, TOTAL;
+    for every trading day (days come from the cash-market cache .eod_cache/nse). Rows: Client, DII, FII, Pro, TOTAL;
     columns: index/stock futures long & short, index/stock call & put long & short.
     -> data/flows/participant_oi.csv, data/flows/participant_vol.csv (one row per day, <PARTICIPANT>_<column>)
  2. FII/FPI and DII net buying in the cash market (₹ crore) from NSE's daily report. NSE only serves the latest day,
     so history builds up from the first run. -> data/flows/fii_dii_cash.csv
-Usage: python scripts/fetch_participants.py [--start 2011-01-01] [--cache .part_cache] [--eq-cache .bhav_cache]
+Usage: python scripts/fetch_participants.py [--start YYYY-MM-DD (default: 190 days ago)] [--cache .part_cache] [--eq-cache .eod_cache/nse]
 """
 from __future__ import annotations
 
@@ -17,12 +17,13 @@ import json
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
 import requests
 
+KEEP_DAYS = 190  # ≈ 6 months, the history TradeOS keeps
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "flows"
 HOSTS = ["https://nsearchives.nseindia.com", "https://archives.nseindia.com"]
@@ -103,6 +104,8 @@ def participants(days: list[date], cache: Path, workers: int) -> dict:
         cf.write_text(json.dumps(have)); miss_f.write_text(json.dumps(sorted(missing)))
         if have:
             df = pd.DataFrame.from_dict(have, orient="index").sort_index()
+            if days:
+                df = df[df.index >= days[0].isoformat()]  # only the window the app keeps
             df.index.name = "date"
             OUT.mkdir(parents=True, exist_ok=True)
             df.to_csv(OUT / f"participant_{kind}.csv", float_format="%.0f")
@@ -138,6 +141,7 @@ def fii_dii_cash() -> dict:
     old = pd.read_csv(f, index_col=0) if f.exists() else pd.DataFrame()
     new = pd.DataFrame.from_dict(rec, orient="index")
     df = pd.concat([old[~old.index.isin(new.index)], new]).sort_index()
+    df = df[df.index >= pd.Timestamp(date.today() - timedelta(days=KEEP_DAYS))]  # only the window the app keeps
     df.index.name = "date"
     OUT.mkdir(parents=True, exist_ok=True)
     df.to_csv(f)
@@ -146,14 +150,17 @@ def fii_dii_cash() -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--start", default="2011-01-01")
+    ap.add_argument("--start", default=None)
     ap.add_argument("--cache", default=".part_cache")
-    ap.add_argument("--eq-cache", default=".bhav_cache")
+    ap.add_argument("--eq-cache", default=".eod_cache/nse")
     ap.add_argument("--workers", type=int, default=8)
     args = ap.parse_args()
     cache = ROOT / args.cache
     cache.mkdir(parents=True, exist_ok=True)
-    start = date.fromisoformat(args.start)
+    start = date.fromisoformat(args.start) if args.start else date.today() - timedelta(days=KEEP_DAYS)
+    for f in cache.glob("*"):  # drop cached days outside the window
+        if f.name[:8].isdigit() and f.name[:8] < f"{start:%Y%m%d}":
+            f.unlink()
     days = sorted(d for d in (datetime.strptime(f.name[:8], "%Y%m%d").date() for f in (ROOT / args.eq_cache).glob("*.csv.gz") if f.name[:8].isdigit()) if d >= start)
     OUT.mkdir(parents=True, exist_ok=True)
     try:

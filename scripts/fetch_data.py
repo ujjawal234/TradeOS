@@ -3,11 +3,12 @@
 Runs on GitHub Actions (open internet). Steps:
  1. Constituent lists from NSE archives: Nifty 50, Nifty 200 (with industry) and the F&O list
     (with lot sizes). Falls back to the last saved data/universe.json if NSE is unreachable.
- 2. Daily prices from Yahoo Finance (split- and dividend-adjusted), 15 years on first run and
-    incremental afterwards. A symbol is fully re-downloaded when its recent adjusted prices no
-    longer match what is stored (a dividend or split re-adjusts all history).
+ 2. Daily prices from Yahoo Finance (split- and dividend-adjusted) for indices, world markets and requested series,
+    last --days calendar days (default 190 ≈ 6 months), incremental. A symbol is fully re-downloaded when its recent
+    adjusted prices no longer match what is stored. Stocks are not fetched here: every NSE and BSE stock comes from
+    the exchanges' own daily files (scripts/fetch_eod.py). Files outside the window are trimmed.
 
-Usage:  python scripts/fetch_data.py [--years 15] [--full] [--only SYM1,SYM2]
+Usage:  python scripts/fetch_data.py [--days 190] [--full] [--only SYM1,SYM2]
 """
 from __future__ import annotations
 
@@ -210,7 +211,7 @@ def update_symbol(sym: str, start15: str, full: bool) -> dict:
     path = OUT / f"{sym}.csv"
     tickers = ALTERNATES[sym] if (sym in EXTRA_INDICES or sym in GLOBAL or sym in REQUESTED) else [to_yahoo(sym)] + [t for t in ALTERNATES.get(sym, []) if t != to_yahoo(sym)]
     old = pd.read_csv(path, index_col=0, parse_dates=True) if path.exists() and not full else None
-    if old is not None and len(old) > 200:
+    if old is not None and len(old) > 20:
         recent_start = (old.index[-1] - pd.Timedelta(days=12)).date().isoformat()
         try:
             new = yahoo_history(tickers[0], recent_start)
@@ -230,7 +231,7 @@ def update_symbol(sym: str, start15: str, full: bool) -> dict:
             continue
         if best is None or len(df) > len(best):
             best, used = df, t
-        if len(best) > 200:
+        if len(best) > 60:
             break
     if best is None:
         raise RuntimeError("no data")
@@ -240,7 +241,8 @@ def update_symbol(sym: str, start15: str, full: bool) -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--years", type=int, default=15)
+    ap.add_argument("--days", type=int, default=190)
+    ap.add_argument("--years", type=float, default=None, help="(old option) ignored unless --days is not wanted")
     ap.add_argument("--full", action="store_true")
     ap.add_argument("--only", default="")
     args = ap.parse_args()
@@ -250,10 +252,11 @@ def main() -> None:
     stocks = list(universe["stocks"])
     print(f"Universe: {len(stocks)} stocks ({sum(m['nifty200'] for m in universe['stocks'].values())} Nifty 200, "
           f"{sum(m['fno'] for m in universe['stocks'].values())} F&O)")
-    symbols = list(dict.fromkeys(INDICES + ["INDIAVIX"] + SECTORS + list(EXTRA_INDICES) + list(GLOBAL) + stocks + list(REQUESTED)))
+    # stocks come from the exchanges' daily files (scripts/fetch_eod.py); Yahoo serves indices, world markets and requests
+    symbols = list(dict.fromkeys(INDICES + ["INDIAVIX"] + SECTORS + list(EXTRA_INDICES) + list(GLOBAL) + list(REQUESTED)))
     if args.only:
         symbols = [s.strip().upper() for s in args.only.split(",") if s.strip()]
-    start15 = (date.today() - timedelta(days=int(args.years * 365.25) + 5)).isoformat()
+    start15 = (date.today() - timedelta(days=args.days)).isoformat()
     manifest_path = ROOT / "data" / "manifest.json"
     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {"symbols": {}}
     failed = {}
@@ -292,6 +295,18 @@ def main() -> None:
             df = pd.read_csv(OUT / f"{s}.csv", index_col=0, parse_dates=True)
             manifest["symbols"][s] = {**manifest["symbols"].get(s, {}), "rows": len(df), "first": str(df.index[0].date()), "last": str(df.index[-1].date())}
         print(f"batch rescue: {len(rescued)} symbols updated")
+    # keep only the window: trim every file, drop files of symbols no longer fetched here (stocks moved to fetch_eod.py)
+    keep = set(symbols)
+    for f in OUT.glob("*.csv"):
+        if f.stem not in keep:
+            f.unlink(); manifest["symbols"].pop(f.stem, None); continue
+        df = pd.read_csv(f, index_col=0, parse_dates=True)
+        df = df[df.index >= pd.Timestamp(start15)]
+        df.to_csv(f)
+        if len(df):
+            manifest["symbols"][f.stem] = {**manifest["symbols"].get(f.stem, {}), "rows": len(df), "first": str(df.index[0].date()), "last": str(df.index[-1].date())}
+    for s_ in [k for k in manifest["symbols"] if k not in keep]:
+        manifest["symbols"].pop(s_, None)
     (ROOT / "data" / "_fetch_report.json").write_text(json.dumps({"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "symbols": len(symbols),
         "failed": len(failed), "errors": dict(list(failed.items())[:60])}, indent=1))
     # fetched_at (UTC) tells the daily job whether this run happened after the Indian close (>= 10:20 UTC = 15:50 IST);

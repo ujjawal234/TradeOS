@@ -16,7 +16,10 @@
  3. Write app-ready bundles (gzip JSON) into --out; the workflow uploads them as a GitHub release asset, so the git repo
     stays small. Small reports go to data/options/.
 
-Usage: python scripts/fetch_fo.py [--start 2011-01-01] [--end YYYY-MM-DD] [--cache .fo_cache] [--eq-cache .bhav_cache] [--out build_opt]
+BSE index derivatives (SENSEX, BANKEX, SENSEX50) come from BSE's UDiFF F&O bhavcopy. Only the last --days (default 190 ≈ 6 months) are
+kept; older cache files are deleted.
+
+Usage: python scripts/fetch_fo.py [--days 190 | --start YYYY-MM-DD] [--end YYYY-MM-DD] [--cache .fo_cache] [--eq-cache .bhav_cache] [--out build_opt]
 """
 from __future__ import annotations
 
@@ -46,7 +49,10 @@ R = 0.065                      # discount rate for Black-76
 KEEP_EXPIRIES = 4
 BAND = 0.30                    # cache strikes within ±30% of the futures price
 INDEX_UNDERLYINGS = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50", "NIFTYIT", "NIFTYMID50", "NIFTYINFRA", "NIFTYPSE", "NIFTYCPSE", "NIFTYMIDCAP", "BANKEX", "SENSEX", "NIFTYDIV", "NIFTYSMALLCAP"}
-KEEP_INDICES = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50"}
+KEEP_INDICES = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50", "SENSEX", "BANKEX", "SENSEX50"}
+BSE_FO = ["https://www.bseindia.com/download/Bhavcopy/Derivative/BhavCopy_BSE_FO_0_0_0_{d}_F_0000.CSV",
+          "https://www.bseindia.com/download/BhavCopy/Derivative/BhavCopy_BSE_FO_0_0_0_{d}_F_0000.CSV"]
+BSE_UA = {"User-Agent": UA["User-Agent"], "Accept": "*/*", "Referer": "https://www.bseindia.com/"}
 INDEX_SPOT = {  # spot history from data/indices (NSE index files), newest name first
     "NIFTY": ["NIFTY_50", "CNX_NIFTY"], "BANKNIFTY": ["NIFTY_BANK", "CNX_BANK"], "FINNIFTY": ["NIFTY_FINANCIAL_SERVICES", "CNX_FINANCE"],
     "MIDCPNIFTY": ["NIFTY_MIDCAP_SELECT"], "NIFTYNXT50": ["NIFTY_NEXT_50", "CNX_NIFTY_JUNIOR"], "NIFTYIT": ["NIFTY_IT", "CNX_IT"]}
@@ -134,6 +140,57 @@ def fetch_day(d: date, session: requests.Session) -> tuple[date, pd.DataFrame | 
             break
         time.sleep(1.5 * (attempt + 1))
     return d, None, last
+
+
+def fetch_bse_day(d: date, session: requests.Session) -> tuple[date, pd.DataFrame | None, str]:
+    """BSE index derivatives (SENSEX, BANKEX, SENSEX50 futures and options) from BSE's UDiFF F&O bhavcopy"""
+    last = "no file"
+    for u in BSE_FO:
+        try:
+            r = session.get(u.format(d=f"{d:%Y%m%d}"), headers=BSE_UA, timeout=60)
+        except requests.RequestException as e:
+            last = f"error {e.__class__.__name__}"
+            continue
+        if r.status_code != 200 or len(r.content) < 500:
+            last = f"http {r.status_code}"
+            continue
+        try:
+            raw = pd.read_csv(io.BytesIO(r.content), dtype=str)
+            df = normalise(raw)
+            df = df[df["kind"].isin(["IF", "IO"]) & df["sym"].isin(["SENSEX", "BANKEX", "SENSEX50"])]
+            return d, trim(df, d), "ok"
+        except Exception as e:  # noqa: BLE001
+            last = f"bad file {e.__class__.__name__}: {str(e)[:80]}"
+    return d, None, last
+
+
+def download_bse(days: list[date], cache: Path, workers: int) -> dict:
+    cache.mkdir(parents=True, exist_ok=True)
+    miss_file = cache / "_missing.json"
+    missing = set(json.loads(miss_file.read_text())) if miss_file.exists() else set()
+    todo = [d for d in days if not (cache / f"{d:%Y%m%d}.csv.gz").exists() and d.isoformat() not in missing]
+    session, got, reasons = requests.Session(), 0, {}
+    with ThreadPoolExecutor(max_workers=min(workers, 4)) as pool:
+        for d, df, why in pool.map(lambda x: fetch_bse_day(x, session), todo):
+            if df is not None and len(df):
+                with gzip.open(cache / f"{d:%Y%m%d}.csv.gz", "wt") as f:
+                    df.to_csv(f, index=False)
+                got += 1
+            else:
+                reasons[why] = reasons.get(why, 0) + 1
+                if (date.today() - d).days > 7:
+                    missing.add(d.isoformat())
+    miss_file.write_text(json.dumps(sorted(missing)))
+    print(f"BSE F&O: {got} new files of {len(todo)}; not available: {reasons}", flush=True)
+    return {"new_files": got, "not_available": reasons}
+
+
+def prune(cache: Path, start: date) -> int:
+    n = 0
+    for f in cache.rglob("*.csv.gz"):
+        if f.name[:8].isdigit() and f.name[:8] < f"{start:%Y%m%d}":
+            f.unlink(); n += 1
+    return n
 
 
 def trading_days(eq_cache: Path, start: date, end: date) -> list[date]:
@@ -368,6 +425,11 @@ def load_index_spots() -> dict:
                 df = pd.read_csv(f, usecols=["date", "close"]).dropna()
                 ser.update(dict(zip(df["date"], df["close"])))
         idx[sym] = ser
+    for sym in ("SENSEX", "BANKEX"):  # BSE indices: Yahoo daily closes (data/prices)
+        f = ROOT / "data" / "prices" / f"{sym}.csv"
+        if f.exists():
+            df = pd.read_csv(f, usecols=["date", "close"]).dropna()
+            idx[sym] = dict(zip(df["date"].astype(str).str[:10], df["close"]))
     return idx
 
 
@@ -408,6 +470,9 @@ def build(days: list[date], cache: Path, eq_cache: Path, debug: bool) -> dict:
         if not f.exists():
             continue
         df = pd.read_csv(f, dtype={"sym": str, "kind": str, "o": str}, keep_default_na=False, na_values={"u": [""], "lot": [""], "k": [""]})
+        fb = cache / "bse" / f"{d:%Y%m%d}.csv.gz"
+        if fb.exists():
+            df = pd.concat([df, pd.read_csv(fb, dtype={"sym": str, "kind": str, "o": str}, keep_default_na=False, na_values={"u": [""], "lot": [""], "k": [""]})], ignore_index=True)
         if df.empty:
             continue
         df["sym"] = [current(x, d) for x in df["sym"]]
@@ -567,33 +632,40 @@ def write_app(S: dict, out: Path, chain_bytes: int = 6_000_000, sum_bytes: int =
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--start", default="2011-01-01")
+    ap.add_argument("--start", default=None, help="first day (default: --days before today)")
+    ap.add_argument("--days", type=int, default=190, help="calendar days kept when --start is not given (190 ≈ 6 months)")
     ap.add_argument("--end", default=None)
     ap.add_argument("--cache", default=".fo_cache")
-    ap.add_argument("--eq-cache", default=".bhav_cache")
+    ap.add_argument("--eq-cache", default=".eod_cache/nse")
+    ap.add_argument("--no-bse", action="store_true")
     ap.add_argument("--out", default="build_opt")
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--wait-today", type=int, default=0)
     ap.add_argument("--debug", action="store_true")
     args = ap.parse_args()
-    start = date.fromisoformat(args.start)
+    start = date.fromisoformat(args.start) if args.start else date.today() - timedelta(days=args.days)
     end = date.fromisoformat(args.end) if args.end else date.today()
     cache, eqc, out = (ROOT / p if not Path(p).is_absolute() else Path(p) for p in (args.cache, args.eq_cache, args.out))
+    print(f"Window {start} to {end}; removed {prune(cache, start)} old cache files", flush=True)
     days = trading_days(eqc, start, end)
     if not days:
-        raise SystemExit(f"No trading days found in {eqc} (run scripts/fetch_bhavcopy.py first)")
+        raise SystemExit(f"No trading days found in {eqc} (run scripts/fetch_eod.py first)")
     dl = download(days, cache, args.workers)
+    if not args.no_bse:
+        dl["bse"] = download_bse(days, cache / "bse", args.workers)
     today_ist = (datetime.utcnow() + timedelta(hours=5, minutes=30)).date()
     waited = 0
     while args.wait_today and today_ist.weekday() < 5 and today_ist in days and not (cache / f"{today_ist:%Y%m%d}.csv.gz").exists() and waited < args.wait_today:
         print(f"Today's F&O bhavcopy ({today_ist}) isn't out yet; retrying in 5 minutes", flush=True)
         time.sleep(300); waited += 5
         download([today_ist], cache, args.workers)
+    if not args.no_bse and today_ist in days:
+        download_bse([today_ist], cache / "bse", args.workers)
     res = build(days, cache, eqc, args.debug)
     S = res["S"]
     app = write_app(S, out / "app" / "opt")
     idx = {"asof": max(u["days"][-1] for u in S.values()) if S else None, "underlyings": app["index"],
-           "method": "NSE F&O bhavcopy. Price = close when the contract traded that day, else NSE's settlement (theoretical) price; "
+           "method": "NSE F&O bhavcopy (BSE's for SENSEX, BANKEX, SENSEX50). Price = close when the contract traded that day, else NSE's settlement (theoretical) price; "
                      "negative in the data = not traded that day. Chains keep the nearest two expiries and nearest two monthly expiries, "
                      "each with a fixed strike set chosen the first day it is used (moneyness grid around its forward). IV = Black-76 on the "
                      "put-call-parity forward, r = 6.5%; iv30 interpolated in total variance."}

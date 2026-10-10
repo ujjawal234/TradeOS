@@ -1,12 +1,12 @@
-"""Build 15 years of history for EVERY NSE index from NSE's daily "all indices" close files.
+"""Keep the last ~6 months (--days) of history for EVERY NSE index from NSE's daily "all indices" close files.
 
 Source: https://nsearchives.nseindia.com/content/indices/ind_close_all_DDMMYYYY.csv
 (one file per trading day: open/high/low/close, volume, turnover, P/E, P/B, dividend yield
 for ~150 indices). Output: data/indices/<CODE>.csv  (date,open,high,low,close,volume,pe,pb,dy)
 plus data/indices/_index_names.json (code -> official name). Incremental: only dates after
-the newest stored file are downloaded; the first run backfills --years of history.
+the newest stored file are downloaded; the first run backfills --days; older rows are trimmed.
 
-Usage:  python scripts/fetch_indices.py [--years 15] [--full]
+Usage:  python scripts/fetch_indices.py [--days 190] [--full]
 """
 from __future__ import annotations
 
@@ -78,15 +78,30 @@ def parse_rows(d: date, rows: list[dict]) -> list[dict]:
     return out
 
 
+def trim(cutoff: date) -> None:
+    """keep only the window; an index with nothing left in it is removed"""
+    for f in OUT.glob("*.csv"):
+        if f.stem.startswith("_"):
+            continue
+        df = pd.read_csv(f, index_col=0)
+        df = df[df.index.astype(str).str[:10] >= cutoff.isoformat()]
+        if df.empty:
+            f.unlink()
+        else:
+            df.to_csv(f)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--years", type=int, default=15)
+    ap.add_argument("--days", type=int, default=190, help="calendar days of history kept (190 ≈ 6 months)")
+    ap.add_argument("--years", type=float, default=None, help="(old option, ignored)")
     ap.add_argument("--full", action="store_true")
     args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     state = json.loads(STATE.read_text()) if STATE.exists() and not args.full else {}
-    start = date.today() - timedelta(days=int(args.years * 365.25) + 5)
-    if state.get("last"):
+    cutoff = date.today() - timedelta(days=args.days)
+    start = cutoff
+    if state.get("last") and state["last"] >= cutoff.isoformat():
         start = datetime.strptime(state["last"], "%Y-%m-%d").date() - timedelta(days=5)
     days = [start + timedelta(days=i) for i in range((date.today() - start).days + 1)]
     days = [d for d in days if d.weekday() < 5]
@@ -96,7 +111,7 @@ def main() -> None:
         trade = set(pd.read_csv(ref, index_col=0).index.astype(str).str[:10])
         got_days = set(pd.read_csv(have, index_col=0).index.astype(str).str[:10])
         first = min(got_days)
-        gaps = sorted(d for d in trade - got_days if d >= first)
+        gaps = sorted(d for d in trade - got_days if d >= max(first, cutoff.isoformat()))
         if gaps:
             print(f"Re-requesting {len(gaps)} trading days missing from NSE history")
             days = sorted(set(days) | {datetime.strptime(d, "%Y-%m-%d").date() for d in gaps})
@@ -111,6 +126,7 @@ def main() -> None:
                 records += parse_rows(d, rows)
             if i % 250 == 0:
                 print(f"  {i}/{len(days)} days scanned, {got} files")
+    trim(cutoff)
     if not records:
         print("No index files downloaded (NSE unreachable or no new trading days).")
         return
@@ -124,6 +140,7 @@ def main() -> None:
         if path.exists() and not args.full:
             old = pd.read_csv(path, index_col=0)
             g = pd.concat([old[~old.index.isin(g.index)], g]).sort_index()
+        g = g[g.index.astype(str).str[:10] >= cutoff.isoformat()]
         g.to_csv(path)
     (OUT / "_index_names.json").write_text(json.dumps(dict(sorted(names.items())), indent=1))
     last = max([r["date"] for r in records] + ([state["last"]] if state.get("last") else []))

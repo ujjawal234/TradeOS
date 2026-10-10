@@ -1,10 +1,11 @@
-"""Build the TradeOS app's data files from data/prices/*.csv and data/universe.json.
+"""Build the TradeOS app's data files: every NSE and BSE stock (.eod/eod from the eod-data release), NSE indices
+(data/indices), world markets and requested series (data/prices), flows, macro and breadth — the last ~6 months only
+(TRADEOS_KEEP_DAYS, default 190 calendar days).
 
 Output (in <out>/data):
-  p/<SYMBOL>.json  full daily OHLCV, compact integer encoding (format 2)
-  closes.json      every symbol's closes on one calendar + equal-weight sector baskets (for
-                   rotation, options, benchmarks and quick lookups without loading OHLCV)
-  manifest.json    symbols (name, industry, index membership, F&O lot size, date range),
+  s/bNN.json       full daily OHLCV of 100 symbols per file (gzip+base64 JSON, compact integer encoding, format 2)
+  closes.json      every symbol's closes on one calendar + equal-weight sector baskets (gzip+base64 JSON)
+  manifest.json    symbols (name, industry, exchange, index membership, F&O lot size, date range, bundle),
                    named universes and sector definitions
 
 Usage:  python scripts/build_app_data.py <out_dir>
@@ -13,6 +14,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import os
 import shutil
 import re
 import sys
@@ -22,8 +24,11 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-MIN_ROWS = 60          # stocks: include recent listings (e.g. new F&O entrants)
-MIN_ROWS_INDEX = 200
+KEEP_DAYS = int(os.environ.get("TRADEOS_KEEP_DAYS", "190"))   # ≈ 6 months of daily history
+CUT = pd.Timestamp.today().normalize() - pd.Timedelta(days=KEEP_DAYS)
+MIN_ROWS = 2           # stocks: include new listings
+MIN_ROWS_INDEX = 20
+BUNDLE = 100           # symbols per data/s file
 IDX_DIR = ROOT / "data" / "indices"
 # F&O index keys taken from NSE's official series (Yahoo is the fallback)
 PRIMARY = {"NIFTY_50": "NIFTY", "NIFTY_BANK": "BANKNIFTY", "NIFTY_FINANCIAL_SERVICES": "FINNIFTY",
@@ -119,7 +124,7 @@ def stitch(target: pd.DataFrame, olds: list[pd.DataFrame], label: str) -> pd.Dat
 
 
 def val_arr(df: pd.DataFrame, col: str):
-    if col not in df or df[col].notna().sum() < 50:
+    if col not in df or df[col].notna().sum() < 20:
         return None
     return [None if pd.isna(x) else round(float(x), 2) for x in df[col].values]
 
@@ -175,7 +180,29 @@ def consensus_fix(nse: pd.DataFrame, yahoo: pd.Series | None, sym: str, repairs:
     return nse
 
 
-PIT_FRAMES: dict = {}  # NSE bhavcopy series (after consensus_fix), reused as the app's main stock prices
+def load_eod() -> tuple[dict, dict, Path | None]:
+    """every NSE and BSE stock (scripts/fetch_eod.py, downloaded by get_options.py into .eod/eod): {SYM: OHLCV frame}, meta"""
+    for d in (ROOT / ".eod" / "eod", ROOT / "build_eod" / "eod"):
+        if (d / "prices.csv.gz").exists():
+            break
+    else:
+        return {}, {}, None
+    p = pd.read_csv(d / "prices.csv.gz", parse_dates=["date"])
+    p = p[(p["date"] >= CUT) & (p["close"] > 0)]
+    meta = json.loads((d / "meta.json").read_text()).get("symbols", {})
+    frames = {}
+    for sym, g in p.groupby("sym", sort=True):
+        g = g.set_index("date").sort_index()[["open", "high", "low", "close", "volume"]]
+        g = g[~g.index.duplicated(keep="last")]
+        for col in ("open", "high", "low"):
+            g[col] = g[col].fillna(g["close"])
+        g["volume"] = g["volume"].fillna(0)
+        frames[str(sym)] = g
+    print(f"stocks: {len(frames)} ({sum(1 for m in meta.values() if m.get('ex') == 'NSE')} NSE, {sum(1 for m in meta.values() if m.get('ex') == 'BSE')} BSE-only) from {d}")
+    return frames, meta, d
+
+
+PIT_FRAMES: dict = {}  # (old) NSE bhavcopy series for the point-in-time universes, no longer built
 PIT_REPAIRS: list = []
 
 
@@ -281,17 +308,17 @@ def extra_series() -> dict:
             mdf = pd.read_csv(f, parse_dates=["known"])
             ser = mdf.groupby("known")["value"].last().sort_index()
             out[key] = (ser, f"{m['name']} ({m['unit']}, {m['source']}; usable from its release date)", "macro")
-    f = PIT_DIR / "breadth.csv"
-    if f.exists():
+    f = ROOT / ".eod" / "eod" / "breadth.csv"
+    if f.exists():  # every NSE main-board stock (EQ/BE/BZ), from the exchange's daily file
         b = pd.read_csv(f, index_col=0, parse_dates=True).sort_index()
         n = b["n"].where(b["n"] > 0)
-        out["BREADTH_ADV_PCT"] = (b["adv"] / n * 100, "% of the top-500 stocks that rose today", "breadth")
-        out["BREADTH_AD_LINE"] = ((b["adv"] - b["dec"]).cumsum(), "Advance-decline line of the top-500 stocks (cumulative advances minus declines)", "breadth")
-        out["BREADTH_ABOVE200"] = (b["a200"] / b["n200"].where(b["n200"] > 0) * 100, "% of the top-500 stocks above their 200-day average", "breadth")
-        out["BREADTH_ABOVE50"] = (b["a50"] / b["n50"].where(b["n50"] > 0) * 100, "% of the top-500 stocks above their 50-day average", "breadth")
-        out["BREADTH_NEW_HIGHS"] = (b["h52"].astype(float), "Top-500 stocks at a 52-week closing high", "breadth")
-        out["BREADTH_NEW_LOWS"] = (b["l52"].astype(float), "Top-500 stocks at a 52-week closing low", "breadth")
-        out["BREADTH_HL_NET"] = ((b["h52"] - b["l52"]).astype(float), "52-week highs minus lows among the top-500 stocks", "breadth")
+        out["BREADTH_ADV_PCT"] = (b["adv"] / n * 100, "% of all NSE main-board stocks that rose today", "breadth")
+        out["BREADTH_AD_LINE"] = ((b["adv"] - b["dec"]).cumsum(), "Advance-decline line of all NSE main-board stocks (cumulative advances minus declines, over the window)", "breadth")
+        out["BREADTH_ABOVE50"] = (b["a50"] / b["n50"].where(b["n50"] > 0) * 100, "% of NSE main-board stocks above their 50-day average", "breadth")
+        out["BREADTH_ABOVE20"] = (b["a20"] / b["n20"].where(b["n20"] > 0) * 100, "% of NSE main-board stocks above their 20-day average", "breadth")
+        out["BREADTH_NEW_HIGHS"] = (b["hi"].astype(float), "NSE main-board stocks at their highest close of the window (~6 months)", "breadth")
+        out["BREADTH_NEW_LOWS"] = (b["lo"].astype(float), "NSE main-board stocks at their lowest close of the window (~6 months)", "breadth")
+        out["BREADTH_HL_NET"] = ((b["hi"] - b["lo"]).astype(float), "Window highs minus lows among NSE main-board stocks", "breadth")
     return out
 
 
@@ -340,7 +367,8 @@ def copy_intraday(dst: Path) -> dict | None:
                                                  "trade_list": a.get("trade_list", [])[:60]})
     (out / "live.json").write_text(json.dumps({"agents": live}, separators=(",", ":")))
     print(f"intraday: {len(idx.get('symbols', {}))} symbols to {idx.get('asof')}, live results for {len(live)} agent(s)")
-    return {"asof": idx.get("asof"), "source": idx.get("source", ""), "symbols": idx.get("symbols", {}), "live": bool(live)}
+    return {"asof": idx.get("asof"), "source": idx.get("source", ""), "symbols": idx.get("symbols", {}), "live": bool(live),
+            **{k: idx[k] for k in ("sessions", "groups", "layout") if k in idx}}
 
 
 def copy_research(dst: Path) -> dict:
@@ -377,11 +405,15 @@ def copy_research(dst: Path) -> dict:
 
 def main(out: Path) -> None:
     src, dst = ROOT / "data" / "prices", out / "data"
-    nse_stocks, _ = load_pit_frames()
-    (dst / "p").mkdir(parents=True, exist_ok=True)
+    eod, eod_meta, _ = load_eod()
+    for old in ("p", "pit", "s"):  # earlier layouts (one file per symbol, point-in-time bundles) are gone
+        if (dst / old).exists():
+            shutil.rmtree(dst / old)
+    (dst / "s").mkdir(parents=True, exist_ok=True)
     uni = json.loads((ROOT / "data" / "universe.json").read_text())["stocks"]
     fetched = json.loads((ROOT / "data" / "manifest.json").read_text())
     frames, symbols = {}, {}
+    cut = lambda df: df[df.index >= CUT]  # noqa: E731  only the window the app keeps
     # ---- official NSE index history (every index NSE publishes), if fetched
     nse, nse_names = {}, {}
     if IDX_DIR.exists():
@@ -394,14 +426,11 @@ def main(out: Path) -> None:
             df = pd.read_csv(f, index_col=0, parse_dates=True).dropna(subset=["close"])
             raw[f.stem] = df[~df.index.duplicated(keep="last")].sort_index()
         old_codes = {code_of(o) for olds in RENAMES.values() for o in olds}
-        for new, olds in RENAMES.items():
-            c = code_of(new)
-            if c in raw:
-                raw[c] = stitch(raw[c], [raw[code_of(o)] for o in olds if code_of(o) in raw], new)
         for code, df in raw.items():
             name = nse_names.get(code, code)
             if code in old_codes or SKIP.search(name):
                 continue
+            df = cut(df)
             if len(df) >= MIN_ROWS_INDEX and df.index[-1] >= pd.Timestamp.today() - pd.Timedelta(days=30):
                 nse[code] = df
     use_nse = len(nse) >= 20
@@ -410,56 +439,61 @@ def main(out: Path) -> None:
         yf = src / f"{YAHOO_BACKFILL.get(key, '')}.csv"
         if key in YAHOO_BACKFILL and yf.exists():
             y = pd.read_csv(yf, index_col=0, parse_dates=True).dropna(subset=["close"])
-            y = y[~y.index.duplicated(keep="last")][["open", "high", "low", "close", "volume"]]
-            fill = y[~y.index.isin(df.index) & (y.index <= df.index[-1])]  # earlier history + days NSE's archive missed
+            y = cut(y[~y.index.duplicated(keep="last")][["open", "high", "low", "close", "volume"]])
+            fill = y[~y.index.isin(df.index) & (y.index <= df.index[-1])]  # days NSE's archive missed
             if len(fill):
                 df = pd.concat([df, fill]).sort_index()
-        gaps = df.index.to_series().diff().dt.days
-        if (gaps > 45).any():  # stray early points before a long hole in NSE's archive: keep the continuous recent history
-            cut = gaps[gaps > 45].index[-1]
-            print(f"  {key}: dropped {int((df.index < cut).sum())} row(s) before a {int(gaps.loc[cut])}-day gap ending {cut.date()}")
-            df = df[df.index >= cut]
         for col in ("open", "high", "low"):
             df[col] = df[col].fillna(df["close"])
         df["volume"] = df["volume"].fillna(0)
         frames[key] = df
-        (dst / "p" / f"{key}.json").write_text(json.dumps(enc_full(df), separators=(",", ":")))
         name = nse_names.get(code, code)
         symbols[key] = {"first": str(df.index[0].date()), "last": str(df.index[-1].date()), "rows": len(df),
                         "name": name,
                         "industry": "Index", "n50": False, "n200": False, "fno": key in PRIMARY.values(), "lot": None, "kind": "index",
-                        "val": bool(df.get("pe") is not None and df["pe"].notna().sum() >= 50), "source": "NSE",
+                        "val": bool(df.get("pe") is not None and df["pe"].notna().sum() >= 20), "source": "NSE",
                         "group": ("debt" if DEBT.search(name) else "derived" if DERIVED.search(name) else "broad" if BROAD_RX.search(name) else "sector" if SECTOR_RX.search(name)
                                   else "factor" if FACTOR_RX.search(name) else "theme")}
     reqf = ROOT / "data" / "requests.json"
     requested = {k.upper(): v for k, v in (json.loads(reqf.read_text()).get("prices", {}) if reqf.exists() else {}).items() if isinstance(v, dict)}
+    # ---- Yahoo: BSE indices, world markets, requested series (stocks come from the exchanges' files below)
     for f in sorted(src.glob("*.csv")):
         s = f.stem
         rq = requested.get(s)
         is_glob = s in GLOBAL_NAMES or bool(rq and rq.get("market", "global") != "india")
         is_idx = s in INDEX_NAMES or is_glob
-        if s in symbols or (use_nse and is_idx and not is_glob and s not in ("SENSEX", "BSE100", "BSE500", "BANKEX")):
+        if s in symbols or (use_nse and is_idx and not is_glob and s not in ("SENSEX", "BSE100", "BSE500", "BANKEX", "BSEMIDCAP", "BSESMALLCAP")):
             continue  # NSE's official series replaces the Yahoo copy
+        if not is_idx and (s in eod or not rq):
+            continue  # a stock: the exchange's own daily file is used
         df = pd.read_csv(f, index_col=0, parse_dates=True).dropna(subset=["close"])
-        df = df[~df.index.duplicated(keep="last")].sort_index()
-        src_name = "Yahoo"
-        if not is_idx and s in nse_stocks and len(nse_stocks[s]) >= MIN_ROWS:
-            df, src_name = nse_stocks[s][["open", "high", "low", "close", "volume"]].copy(), "NSE"  # NSE bhavcopy, adjusted from NSE's own records
+        df = cut(df[~df.index.duplicated(keep="last")].sort_index())
         if len(df) < (MIN_ROWS_INDEX if is_idx else MIN_ROWS):
             continue
         frames[s] = df
-        if src_name != "NSE":  # NSE-sourced stocks are served from the pit bundles (same series), saving ~230 files
-            (dst / "p" / f"{s}.json").write_text(json.dumps(enc_full(df), separators=(",", ":")))
         meta = uni.get(s, {})
         symbols[s] = {"first": str(df.index[0].date()), "last": str(df.index[-1].date()), "rows": len(df),
                       "name": meta.get("name") or GLOBAL_NAMES.get(s) or (rq or {}).get("name") or INDEX_NAMES.get(s, s), "industry": meta.get("industry") or ("Global" if is_glob else "Index" if is_idx else ""),
                       "n50": bool(meta.get("nifty50")), "n200": bool(meta.get("nifty200")), "n500": bool(meta.get("nifty500") or meta.get("nifty200")), "fno": bool(meta.get("fno")),
-                      "lot": meta.get("lot_size"), "kind": "index" if is_idx else "stock", **({} if is_idx else {"src": src_name}),
+                      "lot": meta.get("lot_size"), "kind": "index" if is_idx else "stock", **({} if is_idx else {"src": "Yahoo"}),
                       **({"group": "global" if is_glob else "broad", "source": "Yahoo"} if is_idx else {})}
+    # ---- every NSE and BSE stock (exchange bhavcopy, adjusted for corporate actions)
+    for s, df in eod.items():
+        if s in symbols or len(df) < MIN_ROWS:
+            continue
+        meta, em = uni.get(s, {}), eod_meta.get(s, {})
+        frames[s] = df
+        symbols[s] = {"first": str(df.index[0].date()), "last": str(df.index[-1].date()), "rows": len(df),
+                      "name": meta.get("name") or em.get("name") or s, "industry": meta.get("industry") or "",
+                      "n50": bool(meta.get("nifty50")), "n200": bool(meta.get("nifty200")), "n500": bool(meta.get("nifty500") or meta.get("nifty200")), "fno": bool(meta.get("fno")),
+                      "lot": meta.get("lot_size"), "kind": "stock", "src": em.get("ex", "NSE"), "ex": em.get("ex", "NSE"),
+                      **({"series": em["series"]} if em.get("series") and em.get("series") != "EQ" else {}), **({"bse": em["code"]} if em.get("code") else {})}
     # data series that aren't prices (participant positioning, cash flows, market breadth): closes only, kind "series"
     for key, (ser, name, group) in extra_series().items():
         ser = ser.replace([np.inf, -np.inf], np.nan).dropna()
-        if len(ser) < 20:
+        if group != "macro":  # a macro number stays the latest known value until the next release, so it keeps its last print
+            ser = ser[ser.index >= CUT]
+        if len(ser) < (1 if group == "macro" else 5):
             continue
         frames[key] = pd.DataFrame({"open": ser, "high": ser, "low": ser, "close": ser, "volume": 0.0})
         symbols[key] = {"first": str(ser.index[0].date()), "last": str(ser.index[-1].date()), "rows": len(ser), "name": name, "industry": "Data",
@@ -472,28 +506,26 @@ def main(out: Path) -> None:
     for old, new in LEGACY.items():
         if old not in frames and new in frames:
             frames[old] = frames[new]
-            (dst / "p" / f"{old}.json").write_text((dst / "p" / f"{new}.json").read_text())
             symbols[old] = {**symbols[new], "alias_of": new}
-    # calendar = union of all trading days
-    # calendar = Indian trading days (union of NSE series); world markets are put on it (last known value), so
-    # weekends and foreign holidays never become extra rows in Indian strategies
+    # calendar = Indian trading days (union of Indian series); world markets and macro are put on it (last known value),
+    # so weekends and foreign holidays never become extra rows in Indian strategies
     cal = sorted(set().union(*[set(df.index) for k, df in frames.items() if symbols.get(k, {}).get("group") not in ("global", "macro")]))
     cal_set = pd.DatetimeIndex(cal)
     for k in [k for k in frames if symbols.get(k, {}).get("group") in ("global", "macro")]:
         g = frames[k]
-        macro = symbols[k].get("group") == "macro"  # a macro number stays the latest known value until the next release
-        rng = cal_set[(cal_set >= g.index[0]) & (cal_set <= (cal_set[-1] if macro else g.index[-1] + pd.Timedelta(days=4)))]
+        macro = symbols[k].get("group") == "macro"
+        rng = cal_set[(cal_set >= (cal_set[0] if macro else g.index[0])) & (cal_set <= (cal_set[-1] if macro else g.index[-1] + pd.Timedelta(days=4)))]
         g = g.reindex(g.index.union(rng)).sort_index().ffill().reindex(rng).dropna(subset=["close"])
+        if g.empty:
+            frames.pop(k); symbols.pop(k); continue
         frames[k] = g
         symbols[k].update({"first": str(g.index[0].date()), "last": str(g.index[-1].date()), "rows": len(g)})
-        if not macro:
-            (dst / "p" / f"{k}.json").write_text(json.dumps(enc_full(g), separators=(",", ":")))
     cal_idx = pd.DatetimeIndex(cal)
     closes = pd.DataFrame({s: df["close"] for s, df in frames.items()}).reindex(cal_idx)
     # equal-weight sector baskets from today's Nifty 200 members (daily rebalanced, base 1000)
     sectors = {}
     for industry, (code, label) in SECTOR_SHORT.items():
-        members = [s for s, m in symbols.items() if m["n200"] and m["industry"] == industry]
+        members = [s for s, m in symbols.items() if m.get("n200") and m["industry"] == industry]
         if len(members) < 3:
             continue
         rets = closes[members].pct_change(fill_method=None)
@@ -519,7 +551,14 @@ def main(out: Path) -> None:
         i0 = int(cal_idx.get_loc(fv))
         v = np.round(col.iloc[i0:].ffill().values * 100).astype("int64")
         pack["s"][s] = {"i0": i0, "c0": int(v[0]), "c": np.diff(v, prepend=v[0]).tolist()}
-    (dst / "closes.json").write_text(json.dumps(pack, separators=(",", ":")))
+    (dst / "closes.json").write_text(packed(pack))
+    # full OHLCV for every priced symbol, BUNDLE per file (an artifact version holds at most ~500 files)
+    full = sorted(s for s, m in symbols.items() if m["kind"] in ("stock", "index") and m.get("group") != "macro" and s in frames)
+    for i in range(0, len(full), BUNDLE):
+        key = f"b{i // BUNDLE:02d}"
+        (dst / "s" / f"{key}.json").write_text(packed({s: enc_full(frames[s]) for s in full[i:i + BUNDLE]}))
+        for s in full[i:i + BUNDLE]:
+            symbols[s]["pb"] = key
 
     def members(pred):
         return sorted(s for s, m in symbols.items() if m["kind"] == "stock" and pred(m))
@@ -532,6 +571,8 @@ def main(out: Path) -> None:
         "flows": sorted(s_ for s_, m in symbols.items() if m.get("group") == "flows"),
         "breadth": sorted(s_ for s_, m in symbols.items() if m.get("group") == "breadth"),
         "fno": members(lambda m: m["fno"]), "all": members(lambda m: True),
+        "nse": members(lambda m: m.get("ex", "NSE") == "NSE"), "nse_main": members(lambda m: m.get("ex", "NSE") == "NSE" and m.get("series", "EQ") in ("EQ", "BE", "BZ")),
+        "sme": members(lambda m: m.get("series") in ("SM", "ST", "SZ")), "bse_only": members(lambda m: m.get("ex") == "BSE"),
         "sectors": sorted(s for s, m in symbols.items() if m.get("group") == "sector" and not m.get("alias_of")) or sorted(sectors),
         "baskets": sorted(sectors),
         "indices": sorted(s for s, m in symbols.items() if m["kind"] == "index" and s != "INDIAVIX" and not m.get("alias_of") and m.get("group") not in ("debt", "derived", "global", "flows", "breadth")),
@@ -540,25 +581,19 @@ def main(out: Path) -> None:
         "broad": sorted(s for s, m in symbols.items() if m.get("group") == "broad" and not m.get("alias_of")),
         "themes": sorted(s for s, m in symbols.items() if m.get("group") == "theme" and s != "INDIAVIX" and not m.get("alias_of")),
         "factors": sorted(s for s, m in symbols.items() if m.get("group") == "factor" and not m.get("alias_of")),
-        "fno_indices": [s for s in ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50", "SENSEX"] if s in symbols],
+        "fno_indices": [s for s in ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50", "SENSEX", "BANKEX"] if s in symbols],
         "banks": [s for s in ["HDFCBANK", "ICICIBANK", "SBIN", "AXISBANK", "KOTAKBANK", "INDUSINDBK", "BANKBARODA", "PNB", "CANBK", "FEDERALBNK", "IDFCFIRSTB", "AUBANK", "UNIONBANK", "BANKINDIA", "INDIANB"] if s in symbols],
         **industries,
     }
-    pit = build_pit(dst, universes)
-    if pit:  # where each NSE-sourced stock's full OHLCV lives (data/pit/full/<bundle>.json)
-        pb = json.loads((dst / "pit" / "membership.json").read_text()).get("bundles", {})
-        for s_, m_ in symbols.items():
-            if m_.get("src") == "NSE":
-                if s_ in pb:
-                    m_["pb"] = pb[s_]
-                else:  # not in a bundle for some reason: fall back to its own file
-                    (dst / "p" / f"{s_}.json").write_text(json.dumps(enc_full(frames[s_]), separators=(",", ":")))
     opt_info = copy_options(dst, symbols)
     intra_info = copy_intraday(dst)
     research_info = copy_research(dst)
     has_shares = (ROOT / "data" / "shares.json").exists()
-    manifest = {"generated": fetched.get("generated"), "shares": has_shares, "source": "Stocks: NSE daily bhavcopy, adjusted with NSE's corporate-action records (splits, bonuses, dividends, demergers, rights) and cross-checked against Yahoo; Yahoo only where NSE history is missing. Indices: NSE daily index files (with P/E, P/B, dividend yield). Lists: NSE.",
-                "symbols": symbols, "universes": universes, "sectors": sectors, **({"pit": pit} if pit else {}), **({"options": opt_info} if opt_info else {}), **({"intraday": intra_info} if intra_info else {}), **research_info}
+    n_nse, n_bse = sum(1 for m in symbols.values() if m["kind"] == "stock" and m.get("ex", "NSE") == "NSE"), sum(1 for m in symbols.values() if m.get("ex") == "BSE")
+    manifest = {"generated": fetched.get("generated"), "shares": has_shares, "keep_days": KEEP_DAYS, "window": {"first": str(cal_idx[0].date()), "last": str(cal_idx[-1].date()), "sessions": len(cal_idx)},
+                "stocks": {"nse": n_nse, "bse_only": n_bse},
+                "source": f"Stocks: every NSE and BSE listed stock ({n_nse} NSE, {n_bse} BSE-only) from the exchanges' daily bhavcopy, NSE stocks adjusted with NSE's corporate-action records (splits, bonuses, dividends, demergers, rights); the last ~{KEEP_DAYS // 30} months. Indices: NSE daily index files (with P/E, P/B, dividend yield). Lists: NSE.",
+                "symbols": symbols, "universes": universes, "sectors": sectors, **({"options": opt_info} if opt_info else {}), **({"intraday": intra_info} if intra_info else {}), **research_info}
     (dst / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":")))
     # share counts (for market-cap weights): {SYM: {"f": free-float ratio, "s": [[epoch_day, shares], ...]}}
     sh_file = ROOT / "data" / "shares.json"
