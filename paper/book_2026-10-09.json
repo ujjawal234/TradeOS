@@ -1,0 +1,19 @@
+{
+ "date": "2026-10-09",
+ "next_session": "2026-10-12",
+ "equity": 7000000,
+ "gross": 0,
+ "desks": {
+  "dmv26g56l28uwu": 6000000,
+  "dmv26g5jc5xjtx": 1000000
+ },
+ "fills": 0,
+ "orders_new": 34,
+ "orders_pending_approval": 0,
+ "orders_auto": 34,
+ "orders_blocked": 0,
+ "alerts_fired": 0,
+ "critical": [],
+ "sleeves": 4,
+ "log": []
+}
