@@ -1,20 +1,34 @@
-F&O bhavcopy: 0 trading days to fetch of 3909
+Window 2026-04-03 to 2026-10-10; removed 3777 old cache files
+F&O bhavcopy: 0 trading days to fetch of 129
 Downloaded 0 new F&O files; not available: {}
+BSE F&O: 129 new files of 129; not available: {}
 Symbol changes: 1056
-  built 0/3909 days (2011-01-03), 225 underlyings, 0s
-  built 250/3909 days (2012-01-05), 238 underlyings, 30s
-  built 500/3909 days (2013-01-03), 240 underlyings, 57s
-  built 750/3909 days (2014-01-03), 245 underlyings, 79s
-  built 1000/3909 days (2015-01-13), 256 underlyings, 102s
-  built 1250/3909 days (2016-01-15), 273 underlyings, 129s
-  built 1500/3909 days (2017-01-19), 281 underlyings, 158s
-  built 1750/3909 days (2018-01-22), 309 underlyings, 192s
-  built 2000/3909 days (2019-01-28), 309 underlyings, 226s
-  built 2250/3909 days (2020-02-03), 309 underlyings, 254s
-  built 2500/3909 days (2021-02-03), 319 underlyings, 281s
-  built 2750/3909 days (2022-02-07), 361 underlyings, 316s
-  built 3000/3909 days (2023-02-08), 361 underlyings, 356s
-  built 3250/3909 days (2024-02-13), 361 underlyings, 395s
-  built 3500/3909 days (2025-02-12), 397 underlyings, 432s
-  built 3750/3909 days (2026-02-17), 420 underlyings, 473s
-Options: 432 underlyings, 88.3 MB gzip in 20 bundles
+Traceback (most recent call last):
+  File "/home/runner/work/TradeOS/TradeOS/scripts/fetch_fo.py", line 684, in <module>
+    main()
+  File "/home/runner/work/TradeOS/TradeOS/scripts/fetch_fo.py", line 664, in main
+    res = build(days, cache, eqc, args.debug)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/TradeOS/TradeOS/scripts/fetch_fo.py", line 463, in build
+    idx_spot = load_index_spots()
+               ^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/TradeOS/TradeOS/scripts/fetch_fo.py", line 431, in load_index_spots
+    df = pd.read_csv(f, usecols=["date", "close"]).dropna()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 872, in read_csv
+    return _read(filepath_or_buffer, kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 300, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1643, in __init__
+    self._engine = self._make_engine(f, self.engine)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1925, in _make_engine
+    return mapping[engine](f, **self.options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/c_parser_wrapper.py", line 137, in __init__
+    self._validate_usecols_names(usecols, self.orig_names)
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/base_parser.py", line 662, in _validate_usecols_names
+    raise ValueError(
+ValueError: Usecols do not match columns, columns expected but not found: ['date']

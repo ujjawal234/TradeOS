@@ -12,7 +12,6 @@
   "not_available": {}
  },
  "fii_dii_cash": {
-  "days": 7,
-  "last": "2026-10-09"
+  "error": "'<=' not supported between instances of 'Timestamp' and 'str'"
  }
 }
