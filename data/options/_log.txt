@@ -1,34 +1,7 @@
-Window 2026-04-03 to 2026-10-10; removed 3777 old cache files
+Window 2026-04-03 to 2026-10-10; removed 0 old cache files
 F&O bhavcopy: 0 trading days to fetch of 129
 Downloaded 0 new F&O files; not available: {}
-BSE F&O: 129 new files of 129; not available: {}
+BSE F&O: 0 new files of 0; not available: {}
 Symbol changes: 1056
-Traceback (most recent call last):
-  File "/home/runner/work/TradeOS/TradeOS/scripts/fetch_fo.py", line 684, in <module>
-    main()
-  File "/home/runner/work/TradeOS/TradeOS/scripts/fetch_fo.py", line 664, in main
-    res = build(days, cache, eqc, args.debug)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/TradeOS/TradeOS/scripts/fetch_fo.py", line 463, in build
-    idx_spot = load_index_spots()
-               ^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/TradeOS/TradeOS/scripts/fetch_fo.py", line 431, in load_index_spots
-    df = pd.read_csv(f, usecols=["date", "close"]).dropna()
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 872, in read_csv
-    return _read(filepath_or_buffer, kwds)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 300, in _read
-    parser = TextFileReader(filepath_or_buffer, **kwds)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1643, in __init__
-    self._engine = self._make_engine(f, self.engine)
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1925, in _make_engine
-    return mapping[engine](f, **self.options)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/c_parser_wrapper.py", line 137, in __init__
-    self._validate_usecols_names(usecols, self.orig_names)
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/pandas/io/parsers/base_parser.py", line 662, in _validate_usecols_names
-    raise ValueError(
-ValueError: Usecols do not match columns, columns expected but not found: ['date']
+  built 0/129 days (2026-04-06), 221 underlyings, 0s
+Options: 229 underlyings, 4.6 MB gzip in 2 bundles
