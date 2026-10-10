@@ -41,6 +41,7 @@ import fetch_bhavcopy as B  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 NSE_SERIES = {"EQ", "BE", "BZ", "SM", "ST", "SZ", "IT"}
+BSE_NOT_EQUITY = {"F", "G", "IF", "GS", "TB"}
 BSE_UA = {"User-Agent": B.UA["User-Agent"], "Accept": "*/*", "Referer": "https://www.bseindia.com/"}
 UD = {"TckrSymb": "sym", "SctySrs": "series", "ISIN": "isin", "OpnPric": "open", "HghPric": "high", "LwPric": "low", "ClsPric": "close",
       "PrvsClsgPric": "prev", "TtlTradgVol": "vol", "TtlTrfVal": "val", "FinInstrmNm": "name", "FinInstrmId": "code"}
@@ -65,6 +66,8 @@ def norm(raw: pd.DataFrame, exch: str) -> pd.DataFrame:
     df = df[df["isin"].str.startswith("INE")]
     if exch == "NSE":
         df = df[df["series"].isin(NSE_SERIES)]
+    else:  # BSE lists debt (NCDs, bonds: group F/G), InvITs/REITs (IF) and debt-like names in the same file
+        df = df[~df["series"].isin(BSE_NOT_EQUITY) & ~df["name"].str.contains(r"\d%|\bNCD\b|-PVT$|\bBONDS?\b", case=False, regex=True) & ~df["sym"].astype(str).str.endswith("-RE")]
     for c in ("open", "high", "low", "close", "prev", "vol", "val"):
         df[c] = pd.to_numeric(df[c], errors="coerce")
     return df[(df["close"] > 0)]
@@ -150,6 +153,8 @@ def load(cache: Path, start: date) -> pd.DataFrame:
     if not parts:
         return pd.DataFrame(columns=KEEP + ["date"])
     df = pd.concat(parts, ignore_index=True)
+    if "nse" not in cache.name:  # cached BSE days from before the debt filter
+        df = df[~df["series"].isin(BSE_NOT_EQUITY) & ~df["name"].astype(str).str.contains(r"\d%|\bNCD\b|-PVT$|\bBONDS?\b", case=False, regex=True) & ~df["sym"].astype(str).str.endswith("-RE")]
     for c in ("open", "high", "low", "close", "prev", "vol", "val"):
         df[c] = pd.to_numeric(df[c], errors="coerce").astype("float64")
     df["open"] = df["open"].where(df["open"] > 0, df["close"])

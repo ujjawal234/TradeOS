@@ -428,8 +428,10 @@ def load_index_spots() -> dict:
     for sym in ("SENSEX", "BANKEX"):  # BSE indices: Yahoo daily closes (data/prices)
         f = ROOT / "data" / "prices" / f"{sym}.csv"
         if f.exists():
-            df = pd.read_csv(f, usecols=["date", "close"]).dropna()
-            idx[sym] = dict(zip(df["date"].astype(str).str[:10], df["close"]))
+            df = pd.read_csv(f, index_col=0)
+            if "close" in df:
+                c = df["close"].dropna()
+                idx[sym] = dict(zip(c.index.astype(str).str[:10], c.astype(float)))
     return idx
 
 
