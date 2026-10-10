@@ -1,33 +1,3 @@
-  // ================================================================ AGENTS (fleet)
-  let fleetFilter = "active";
-  async function renderFleet() {
-    const all = [...S.agents.values()];
-    const paper = all.filter((a) => a.status === "paper"), testing = all.filter((a) => a.status === "testing");
-    setCount("agents", all.filter((a) => a.status !== "retired").length);
-    const papers = await Promise.all(paper.map(async (a) => { try { return [a.id, await paperResult(a)]; } catch (e) { return [a.id, null]; } }));
-    const P = Object.fromEntries(papers);
-    const live = papers.map(([, p]) => p).filter((p) => p && !p.pending);
-    const avg = live.length ? live.reduce((s, p) => s + p.ret, 0) / live.length : null, avgN = live.length ? live.reduce((s, p) => s + (p.nifty ?? 0), 0) / live.length : null;
-    const actions = paper.reduce((n, a) => n + ((P[a.id]?.signals || []).filter((s) => isAction(s)).length), 0);
-    $("fleetStats").innerHTML = [["Paper trading", String(paper.length), `${testing.length} in testing`], ["Paper return (avg)", `<span class="${cls(avg)}">${pct(avg)}</span>`, avg == null ? "after the next daily update" : `Nifty ${pct(avgN)} same days`],
-      ["Signals for next open", String(actions), "buy / sell"], ["Data", fmtDate(S.lastDay), "latest close"]]
-      .map(([k, v, b]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${esc(b)}</span></div>`).join("");
-    const show = all.filter((a) => fleetFilter === "all" ? true : fleetFilter === "active" ? a.status !== "retired" : a.status === fleetFilter)
-      .sort((a, b) => ({ paper: 0, testing: 1, paused: 2, retired: 3 }[a.status] - { paper: 0, testing: 1, paused: 2, retired: 3 }[b.status]) || (b.updated_at || "").localeCompare(a.updated_at || ""));
-    await names(show.map((a) => a.updated_by || a.created_by));
-    if (!show.length) { $("fleetTable").innerHTML = `<div class="empty card" style="grid-column:1/-1"><h2>No agents here yet</h2><p class="muted">Ask the Main Agent for an idea. Proposals you accept become agents.</p><button class="btn" type="button" data-go="main">Talk to the Main Agent</button></div>`; wireGo($("fleetTable")); return; }
-    $("fleetTable").innerHTML = show.map((a) => {
-      const h = a.headline || {}, p = P[a.id], sig = (p?.signals || []).filter((s) => isAction(s, true));
-      const paperCell = a.status === "paper" && p ? (p.pending ? `<b class="muted" style="font-size:var(--step-0)">Starts</b><span class="s">next session</span>` : `<b class="${cls(p.ret)}">${pct(p.ret)}</b><span class="s">Nifty ${pct(p.nifty)}</span>`) : `<b class="muted">—</b><span class="s">${a.status === "paper" ? "" : "not on paper"}</span>`;
-      const today = a.status !== "paper" ? "" : sig.length ? sig.slice(0, 4).map((s) => `<span class="act ${s.action.replace(/ /g, "-")}">${esc(s.action)} ${esc(s.symbol)}</span>`).join("") + (sig.length > 4 ? `<span class="muted">+${sig.length - 4}</span>` : "") : '<span class="muted">No trades for next open</span>';
-      return `<article class="agent-card" data-open="${esc(a.id)}" tabindex="0" role="link" aria-label="Open ${esc(a.name)}">
-        <div class="top"><h3>${esc(a.name)}</h3><span class="pill ${esc(a.status)}">${esc(a.status)}</span></div>
-        <p class="small muted" style="margin-top:-6px">${esc(TYPE_LABEL[a.type] || a.type)} · ${esc(a.universe || "")} · v${a.version}</p>
-        <div class="nums"><div><span class="k">Backtest CAGR</span><b class="${cls(h.cagr)}">${pct(h.cagr)}</b><span class="s">${esc(benchLabel(h.bench))} ${pct(h.nifty_cagr)}</span></div><div><span class="k">Worst fall</span><b>${pct(h.mdd)}</b><span class="s">${esc(benchLabel(h.bench))} ${pct(h.nifty_mdd)}</span></div><div><span class="k">Paper</span>${paperCell}</div></div>
-        ${today ? `<div class="today-acts">${today}</div>` : ""}
-        <p class="note">Updated ${esc(fmtWhen(a.updated_at))} by ${esc(nameOf(a.updated_by || a.created_by))}</p></article>`; }).join("");
-    $("fleetTable").querySelectorAll("[data-open]").forEach((r) => { const f = () => go("agent-" + r.dataset.open); r.addEventListener("click", f); r.addEventListener("keydown", (e) => { if (e.key === "Enter") f(); }); });
-  }
   // one signal as a list row (Signals page and agent overview)
   function sigRow(s, agent) {
     const lv = [s.entry != null ? `entry ${px(s.entry)}` : "", s.stop != null ? `stop ${px(s.stop)}` : "", s.target != null ? `target ${px(s.target)}` : "", s.weight_pct != null ? `${pct(s.weight_pct, 0, false)} of book` : ""].filter(Boolean).join(" · ");
@@ -45,18 +15,6 @@
       ${hold.length ? `<div class="card"><div class="row" style="margin-bottom:4px"><h2>Holding</h2><span class="count">${hold.length}</span></div>${list(hold)}</div>` : ""}
       ${rest.length ? `<details class="card fold"><summary>Waiting or in cash (${rest.length})</summary>${list(rest.slice(0, 200))}</details>` : ""}`;
   }
-  async function renderSignals() {
-    const paper = [...S.agents.values()].filter((a) => a.status === "paper");
-    $("sigAsOf").textContent = `From the close of ${fmtDate(S.lastDay)} · act at the next session's open`;
-    if (!paper.length) { $("sigTable").innerHTML = `<div class="empty card"><h2>No agents are paper trading</h2><p class="muted">Open an agent and press “Start paper trading”. Its daily buy, sell and hold signals appear here.</p><button class="btn" type="button" data-go="agents">Open agents</button></div>`; wireGo($("sigTable")); setCount("signals", 0); return; }
-    $("sigTable").innerHTML = '<p class="small muted">Working out today’s signals…</p>';
-    const rows = [];
-    for (const a of paper) { try { const p = await paperResult(a); for (const s of p?.signals || []) rows.push({ a, s }); } catch (e) { rows.push({ a, s: { action: "WAIT", symbol: "-", note: e.message } }); } }
-    const n = rows.filter((r) => isAction(r.s)).length; S.sigN = n; setCount("signals", n, true);
-    $("sigTable").innerHTML = sigGroups(rows, true);
-    $("sigTable").querySelectorAll("[data-open]").forEach((r) => r.addEventListener("click", () => go("agent-" + r.dataset.open)));
-  }
-
   // ================================================================ AGENT ROOM
   function openRoom(id) {
     S.room.unsubs.forEach((u) => u()); S.room = { versions: [], messages: [], ver: null, tab: S.room.tab || "overview", unsubs: [], id };
@@ -82,6 +40,9 @@
     renderOrdersAll();
     $("roomSummary").textContent = a.summary || "";
     $("roomVersion").innerHTML = S.room.versions.slice().reverse().map((v) => `<option value="${v.n}" ${v.n === S.room.ver ? "selected" : ""}>v${v.n}${v.n === a.version ? " (current)" : ""}${a.paper && a.paper.version === v.n ? " · paper" : ""}</option>`).join("");
+    const desk = a.desk_id && S.desks.get(a.desk_id);
+    $("roomDesk").innerHTML = desk ? `<button type="button" data-go="desks">${esc(desk.name)}</button> · ${a.alloc_pct ? `${a.alloc_pct}% of the desk (${inrShort(desk.capital * a.alloc_pct / 100)})` : "no allocation"}` : '<span class="muted">Not on a desk yet</span>';
+    wireGo($("roomDesk"));
     const btn = (label, st, cls = "ghost") => `<button class="btn ${cls}${cls ? " small" : ""}" type="button" data-status="${st}" ${S.readOnly ? "disabled" : ""}>${label}</button>`;
     let acts = "";
     if (a.status === "testing") acts = btn("Start paper trading", "paper", "") + btn("Retire", "retired", "danger");
@@ -152,7 +113,7 @@
     body.innerHTML = `${paperHtml}
       ${liveHtml}<div class="stack"><div class="row"><h2>${intra ? (a.status === "paper" ? "Last session (replayed on bars)" : "Last session if this had run") : a.status === "paper" ? "Today's signals" : "Signals if this ran today"}</h2><span class="grow"></span><span class="note">${intra ? `${fmtDate(res.intraState?.lastDate)} · in and out the same day` : `close of ${fmtDate(S.lastDay)} · act at next open`}</span></div>${intra ? intraSessionTable(signals) : sigGroups(signals.map((s) => ({ s, a })), false)}</div>
       <div class="card stack"><div class="row"><h2>Backtest v${v.n}</h2><span class="small muted">${fmtDate(h.start)} – ${fmtDate(h.end)}</span></div>${verdictLine(res)}${survivor}${kpiTiles(res)}
-        ${split ? `<div class="grid2">${["train", "test"].map((k) => { const s = split[k].strategy, n = split[k].nifty || {}; return `<div class="mini" style="padding:12px"><span class="k">${k === "train" ? "Training" : "Test (unseen)"} · ${fmtDate(s.start)} – ${fmtDate(s.end)}</span><span class="v">${pct(s.cagr_pct)} <span class="small muted" style="font-family:var(--font-body);font-weight:400">vs ${esc(benchLabel(res))} ${pct(n.cagr_pct)}</span></span><span class="b">worst fall ${pct(s.max_drawdown_pct)} · Sharpe ${n2(s.sharpe)}${s.trades != null && v.spec.type !== "rotation" ? ` · ${s.trades} ${v.spec.type === "option_selling" ? "cycles" : "trades"}` : ""}</span></div>`; }).join("")}</div>
+        ${split ? `<div class="grid2">${["train", "test"].map((k) => { const s = split[k].strategy, n = split[k].nifty || {}; return `<div class="mini" style="padding:12px"><span class="k">${k === "train" ? "Training" : "Test (unseen)"} · ${fmtDate(s.start)} – ${fmtDate(s.end)}</span><span class="v">${pct(s.cagr_pct)} <span class="small muted" style="font-family:var(--font-ui);font-weight:400">vs ${esc(benchLabel(res))} ${pct(n.cagr_pct)}</span></span><span class="b">worst fall ${pct(s.max_drawdown_pct)} · Sharpe ${n2(s.sharpe)}${s.trades != null && v.spec.type !== "rotation" ? ` · ${s.trades} ${v.spec.type === "option_selling" ? "cycles" : "trades"}` : ""}</span></div>`; }).join("")}</div>
           ${split.flags.length ? `<p class="note">Train vs test: ${esc(split.flags.join("; ").toLowerCase())}.</p>` : `<p class="note">Test period results are in line with training.</p>`}` : ""}</div>
       ${runs.length ? `<div class="card"><h2>Earlier paper runs</h2><div class="tablewrap"><table><thead><tr><th>Version</th><th>From</th><th>Until</th></tr></thead><tbody>${runs.map((r) => `<tr><td>v${r.version}</td><td>${fmtDate(r.since)}</td><td>${fmtDate(r.until)}</td></tr>`).join("")}</tbody></table></div></div>` : ""}`;
     $("pitCmpBtn")?.addEventListener("click", () => pitCompare(a, v, test, $("pitCmp")));
@@ -227,7 +188,7 @@
     const A = { short: "Strategy", color: "var(--series-a)", values: res.eq, width: 2 }, B = { short: benchLabel(res), color: "var(--series-b)", values: res.bench || [], width: 1.6 };
     const mark = test?.split ? E.dayOf(test.split) : null;
     chart(el, res.days, res.bench ? [B, A] : [A], { height: 300, log: S.log, endLabels: true, mark, aria: "Growth of capital", fmt: inrShort, fmtEnd: inrShort, fmtTip: inr });
-    chart(document.getElementById("ddChart"), res.days, res.bench ? [{ ...B, values: dd(res.bench), width: 1.2 }, { ...A, values: dd(res.eq), area: true, color: "var(--bad)", width: 1.4 }] : [{ ...A, values: dd(res.eq), area: true, color: "var(--bad)" }],
+    chart(document.getElementById("ddChart"), res.days, res.bench ? [{ ...B, values: dd(res.bench), width: 1.2 }, { ...A, values: dd(res.eq), area: true, color: "var(--down)", width: 1.4 }] : [{ ...A, values: dd(res.eq), area: true, color: "var(--down)" }],
       { height: 130, zeroTop: true, endLabels: true, mark, aria: "Drawdown", fmt: (x) => minus(Math.round(x) + "%"), fmtEnd: (x) => pct(x), fmtTip: (x) => pct(x) });
   }
   const dd = (vals) => { const o = new Float64Array(vals.length); let pk = -Infinity; for (let i = 0; i < vals.length; i++) { const x = vals[i]; if (!isFinite(x)) { o[i] = NaN; continue; } pk = Math.max(pk, x); o[i] = (x / pk - 1) * 100; } return o; };
@@ -266,7 +227,7 @@
       rows = shown.map((t) => `<tr><td>${fmtDate(t.date)}</td><td>${esc(t.symbol)}</td><td class="${t.qty > 0 ? "pos" : "neg"}">${t.qty > 0 ? "Buy" : "Sell"}</td><td class="r">${Math.abs(t.qty) % 1 ? Math.abs(t.qty).toFixed(2) : Math.abs(t.qty)}</td><td class="r">${px(t.price)}</td><td class="r">${inr(Math.abs(t.qty * t.price))}</td><td class="r">${inr(t.fees)}</td></tr>`).join(""); }
     else { head = "<th>Entry</th><th>Exit</th><th>Expiry</th><th>Legs</th><th class='r'>Premium</th><th class='r'>P&amp;L</th><th>Why</th><th>Priced</th>";
       rows = shown.map((t) => `<tr><td>${fmtDate(t.entry_date)}</td><td>${fmtDate(t.exit_date)}</td><td>${fmtDate(t.expiry)}</td><td class="small">${esc(t.legs || "")}</td><td class="r ${cls(t.credit)}" title="${t.credit >= 0 ? "received" : "paid"}">${t.credit >= 0 ? "+" : "−"}${inr(Math.abs(t.credit))}</td><td class="r ${cls(t.pnl)}">${inr(t.pnl)}</td><td>${esc(t.reason)}</td><td class="small muted">${esc(t.pricing || "model")}</td></tr>`).join(""); }
-    body.innerHTML = `<div class="card"><h2>${v.spec.type === "rotation" ? "Orders" : v.spec.type === "option_selling" ? "Option cycles" : "Trades"} <span class="small muted" style="font-family:var(--font-body);font-weight:400">${T.length.toLocaleString("en-IN")} total${T.length > LIM ? `, latest ${LIM}` : ""}</span></h2>
+    body.innerHTML = `<div class="card"><h2>${v.spec.type === "rotation" ? "Orders" : v.spec.type === "option_selling" ? "Option cycles" : "Trades"} <span class="small muted" style="font-family:var(--font-ui);font-weight:400">${T.length.toLocaleString("en-IN")} total${T.length > LIM ? `, latest ${LIM}` : ""}</span></h2>
       <div class="tablewrap tall">${T.length ? `<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>` : '<p class="muted">No trades in this window.</p>'}</div></div>`;
   }
   function tabRules(a, v, res, test, body) {
@@ -452,24 +413,51 @@ USER NOW: ${text}${attachmentText(atts)}`;
   }
 
   // ================================================================ router
-  function wireGo(root) { root.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => go(b.dataset.go === "main" ? "" : b.dataset.go))); }
-  function go(hash) { if (location.hash.slice(1) === hash) route(); else location.hash = hash; }
+  function wireGo(root) { root.querySelectorAll("[data-go]").forEach((b) => { if (b.__go) return; b.__go = true; b.addEventListener("click", () => go(b.dataset.go)); }); }
+  function go(hash) { hash = hash === "main" ? "cio" : hash; if (location.hash.slice(1) === hash) route(); else location.hash = hash; }
+  const VIEWS = ["home", "markets", "symbol", "book", "orders", "desks", "alerts", "research", "room"];
   function route() {
-    const h = location.hash.slice(1);
-    const view = h.startsWith("agent-") ? "room" : h === "agents" ? "agents" : h === "signals" ? "signals" : h === "research" ? "research" : "main";
-    for (const v of ["main", "agents", "signals", "research", "room"]) $("view-" + v).hidden = v !== view;
-    document.querySelectorAll(".nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.view === (view === "room" ? "agents" : view) ? "page" : "false"));
-    S.view = view; closeMenus(); if (view !== "room") document.body.classList.remove("chat-open");
+    let h = decodeURIComponent(location.hash.slice(1));
+    if (h === "" || h === "main") h = S.lastHome || "home";
+    if (h === "agents") h = "desks"; if (h === "signals") h = "orders";
+    const view = h.startsWith("agent-") ? "room" : h.startsWith("sym-") ? "symbol" : h === "cio" ? "cio" : VIEWS.includes(h) ? h : "home";
+    document.body.classList.toggle("cio-page", view === "cio");
+    if (view === "cio") document.body.classList.remove("cio-open");
+    for (const v of VIEWS) $("view-" + v).hidden = v !== view;
+    const navKey = view === "room" ? "desks" : view === "symbol" ? "markets" : view;
+    document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-current", b.dataset.view === navKey ? "page" : "false"));
+    S.view = view === "cio" ? "main" : view; closeMenus(); if (view !== "room") document.body.classList.remove("chat-open");
     if (view === "room") { const id = h.slice(6); if (S.room.id !== id) openRoom(id); else { renderRoomHead(); renderRoomBody(); } }
     else { S.room.unsubs.forEach((u) => u()); S.room.unsubs = []; S.room.id = null; }
+    if (view === "cio") { S.suppressScroll = false; renderMain(); setTimeout(() => $("mainInput").focus({ preventScroll: true }), 30); }
     if (view === "research") renderResearch();
-    if (view === "agents") renderFleet(); if (view === "signals") renderSignals(); if (view === "main") { S.suppressScroll = false; renderMain(); }
-    window.scrollTo({ top: view === "main" ? document.body.scrollHeight : 0 });
+    if (view === "home") renderHome(); if (view === "markets") renderMarkets(); if (view === "symbol") renderSymbol(h.slice(4));
+    if (view === "book") renderBook(); if (view === "orders") renderOrders(); if (view === "desks") renderDesks(); if (view === "alerts") renderAlerts();
+    window.scrollTo({ top: 0 });
   }
+  function openCio(open) {
+    if (document.body.classList.contains("cio-page")) { if (!open) go("home"); return; }
+    document.body.classList.toggle("cio-open", open); $("cioBtn").setAttribute("aria-expanded", String(open));
+    try { localStorage.setItem("tradeos.cio", open ? "1" : "0"); } catch (e) { /* optional */ }
+    if (open) { renderMain(); setTimeout(() => $("mainInput").focus({ preventScroll: true }), 30); }
+  }
+  // hand a question to the CIO from anywhere: opens the drawer with the text ready (sent at once when asked to)
+  function askCio(text, send) {
+    if (!document.body.classList.contains("cio-page")) openCio(true);
+    $("mainInput").value = text; autoGrow($("mainInput"));
+    if (send) sendMain(text); else $("mainInput").focus();
+  }
+  document.addEventListener("click", (e) => { const b = e.target.closest("[data-ask]"); if (b) askCio(b.dataset.ask, b.dataset.send === "1"); });
 
   /*__PART3__*/
   // ================================================================ boot
-  document.querySelectorAll(".nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view === "main" ? "" : b.dataset.view)));
+  document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
+  $("cioBtn").addEventListener("click", () => openCio(!document.body.classList.contains("cio-open") && !document.body.classList.contains("cio-page")));
+  $("cioClose").addEventListener("click", () => openCio(false));
+  $("cioExpand").addEventListener("click", () => go("cio"));
+  $("themeBtn").addEventListener("click", () => { const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = dark ? "light" : "dark"; try { localStorage.setItem("tradeos.theme", document.documentElement.dataset.theme); } catch (e) { /* optional */ } if (S.view === "book" || S.view === "symbol" || S.view === "home") route(); });
+  try { const t = localStorage.getItem("tradeos.theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) { /* optional */ }
   wireGo(document);
   $("sendBtn").addEventListener("click", () => sendMain($("mainInput").value));
   $("stopBtn").addEventListener("click", () => mainCtl && mainCtl.abort());
@@ -481,7 +469,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
   $("photoIn").addEventListener("change", (e) => { readFiles([...e.target.files], S.mainAttach, $("attachList")); e.target.value = ""; });
   $("roomPhoto").addEventListener("change", (e) => { readFiles([...e.target.files], S.roomAttach, $("roomAttach")); e.target.value = ""; });
   $("roomInput").addEventListener("paste", (e) => { const files = [...(e.clipboardData?.files || [])]; if (files.length) { e.preventDefault(); readFiles(files, S.roomAttach, $("roomAttach")); } });
-  for (const [zone, list, box] of [[document.querySelector("#view-main .cbox"), () => S.mainAttach, "attachList"], [document.querySelector(".chatrail"), () => S.roomAttach, "roomAttach"]]) {
+  for (const [zone, list, box] of [[document.querySelector("#cio .cbox"), () => S.mainAttach, "attachList"], [document.querySelector(".chatrail"), () => S.roomAttach, "roomAttach"]]) {
     zone.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { e.preventDefault(); zone.classList.add("drop"); } });
     zone.addEventListener("dragleave", (e) => { if (!zone.contains(e.relatedTarget)) zone.classList.remove("drop"); });
     zone.addEventListener("drop", (e) => { zone.classList.remove("drop"); const files = [...(e.dataTransfer?.files || [])]; if (files.length) { e.preventDefault(); readFiles(files, list(), $(box)); } });
@@ -491,7 +479,6 @@ USER NOW: ${text}${attachmentText(atts)}`;
   $("roomVersion").addEventListener("change", (e) => { S.room.ver = +e.target.value; renderRoomBody(); });
   $("researchTabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-rtab]"); if (!b) return; researchTab = b.dataset.rtab; renderResearch(); });
   $("roomTabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (!b) return; S.room.tab = b.dataset.tab; renderRoomBody(); });
-  $("fleetFilter").addEventListener("click", (e) => { const b = e.target.closest("button[data-f]"); if (!b) return; fleetFilter = b.dataset.f; $("fleetFilter").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); renderFleet(); });
   // "+" menus, the standing-orders sheet and the phone chat sheet
   function closeMenus() { document.querySelectorAll(".menu").forEach((m) => { m.hidden = true; }); document.querySelectorAll("[data-menu]").forEach((b) => b.setAttribute("aria-expanded", "false")); }
   document.addEventListener("click", (e) => {
@@ -502,7 +489,12 @@ USER NOW: ${text}${attachmentText(atts)}`;
     const sh = e.target.closest("[data-sheet]"); if (sh) { $(sh.dataset.sheet).hidden = false; renderOrdersAll(); $(sh.dataset.sheet).querySelector("input")?.focus({ preventScroll: true }); return; }
     if (e.target.closest("[data-close-sheet]") || e.target.classList.contains("sheet")) document.querySelectorAll(".sheet").forEach((x) => { x.hidden = true; });
   });
-  document.addEventListener("keydown", (e) => { if (e.key !== "Escape") return; closeMenus(); document.querySelectorAll(".sheet").forEach((x) => { x.hidden = true; }); document.body.classList.remove("chat-open"); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closeMenus(); document.querySelectorAll(".sheet").forEach((x) => { x.hidden = true; }); document.body.classList.remove("chat-open"); if (!$("palette").hidden) closePalette(); return; }
+    const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "") || document.activeElement?.isContentEditable;
+    if ((e.key === "/" && !typing) || (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey))) { e.preventDefault(); openPalette(); }
+  });
+  $("searchBtn").addEventListener("click", () => openPalette());
   $("chatFab").addEventListener("click", () => { document.body.classList.add("chat-open"); const log = $("roomLog"); log.scrollTop = log.scrollHeight; setTimeout(() => $("roomInput").focus({ preventScroll: true }), 50); });
   $("chatClose").addEventListener("click", () => document.body.classList.remove("chat-open"));
   $("newChatBtn").addEventListener("click", () => startNewMainChat(false));
@@ -511,7 +503,9 @@ USER NOW: ${text}${attachmentText(atts)}`;
   let rsT; window.addEventListener("resize", () => { clearTimeout(rsT); rsT = setTimeout(() => { if (S.view === "room" && S.room.tab === "performance") renderRoomBody(); }, 200); });
 
   (async () => {
-    try { await loadBase(); } catch (e) { $("mainStatus").textContent = e.message; $("mainStatus").classList.add("err"); return; }
+    try { await loadBase(); } catch (e) { $("mainStatus").textContent = e.message; $("mainStatus").classList.add("err"); $("view-home").hidden = false; $("view-home").innerHTML = `<div class="empty"><h2>Market data didn't load</h2><p>${esc(e.message)}</p></div>`; return; }
+    renderTicker();
+    try { if (localStorage.getItem("tradeos.cio") === "1" && innerWidth > 1280) document.body.classList.add("cio-open"); } catch (e) { /* optional */ }
     const use = async (n) => { try { return window.claude && window.claude.use ? await window.claude.use(n) : null; } catch (e) { return null; } };
     const [db, user, sample] = await Promise.all([use("db"), use("user"), use("sample")]);
     S.db = db || MemDB(); S.memMain = MemDB().collection("main");
@@ -522,19 +516,21 @@ USER NOW: ${text}${attachmentText(atts)}`;
     if (!db) toast("Shared storage isn't available in this view — changes won't be saved.");
     document.querySelectorAll("[data-photo]").forEach((el) => { el.hidden = !S.images; });
     if (S.images?.mediaTypes?.length) for (const id of ["photoIn", "roomPhoto"]) $(id).accept = "image/*," + S.images.mediaTypes.join(",");
-    if (!sample) $("mainHint").textContent = "Talking to agents needs Claude, which isn't available in this view.";
+    if (!sample) $("mainHint").textContent = "The CIO needs Claude, which isn't available in this view.";
     if (S.readOnly) $("mainHint").textContent = "You have view-only access: you can explore agents but not change them.";
     S.db.collection("agents").onSnapshot((snap) => {
-      S.agents = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }])); renderRail();
+      S.agents = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
       setCount("agents", [...S.agents.values()].filter((a) => a.status !== "retired").length); renderOrdersAll();
-      if (S.view === "agents") renderFleet(); if (S.view === "room") { renderRoomHead(); const before = S.room.messages?.length; roomVisible(); if (S.room.messages.length !== before) renderRoomLog(); }
-      if (S.view === "signals") renderSignals(); else refreshSigCount();
+      if (S.view === "room") { renderRoomHead(); const before = S.room.messages?.length; roomVisible(); if (S.room.messages.length !== before) renderRoomLog(); }
+      fundChanged("agents"); refreshSigCount();
     }, () => toast("Couldn't load agents."));
     ordersRef().onSnapshot((snap) => { S.orders = snap.exists ? (snap.data().items || []) : []; renderOrdersAll(); }, () => { /* no orders yet */ });
     sessionRef().onSnapshot((snap) => { const since = snap.exists ? (snap.data().since || "") : ""; if (since !== (S.chatSince || "")) { S.chatSince = since; S.mainMsgs = visibleMain(S.allMainMsgs || []); if (S.view === "main") renderMain(); } }, () => { /* none yet */ });
-    mainCol().orderBy("at", "desc").limit(400).onSnapshot((snap) => { S.allMainMsgs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.kind === "main").reverse(); S.mainMsgs = visibleMain(S.allMainMsgs); if (S.view === "main") renderMain(); });
+    mainCol().orderBy("at", "desc").limit(400).onSnapshot((snap) => { S.allMainMsgs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.kind === "main").reverse(); S.mainMsgs = visibleMain(S.allMainMsgs); if (S.view === "main" || document.body.classList.contains("cio-open")) renderMain(); });
+    startFundData();
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__tradeos = { S, go, fundChanged, route, fundActionsFrom, renderMain, fundBrief };  // local testing only
     route();
     window.addEventListener("hashchange", route);
   })();
   let sigT;
-  function refreshSigCount() { clearTimeout(sigT); sigT = setTimeout(async () => { let n = 0; for (const a of [...S.agents.values()].filter((x) => x.status === "paper")) { try { const p = await paperResult(a); n += (p?.signals || []).filter((s) => isAction(s)).length; } catch (e) { /* ignore */ } } S.sigN = n; setCount("signals", n, true); renderToday(); }, 400); }
+  function refreshSigCount() { clearTimeout(sigT); sigT = setTimeout(async () => { let n = 0; for (const a of [...S.agents.values()].filter((x) => x.status === "paper")) { try { const p = await paperResult(a); n += (p?.signals || []).filter((s) => isAction(s)).length; } catch (e) { /* ignore */ } } S.sigN = n; renderToday(); }, 400); }
