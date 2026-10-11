@@ -16,18 +16,53 @@
     const rows = E.watchSignals(spec, frames, { list, held, over: learnedOver(a) });
     return { rows, list, held, frames };
   }
-  // tickers out of anything pasted: "RELIANCE, TRENT\nbse" or "NSE:TATAMOTORS"; company names resolve when unambiguous
-  function parseNames(text) {
-    const toks = String(text || "").toUpperCase().replace(/\b(NSE|BSE)\s*:/g, "").split(/[\s,;|/]+/).map((t) => t.replace(/^[^A-Z0-9&]+|[^A-Z0-9&-]+$/g, "")).filter((t) => t.length >= 2 && t.length <= 24);
-    const known = [], unknown = [];
-    for (const t of toks) {
-      const k = E.symKey(t);
-      if (S.man.symbols[k] && S.man.symbols[k].kind === "stock") { if (!known.includes(k)) known.push(k); continue; }
-      const hits = Object.entries(S.man.symbols).filter(([, m]) => m.kind === "stock" && String(m.name || "").toUpperCase().startsWith(t));
-      if (hits.length === 1) { if (!known.includes(hits[0][0])) known.push(hits[0][0]); } else unknown.push(t);
-    }
-    return { known, unknown };
+  // Names out of anything pasted. One name per line (or comma / semicolon): a ticker ("RELIANCE", "NSE:TATAMOTORS")
+  // or a company name ("Aditya Infotech", "Veljan Denison Ltd") — names are matched against every NSE and BSE company;
+  // a line of several tickers ("RELIANCE TCS INFY") still works. Returns {known, unknown, matched: [[typed, SYM]], maybe}.
+  const normName = (x) => ` ${String(x || "").toUpperCase().replace(/&/g, " AND ").replace(/[^A-Z0-9 ]+/g, " ").replace(/\b(LIMITED|LTD|LIMI|LIM|THE|PVT|PRIVATE|INC|CORPN?)\b/g, " ").replace(/\s+/g, " ").trim()} `;
+  let nameIdx = null;
+  function nameIndex() {
+    if (nameIdx && nameIdx.n === Object.keys(S.man.symbols).length) return nameIdx;
+    const rows = Object.entries(S.man.symbols).filter(([, m]) => m.kind === "stock").map(([s, m]) => ({ s, n: normName(m.name), m }));
+    return (nameIdx = { n: Object.keys(S.man.symbols).length, rows });
   }
+  function nameMatches(q) {
+    const nq = normName(q), words = nq.trim().split(" ").filter(Boolean);
+    if (!words.length) return [];
+    const out = [];
+    for (const r of nameIndex().rows) {
+      let score = 0;
+      if (r.n === nq) score = 3;
+      else if (r.n.startsWith(nq.slice(0, -1) + " ") || r.n.startsWith(nq.trimEnd())) score = 2;
+      else { // every typed word starts a word of the name, in order (exchange names are often cut short: "ADITYA BIRLA FASHION & RT")
+        const nw = r.n.trim().split(" "); let j = 0;
+        for (const w of nw) if (j < words.length && w.startsWith(words[j])) j++;
+        if (j === words.length && nw[0].startsWith(words[0])) score = 1;
+      }
+      if (score) out.push({ ...r, score });
+    }
+    const rank = (r) => r.score * 10 + (r.m.ex === "BSE" ? 0 : 2) + (r.m.n500 ? 1 : 0) + (r.m.series && r.m.series !== "EQ" ? 0 : 0.5);
+    return out.sort((x, y) => rank(y) - rank(x) || x.n.length - y.n.length);
+  }
+  function parseNames(text) {
+    const known = [], unknown = [], matched = [], maybe = {};
+    const add = (k, typed) => { if (!known.includes(k)) { known.push(k); if (typed && typed.toUpperCase().replace(/[^A-Z0-9&-]/g, "") !== k) matched.push([typed, k]); } };
+    const isTicker = (t) => { const k = E.symKey(t); return S.man.symbols[k] && S.man.symbols[k].kind === "stock" ? k : null; };
+    const entries = String(text || "").replace(/\b(NSE|BSE)\s*:\s*/gi, "").split(/[\n,;|]+/).map((x) => x.replace(/^[\s\d.)•*-]+(?=[A-Za-z])/, "").replace(/\s+/g, " ").trim()).filter((x) => x.length >= 2);
+    for (const e of entries) {
+      const words = e.split(" ").map((t) => t.replace(/^[^A-Za-z0-9&]+|[^A-Za-z0-9&-]+$/g, "")).filter(Boolean);
+      if (words.length === 1) { const k = isTicker(words[0]); if (k) { add(k); continue; } }
+      const hits = nameMatches(e);
+      if (hits.length && (hits.length === 1 || hits[0].score > hits[1].score || (hits[0].m.ex !== "BSE" && hits[1].m.ex === "BSE" && hits[0].score === hits[1].score && hits.filter((h) => h.score === hits[0].score && h.m.ex !== "BSE").length === 1))) { add(hits[0].s, e); continue; }
+      const toks = words.map(isTicker);
+      if (words.length > 1 && toks.every(Boolean)) { toks.forEach((k) => add(k)); continue; }
+      const sq = isTicker(e.replace(/\s+/g, "")); if (sq) { add(sq); continue; }
+      unknown.push(e);
+      if (hits.length > 1) maybe[e] = hits.slice(0, 4).map((h) => h.s);
+    }
+    return { known, unknown, matched, maybe };
+  }
+  const unknownText = (r) => r.unknown.slice(0, 6).map((u) => r.maybe[u] ? `${u} (did you mean ${r.maybe[u].join(" / ")}?)` : u).join(", ");
   // Save a list for today (replace or add). Returns the saved entry.
   async function saveList(a, syms, mode = "replace") {
     const d = todayIST(), log = (a.inbox_log || []).map((x) => ({ ...x })), i = log.findIndex((x) => x.date === d);
@@ -69,7 +104,7 @@
     const ro = S.readOnly, today = todayIST(), todays = (a.inbox_log || []).find((x) => x.date === today);
     const sl = S.bookState?.sleeves?.[a.id], desk = a.desk_id && S.desks.get(a.desk_id), ns = nextSessionIso();
     const head = `<div class="card wl-in"><div class="row"><h2>Today's names</h2><span class="grow"></span><span class="xs muted">${todays ? `${todays.syms.length} sent today` : "none sent today yet"} · calls use the ${esc(fmtDate(S.lastDay))} close</span></div>
-      ${ro ? "" : `<form id="wlForm" class="wl-form"><textarea class="input" id="wlNames" rows="2" placeholder="Paste or type names — RELIANCE, TRENT, BSE…" aria-label="Today's names"></textarea>
+      ${ro ? "" : `<form id="wlForm" class="wl-form"><textarea class="input" id="wlNames" rows="2" placeholder="One per line — ticker or company name: RELIANCE, Aditya Infotech, Veljan Denison…" aria-label="Today's names"></textarea>
         <div class="row"><button class="btn" type="submit" data-mode="replace">Run on these</button><button class="btn ghost" type="button" id="wlAdd">Add to today's list</button><span class="status" id="wlStatus"></span></div></form>`}
       <div class="namechips" id="wlChips"></div></div>`;
     const notOn = a.status !== "paper" || !desk || !a.alloc_pct;
@@ -96,14 +131,14 @@
     wireGo($("wlCalls"));
     if (ro) return;
     const submit = async (mode) => {
-      const st = $("wlStatus"), { known, unknown } = parseNames($("wlNames").value);
-      if (!known.length) { st.classList.add("err"); st.textContent = unknown.length ? `No data for ${unknown.slice(0, 6).join(", ")}` : "Type some names first"; return; }
+      const st = $("wlStatus"), pr = parseNames($("wlNames").value), { known, unknown } = pr;
+      if (!known.length) { st.classList.add("err"); st.textContent = unknown.length ? `Not found: ${unknownText(pr)}. Put one company per line, by name or ticker.` : "Type some names first"; return; }
       st.classList.remove("err"); st.textContent = "Saving…";
       try {
         await saveList(a, known, mode); $("wlNames").value = "";
         const w2 = await watchCalls(a, spec), r = await ordersNow(a, spec, w2.rows).catch((e) => ({ made: 0, why: e.message }));
         const buys = w2.rows.filter((x) => x.action === "BUY").map((x) => x.symbol);
-        toast(`${known.length} name(s) live${buys.length ? ` · BUY ${buys.slice(0, 5).join(", ")}${buys.length > 5 ? "…" : ""}` : " · no triggers on the latest close"}${r.made ? ` · ${r.made} order(s) for ${fmtDate(r.session)}` : a.status === "paper" && buys.length ? ` · orders ${r.why}` : ""}${unknown.length ? ` · no data: ${unknown.slice(0, 4).join(", ")}` : ""}`);
+        toast(`${known.length} name(s) live${buys.length ? ` · BUY ${buys.slice(0, 5).join(", ")}${buys.length > 5 ? "…" : ""}` : " · no triggers on the latest close"}${r.made ? ` · ${r.made} order(s) for ${fmtDate(r.session)}` : a.status === "paper" && buys.length ? ` · orders ${r.why}` : ""}${pr.matched.length ? ` · read ${pr.matched.slice(0, 4).map(([t, k]) => `${t} as ${k}`).join(", ")}` : ""}${unknown.length ? ` · not found: ${unknownText(pr)}` : ""}`);
         S.paperCache.clear(); renderRoomBody();
       } catch (e) { st.classList.add("err"); st.textContent = e.message || String(e); }
     };

@@ -4,8 +4,9 @@ Compares every file under <build>/data (and <build>/index.html) with the hashes 
 (state/published.json, committed by the daily job once every batch went through), and splits the changed files into
 batches the Artifact tool accepts (at most --max-files files and --max-mb MB per publish). data/manifest.json always goes
 in the LAST batch (it points the page at the new files). Paths that are live on the artifact but no longer in the build
-(given with --live, one published path per line, from the Artifact "files" listing) are removed in the FIRST batch, so
-the version never holds old and new layouts together (an artifact version holds at most 511 files and 256 MB).
+(given with --live, one published path per line, from the Artifact "files" listing) are removed in the first batch(es),
+so the version never holds old and new layouts together (an artifact version holds at most 511 files and 256 MB). A batch
+never has more than --max-files entries, removals included (one publish may send at most 255).
 
 Usage: python scripts/publish_plan.py build [--live live_files.txt] [--all]
 Writes <build>/publish_plan.json: {"batches": [{"files": [paths], "remove": [paths], "bytes": n}], "changed", "unchanged",
@@ -39,22 +40,28 @@ def main() -> None:
     live = [x.strip() for x in Path(args.live).read_text().splitlines()] if args.live and Path(args.live).exists() else list(prev)
     remove = sorted({x for x in live if x.startswith("data/") and x not in hashes})
     body = [f for f in changed if f != "data/manifest.json"]
-    batches, cur, size = [], [], 0
+    # one publish may send at most 255 entries (files + removals) and ~50 MB; removals go first so a version never
+    # holds the old and new layouts together (an artifact version holds at most 511 files)
+    batches, cur, rem, size = [], [], [], 0
     cap = args.max_mb * 1e6
+    todo_rm = list(remove)
+    while todo_rm:
+        take, todo_rm = todo_rm[:args.max_files], todo_rm[args.max_files:]
+        if todo_rm:
+            batches.append({"files": [], "remove": take, "bytes": 0})
+        else:
+            rem = take
     for f in body:
         b = (build / f).stat().st_size
-        if cur and (len(cur) >= args.max_files or size + b > cap):
-            batches.append({"files": cur, "bytes": size}); cur, size = [], 0
+        if (cur or rem) and (len(cur) + len(rem) >= args.max_files or size + b > cap):
+            batches.append({"files": cur, "remove": rem, "bytes": size}); cur, rem, size = [], [], 0
         cur.append(f); size += b
-    last = cur + (["data/manifest.json"] if "data/manifest.json" in changed or remove or body else [])
-    if last:
-        batches.append({"files": last, "bytes": size + ((build / "data/manifest.json").stat().st_size if "data/manifest.json" in last else 0)})
-    if batches:
-        batches[0]["remove"] = remove
-        for b in batches[1:]:
-            b["remove"] = []
-    elif remove:
-        batches = [{"files": ["data/manifest.json"], "remove": remove, "bytes": (build / "data/manifest.json").stat().st_size}]
+    if "data/manifest.json" in changed or cur or rem or batches:
+        if len(cur) + len(rem) >= args.max_files:
+            batches.append({"files": cur, "remove": rem, "bytes": size}); cur, rem, size = [], [], 0
+        mf = build / "data/manifest.json"
+        cur.append("data/manifest.json"); size += mf.stat().st_size
+        batches.append({"files": cur, "remove": rem, "bytes": size})
     plan = {"batches": batches, "changed": len(changed), "unchanged": len(files) - len(changed), "removed": len(remove),
             "total_files": len(files), "total_bytes": sum((build / f).stat().st_size for f in files)}
     (build / "publish_plan.json").write_text(json.dumps(plan, indent=1))
