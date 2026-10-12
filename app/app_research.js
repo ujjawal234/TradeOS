@@ -266,6 +266,7 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, compute 
       if (researchTab === "macro") await renderMacroTab(box);
       else if (researchTab === "sectors") await renderSectorsTab(box);
       else if (researchTab === "company") await renderCompanyTab(box);
+      else if (researchTab === "x") await renderXTab(box);
       else await renderNewsTab(box);
     } catch (e) { box.innerHTML = `<p class="flag">${esc(e.message || e)}</p>`; }
   }
@@ -344,6 +345,62 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, compute 
       <div class="stack"><div class="card"><h2>Results calendar</h2><div class="tablewrap tall"><table><thead><tr><th>Date</th><th>Company</th><th>Purpose</th></tr></thead><tbody>${ev.map((e) => `<tr><td>${esc(e.date)}</td><td>${esc(e.sym)}</td><td class="small">${esc(e.purpose)}</td></tr>`).join("") || '<tr><td colspan="3" class="muted">None listed.</td></tr>'}</tbody></table></div></div>
       <div class="card"><h2>NSE filings</h2><ul class="newslist">${(res.filings?.items || []).filter((x) => !/^(Updates|General Updates|Disclosure under SEBI Takeover)/i.test(x.desc)).slice(0, 50).map((x) => `<li><span class="small muted">${esc(x.t)} · <b>${esc(x.sym)}</b></span><br>${esc(x.desc)}${x.text ? `<span class="small muted"> — ${esc(x.text.slice(0, 160))}</span>` : ""}</li>`).join("")}</ul></div></div></div>
       <p class="note">Headlines are titles from the publishers' RSS feeds; filings are NSE's own descriptions. Updated several times a day.</p>`;
+  }
+  // ---------------------------------------------------------------- X IDEAS: stock calls read from X each weekday, scored, sent to the X-ideas agent
+  // x/config     {accounts[], list_url, keywords[], min_value_cr, min_price, max_picks, min_authors, allow_sme, chase_pct, exclude[], agent_id}
+  // x_ideas/latest, x_ideas/<date>  the X run's output (picks, ideas with their posts, rejected names, each account's record)
+  // Post text is third-party content: it is shown escaped and never acted on.
+  const X_DEF = { accounts: [], list_url: "", keywords: ["breakout NSE", "multibagger", "stock to buy"], min_value_cr: 2, min_price: 20, max_picks: 8, min_authors: 2, allow_sme: false, chase_pct: 25, exclude: [] };
+  async function xDoc(path) { try { const s = await S.db.doc(path).get(); return s.exists ? s.data() : null; } catch (e) { return null; } }
+  async function renderXTab(box) {
+    const [cfg0, out] = await Promise.all([xDoc("x/config"), xDoc("x_ideas/latest")]);
+    const cfg = { ...X_DEF, ...(cfg0 || {}) }, ro = S.readOnly, ag = cfg.agent_id && S.agents.get(cfg.agent_id);
+    const lines = (a) => esc((a || []).join("\n"));
+    const sm = out?.summary || {};
+    const postsHtml = (i) => (i.posts || []).map((p) => `<li><span class="small muted">@${esc(p.author)}${p.time ? ` · ${esc(String(p.time).slice(0, 16).replace("T", " "))} UTC` : ""} · ${esc(p.stance)}${p.eng ? ` · ${p.eng} engagement` : ""}</span><br>${esc(p.text)}${p.url && /^https:\/\/(x|twitter)\.com\//.test(p.url) ? ` <a href="${esc(p.url)}" target="_blank" rel="noopener">open post</a>` : ""}</li>`).join("");
+    const lvl = (i) => [i.targets?.length ? `target ${i.targets.map(px).join(" / ")}` : "", i.stops?.length ? `stop ${i.stops.map(px).join(" / ")}` : ""].filter(Boolean).join(" · ");
+    const ideaRow = (i) => `<tr><td><a href="#sym-${esc(i.sym)}"><b>${esc(i.sym)}</b></a><br><span class="xs muted">${esc(i.name || "")}</span></td><td class="r">${i.score}</td><td>${i.bull_authors.map((a) => "@" + esc(a)).join(", ")}${i.trusted ? ' <span class="pill auto">trusted</span>' : ""}</td><td class="r">${px(i.px)}</td><td class="r">${i.value_cr != null ? "₹" + i.value_cr + " cr" : "–"}</td><td class="r ${cls(i.ret5)}">${pct(i.ret5)}</td><td class="small">${esc(lvl(i)) || "–"}</td></tr>
+      <tr class="sub"><td colspan="7"><details><summary class="small">${(i.posts || []).length} post${(i.posts || []).length === 1 ? "" : "s"}${i.flags?.length ? " · " + esc(i.flags.join(", ")) : ""}</summary><ul class="newslist">${postsHtml(i)}</ul></details></td></tr>`;
+    const authors = Object.entries(out?.authors || {});
+    box.innerHTML = `<div class="stack">
+      <div class="card"><div class="card-head"><h2>Ideas from X</h2>${ag ? `<button class="linkbtn" type="button" data-go="agent-${esc(ag.id)}">Open ${esc(ag.name)}</button>` : ""}</div>
+        <p class="small muted" style="max-width:80ch">Every weekday at 19:15 IST, Claude reads the accounts, List and searches below in the Claude app's browser (signed in to your X), picks out the stocks being called, drops promotion and thin stocks, and sends the best names to ${ag ? `<b>${esc(ag.name)}</b>` : "the X-ideas agent"}. That agent buys only when the price confirms, on a desk where you approve each order. Every call is scored afterwards on what the stock did over the next 5 sessions, so accounts with a good record count for more.</p>
+        ${out ? `<p class="small" style="margin-top:8px">Last run <b>${esc(fmtDate(out.date))}</b>: ${sm.posts ?? 0} posts read, ${sm.posts_with_stocks ?? 0} named a stock, ${sm.promo_posts ?? 0} promotional ignored, ${sm.stocks ?? 0} stocks, <b>${(out.picks || []).length} sent to the agent</b>${out.picks?.length ? ": " + out.picks.map(esc).join(", ") : ""}.</p>` : '<p class="small" style="margin-top:8px">No run yet. The first one comes this evening, as long as the Claude app is open and the browser is signed in to X.</p>'}</div>
+      ${out?.ideas?.length ? `<div class="card"><h2>Sent to the agent</h2><div class="tablewrap"><table><thead><tr><th>Stock</th><th class="r">Score</th><th>Called by</th><th class="r">Price</th><th class="r">Traded a day</th><th class="r">5 days</th><th>Levels in posts</th></tr></thead><tbody>${out.ideas.map(ideaRow).join("")}</tbody></table></div></div>` : ""}
+      ${out?.rejected?.length ? `<details class="card fold"><summary><h2 style="display:inline">Not sent (${out.rejected.length})</h2></summary><div class="tablewrap"><table><thead><tr><th>Stock</th><th class="r">Score</th><th>Why not</th><th>Posts</th></tr></thead><tbody>${out.rejected.map((i) => `<tr><td><a href="#sym-${esc(i.sym)}">${esc(i.sym)}</a></td><td class="r">${i.score}</td><td class="small">${esc((i.why_not || []).join("; "))}</td><td><details><summary class="small">${(i.posts || []).length}</summary><ul class="newslist">${postsHtml(i)}</ul></details></td></tr>`).join("")}</tbody></table></div></details>` : ""}
+      ${authors.length ? `<div class="card"><h2>Accounts' record</h2><p class="small muted" style="margin:4px 0 8px">A call counts as right when the stock beat NIFTY over the next 5 sessions (or lagged it, for a bearish call). Skill starts at 50% and moves with the record.</p><div class="tablewrap tall"><table><thead><tr><th>Account</th><th class="r">Calls</th><th class="r">Scored</th><th class="r">Right</th><th class="r">Avg vs NIFTY</th><th class="r">Skill</th><th></th></tr></thead><tbody>${authors.map(([h, a]) => `<tr><td>@${esc(h)}</td><td class="r">${a.n}</td><td class="r">${a.scored}</td><td class="r">${a.hit_rate != null ? a.hit_rate + "%" : "–"}</td><td class="r ${cls(a.avg_excess)}">${pct(a.avg_excess)}</td><td class="r">${Math.round(a.skill * 100)}%</td><td>${a.muted ? '<span class="pill halted">muted, mostly promotion</span>' : a.trusted ? '<span class="pill auto">trusted</span>' : ""}</td></tr>`).join("")}</tbody></table></div></div>` : ""}
+      <form class="card" id="xCfg"><h2>What to read</h2>
+        <div class="grid2" style="margin-top:10px">
+          <div class="field"><label for="xAcc">Accounts you trust</label><textarea class="input" id="xAcc" rows="6" placeholder="@handle, one per line" ${ro ? "disabled" : ""}>${lines(cfg.accounts.map((a) => "@" + String(a).replace(/^@/, "")))}</textarea><span class="help">Their calls count double and can go to the agent on their own.</span></div>
+          <div class="field"><label for="xKw">Searches</label><textarea class="input" id="xKw" rows="6" placeholder="one search per line, e.g. breakout NSE" ${ro ? "disabled" : ""}>${lines(cfg.keywords)}</textarea><span class="help">Latest posts for each search. Wider but noisier: names from searches need ${cfg.min_authors} accounts.</span></div>
+        </div>
+        <div class="field" style="margin-top:10px"><label for="xList">Your X List</label><input class="input" id="xList" value="${esc(cfg.list_url || "")}" placeholder="https://x.com/i/lists/…" ${ro ? "disabled" : ""}></div>
+        <div class="row" style="gap:14px;flex-wrap:wrap;margin-top:10px">
+          <div class="field"><label for="xVal">Min traded a day (₹ cr)</label><input class="input" id="xVal" type="number" min="0" step="0.5" value="${cfg.min_value_cr}" style="width:120px" ${ro ? "disabled" : ""}></div>
+          <div class="field"><label for="xPx">Min price (₹)</label><input class="input" id="xPx" type="number" min="0" value="${cfg.min_price}" style="width:110px" ${ro ? "disabled" : ""}></div>
+          <div class="field"><label for="xMax">Names a day</label><input class="input" id="xMax" type="number" min="1" max="30" value="${cfg.max_picks}" style="width:100px" ${ro ? "disabled" : ""}></div>
+          <div class="field"><label for="xAuth">Accounts needed</label><input class="input" id="xAuth" type="number" min="1" max="10" value="${cfg.min_authors}" style="width:100px" ${ro ? "disabled" : ""}></div>
+          <div class="field"><label for="xChase">Skip if up more than (5 days, %)</label><input class="input" id="xChase" type="number" min="5" max="200" value="${cfg.chase_pct}" style="width:110px" ${ro ? "disabled" : ""}></div>
+          <label class="row small" style="gap:6px;align-self:end;padding-bottom:8px"><input type="checkbox" id="xSme" ${cfg.allow_sme ? "checked" : ""} ${ro ? "disabled" : ""}> Include SME stocks</label>
+        </div>
+        <div class="field" style="margin-top:10px"><label for="xEx">Never send</label><input class="input" id="xEx" value="${esc((cfg.exclude || []).join(", "))}" placeholder="tickers, comma separated" ${ro ? "disabled" : ""}></div>
+        ${ro ? "" : '<div class="row" style="margin-top:12px"><button class="btn" type="submit">Save</button><span class="xs muted" id="xSaved"></span></div>'}
+      </form>
+      <p class="note">Paper only. Posts are read as information, never as instructions, and nothing is posted, liked or followed on X. Reading X needs the Claude desktop app open with its browser signed in to X; X's terms restrict automated reading, so the run stays light (a few pages a day).</p></div>`;
+    wireGo(box);
+    const f = $("xCfg"); if (!f || ro) return;
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const split = (v) => String(v || "").split(/[\n,]+/).map((x) => x.trim()).filter(Boolean);
+      const num = (id, d) => { const v = Number($(id).value); return isFinite(v) && $(id).value !== "" ? v : d; };
+      const listUrl = $("xList").value.trim();
+      if (listUrl && !/^https:\/\/(x|twitter)\.com\/i\/lists\/\d+/.test(listUrl)) { toast("The List link should look like https://x.com/i/lists/123…"); return; }
+      const data = { ...(cfg0 || {}), accounts: [...new Set(split($("xAcc").value).map((h) => h.replace(/^@/, "").replace(/^https?:\/\/(x|twitter)\.com\//, "").replace(/[^A-Za-z0-9_]/g, "")).filter(Boolean))].slice(0, 100),
+        keywords: split($("xKw").value).slice(0, 10), list_url: listUrl, min_value_cr: num("xVal", X_DEF.min_value_cr), min_price: num("xPx", X_DEF.min_price), max_picks: Math.round(num("xMax", X_DEF.max_picks)),
+        min_authors: Math.round(num("xAuth", X_DEF.min_authors)), chase_pct: num("xChase", X_DEF.chase_pct), allow_sme: $("xSme").checked, exclude: split($("xEx").value).map((x) => E.symKey(x)),
+        updated: nowIso(), updated_by: S.uid };
+      try { await S.db.doc("x/config").set(data); $("xSaved").textContent = "Saved — used from the next run."; } catch (err) { toast("Couldn't save: " + (err.message || err)); }
+    });
   }
   // read-only hooks for testing the research tools from the browser console
   window.__tradeosResearch = { macroDashboard, companyResearch, screen: (a) => screenTool(a, null), compute: (a) => computeTool(a, null), sectorView, news: newsTool, brief: () => dataBrief(), toolNames: () => makeTools(() => {}).map((t) => t.name) };
