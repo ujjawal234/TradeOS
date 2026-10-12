@@ -103,13 +103,13 @@
   "group": "india",
   "lag_days": 40,
   "first": "2005-01-01",
-  "last_period": "2026-07-01",
-  "last_known": "2026-09-09",
-  "last": 588.163,
-  "prev": 566.002,
-  "chg_3m": 12.659,
-  "chg_12m": -17.721,
-  "n": 259
+  "last_period": "2026-08-01",
+  "last_known": "2026-10-10",
+  "last": 635.511,
+  "prev": 588.163,
+  "chg_3m": 64.987,
+  "chg_12m": 27.469,
+  "n": 260
  },
  "IN_EXPORTS_YOY": {
   "name": "India goods exports (y/y)",
@@ -535,13 +535,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-01",
-  "last_period": "2026-10-09",
-  "last_known": "2026-10-10",
+  "last_period": "2026-10-12",
+  "last_known": "2026-10-13",
   "last": 2.5,
   "prev": 2.5,
   "chg_3m": 0.25,
   "chg_12m": 0.5,
-  "n": 7952
+  "n": 7955
  },
  "JP_10Y": {
   "name": "Japan 10-year yield (monthly)",
