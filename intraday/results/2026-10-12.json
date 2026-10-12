@@ -1,0 +1,182 @@
+{
+ "date": "2026-10-12",
+ "agents": [
+  {
+   "id": "app_aintematrend1",
+   "name": "EMA 9/21 trend above VWAP (3-min)",
+   "trades": 4,
+   "wins": 1,
+   "open": 0,
+   "pnl": -1633.27,
+   "return_pct": -0.163,
+   "trade_list": [
+    {
+     "sym": "TATACONSUM",
+     "side": "long",
+     "qty": 343,
+     "entry": 960.84,
+     "t_entry": "2026-10-12 10:27:00",
+     "exit": 958.76,
+     "t_exit": "2026-10-12 10:42:00",
+     "reason": "exit rule",
+     "pnl": -911.58,
+     "pnl_pct": -0.217
+    },
+    {
+     "sym": "TMPV",
+     "side": "long",
+     "qty": 1167,
+     "entry": 282.71,
+     "t_entry": "2026-10-12 13:51:00",
+     "exit": 283.98,
+     "t_exit": "2026-10-12 14:00:27",
+     "reason": "stop",
+     "pnl": 1287.42,
+     "pnl_pct": 0.45
+    },
+    {
+     "sym": "BAJAJ-AUTO",
+     "side": "long",
+     "qty": 32,
+     "entry": 10082.02,
+     "t_entry": "2026-10-12 10:36:00",
+     "exit": 10063.99,
+     "t_exit": "2026-10-12 14:12:00",
+     "reason": "exit rule",
+     "pnl": -770.46,
+     "pnl_pct": -0.179
+    },
+    {
+     "sym": "SUNPHARMA",
+     "side": "long",
+     "qty": 186,
+     "entry": 1765.15,
+     "t_entry": "2026-10-12 13:51:00",
+     "exit": 1759.55,
+     "t_exit": "2026-10-12 14:15:00",
+     "reason": "exit rule",
+     "pnl": -1238.65,
+     "pnl_pct": -0.317
+    }
+   ]
+  },
+  {
+   "id": "app_aintorblong01",
+   "name": "Opening-range breakout long (5-min)",
+   "trades": 4,
+   "wins": 1,
+   "open": 0,
+   "pnl": -2511.85,
+   "return_pct": -0.251,
+   "trade_list": [
+    {
+     "sym": "JSWSTEEL",
+     "side": "long",
+     "qty": 211,
+     "entry": 1183.64,
+     "t_entry": "2026-10-12 10:10:00",
+     "exit": 1180.86,
+     "t_exit": "2026-10-12 10:35:00",
+     "reason": "exit rule",
+     "pnl": -735.46,
+     "pnl_pct": -0.235
+    },
+    {
+     "sym": "NESTLEIND",
+     "side": "long",
+     "qty": 186,
+     "entry": 1341.27,
+     "t_entry": "2026-10-12 10:00:00",
+     "exit": 1331.61,
+     "t_exit": "2026-10-12 13:51:27",
+     "reason": "stop",
+     "pnl": -1945.23,
+     "pnl_pct": -0.72
+    },
+    {
+     "sym": "HDFCLIFE",
+     "side": "long",
+     "qty": 444,
+     "entry": 562.71,
+     "t_entry": "2026-10-12 10:05:00",
+     "exit": 558.66,
+     "t_exit": "2026-10-12 13:55:27",
+     "reason": "stop",
+     "pnl": -1948.35,
+     "pnl_pct": -0.72
+    },
+    {
+     "sym": "DRREDDY",
+     "side": "long",
+     "qty": 204,
+     "entry": 1220.04,
+     "t_entry": "2026-10-12 10:35:00",
+     "exit": 1231.15,
+     "t_exit": "2026-10-12 15:15:27",
+     "reason": "square-off",
+     "pnl": 2117.19,
+     "pnl_pct": 0.911
+    }
+   ]
+  },
+  {
+   "id": "app_aintorbshort1",
+   "name": "Opening-range breakdown short (5-min)",
+   "trades": 4,
+   "wins": 2,
+   "open": 0,
+   "pnl": 5395.21,
+   "return_pct": 0.54,
+   "trade_list": [
+    {
+     "sym": "SBILIFE",
+     "side": "short",
+     "qty": 148,
+     "entry": 1685.96,
+     "t_entry": "2026-10-12 09:40:00",
+     "exit": 1662.36,
+     "t_exit": "2026-10-12 13:51:27",
+     "reason": "target",
+     "pnl": 3344.13,
+     "pnl_pct": 1.4
+    },
+    {
+     "sym": "SUNPHARMA",
+     "side": "short",
+     "qty": 141,
+     "entry": 1761.65,
+     "t_entry": "2026-10-12 09:50:00",
+     "exit": 1763.65,
+     "t_exit": "2026-10-12 14:00:00",
+     "reason": "exit rule",
+     "pnl": -431.5,
+     "pnl_pct": -0.114
+    },
+    {
+     "sym": "BHARTIARTL",
+     "side": "short",
+     "qty": 141,
+     "entry": 1768.65,
+     "t_entry": "2026-10-12 09:40:00",
+     "exit": 1770.25,
+     "t_exit": "2026-10-12 15:15:27",
+     "reason": "square-off",
+     "pnl": -375.86,
+     "pnl_pct": -0.091
+    },
+    {
+     "sym": "ASIANPAINT",
+     "side": "short",
+     "qty": 106,
+     "entry": 2347.53,
+     "t_entry": "2026-10-12 09:55:00",
+     "exit": 2319.16,
+     "t_exit": "2026-10-12 15:15:27",
+     "reason": "square-off",
+     "pnl": 2858.42,
+     "pnl_pct": 1.208
+    }
+   ]
+  }
+ ]
+}

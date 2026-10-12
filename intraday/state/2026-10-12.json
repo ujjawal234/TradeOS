@@ -1,6 +1,6 @@
 {
  "date": "2026-10-12",
- "done": false,
+ "done": true,
  "agents": {
   "app_aintematrend1": {
    "positions": {},
@@ -61,23 +61,11 @@
     "TMPV": 1,
     "SUNPHARMA": 1
    },
-   "last_bar": "2026-10-12 14:30:00",
-   "squared_off": false
+   "last_bar": "2026-10-12 15:12:00",
+   "squared_off": true
   },
   "app_aintorblong01": {
-   "positions": {
-    "DRREDDY": {
-     "sym": "DRREDDY",
-     "qty": 204,
-     "entry": 1220.04,
-     "t_entry": "2026-10-12 10:35:00",
-     "stop": 1211.5,
-     "target": 1237.12,
-     "best": 1220.04396,
-     "hi_seen": 1235.0,
-     "lo_seen": 1196.9
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "JSWSTEEL",
@@ -114,43 +102,32 @@
      "reason": "stop",
      "pnl": -1948.35,
      "pnl_pct": -0.72
+    },
+    {
+     "sym": "DRREDDY",
+     "side": "long",
+     "qty": 204,
+     "entry": 1220.04,
+     "t_entry": "2026-10-12 10:35:00",
+     "exit": 1231.15,
+     "t_exit": "2026-10-12 15:15:27",
+     "reason": "square-off",
+     "pnl": 2117.19,
+     "pnl_pct": 0.911
     }
    ],
-   "realized": -4703.700093280457,
+   "realized": -2511.847820944445,
    "entries": {
     "NESTLEIND": 1,
     "HDFCLIFE": 1,
     "JSWSTEEL": 1,
     "DRREDDY": 1
    },
-   "last_bar": "2026-10-12 14:25:00",
-   "squared_off": false
+   "last_bar": "2026-10-12 15:10:00",
+   "squared_off": true
   },
   "app_aintorbshort1": {
-   "positions": {
-    "BHARTIARTL": {
-     "sym": "BHARTIARTL",
-     "qty": -141,
-     "entry": 1768.65,
-     "t_entry": "2026-10-12 09:40:00",
-     "stop": 1781.03,
-     "target": 1743.89,
-     "best": 1768.6462000000001,
-     "hi_seen": 1809.0,
-     "lo_seen": 1758.6
-    },
-    "ASIANPAINT": {
-     "sym": "ASIANPAINT",
-     "qty": -106,
-     "entry": 2347.53,
-     "t_entry": "2026-10-12 09:55:00",
-     "stop": 2363.96,
-     "target": 2314.66,
-     "best": 2347.5304,
-     "hi_seen": 2373.4,
-     "lo_seen": 2325.1
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "SBILIFE",
@@ -175,17 +152,41 @@
      "reason": "exit rule",
      "pnl": -431.5,
      "pnl_pct": -0.114
+    },
+    {
+     "sym": "BHARTIARTL",
+     "side": "short",
+     "qty": 141,
+     "entry": 1768.65,
+     "t_entry": "2026-10-12 09:40:00",
+     "exit": 1770.25,
+     "t_exit": "2026-10-12 15:15:27",
+     "reason": "square-off",
+     "pnl": -375.86,
+     "pnl_pct": -0.091
+    },
+    {
+     "sym": "ASIANPAINT",
+     "side": "short",
+     "qty": 106,
+     "entry": 2347.53,
+     "t_entry": "2026-10-12 09:55:00",
+     "exit": 2319.16,
+     "t_exit": "2026-10-12 15:15:27",
+     "reason": "square-off",
+     "pnl": 2858.42,
+     "pnl_pct": 1.208
     }
    ],
-   "realized": 2763.174008366038,
+   "realized": 5395.205238080082,
    "entries": {
     "SBILIFE": 1,
     "BHARTIARTL": 1,
     "SUNPHARMA": 1,
     "ASIANPAINT": 1
    },
-   "last_bar": "2026-10-12 14:25:00",
-   "squared_off": false
+   "last_bar": "2026-10-12 15:10:00",
+   "squared_off": true
   }
  }
 }
