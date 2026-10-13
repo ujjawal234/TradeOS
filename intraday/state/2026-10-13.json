@@ -1,43 +1,9 @@
 {
  "date": "2026-10-13",
- "done": false,
+ "done": true,
  "agents": {
   "app_aintematrend1": {
-   "positions": {
-    "AXISBANK": {
-     "sym": "AXISBANK",
-     "qty": 262,
-     "entry": 1254.85,
-     "t_entry": "2026-10-13 11:09:00",
-     "stop": 1259.4,
-     "target": null,
-     "best": 1267.0,
-     "hi_seen": 1267.0,
-     "lo_seen": 1242.2
-    },
-    "BAJFINANCE": {
-     "sym": "BAJFINANCE",
-     "qty": 338,
-     "entry": 973.64,
-     "t_entry": "2026-10-13 13:30:00",
-     "stop": 978.1,
-     "target": null,
-     "best": 984.0,
-     "hi_seen": 984.0,
-     "lo_seen": 946.1
-    },
-    "TECHM": {
-     "sym": "TECHM",
-     "qty": 215,
-     "entry": 1532.21,
-     "t_entry": "2026-10-13 14:30:00",
-     "stop": 1524.55,
-     "target": null,
-     "best": 1532.8,
-     "hi_seen": 1539.0,
-     "lo_seen": 1479.5
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "SBIN",
@@ -110,9 +76,45 @@
      "reason": "stop",
      "pnl": 57.71,
      "pnl_pct": 0.078
+    },
+    {
+     "sym": "AXISBANK",
+     "side": "long",
+     "qty": 262,
+     "entry": 1254.85,
+     "t_entry": "2026-10-13 11:09:00",
+     "exit": 1274.75,
+     "t_exit": "2026-10-13 15:15:26",
+     "reason": "square-off",
+     "pnl": 5013.66,
+     "pnl_pct": 1.585
+    },
+    {
+     "sym": "BAJFINANCE",
+     "side": "long",
+     "qty": 338,
+     "entry": 973.64,
+     "t_entry": "2026-10-13 13:30:00",
+     "exit": 981.3,
+     "t_exit": "2026-10-13 15:15:26",
+     "reason": "square-off",
+     "pnl": 2392.1,
+     "pnl_pct": 0.787
+    },
+    {
+     "sym": "TECHM",
+     "side": "long",
+     "qty": 215,
+     "entry": 1532.21,
+     "t_entry": "2026-10-13 14:30:00",
+     "exit": 1539.69,
+     "t_exit": "2026-10-13 15:15:26",
+     "reason": "square-off",
+     "pnl": 1410.49,
+     "pnl_pct": 0.488
     }
    ],
-   "realized": 829.769400561603,
+   "realized": 9942.210714381674,
    "entries": {
     "SUNPHARMA": 1,
     "AXISBANK": 1,
@@ -124,56 +126,11 @@
     "BSE": 1,
     "TECHM": 1
    },
-   "last_bar": "2026-10-13 14:30:00",
-   "squared_off": false
+   "last_bar": "2026-10-13 15:12:00",
+   "squared_off": true
   },
   "app_aintorblong01": {
-   "positions": {
-    "ICICIBANK": {
-     "sym": "ICICIBANK",
-     "qty": 185,
-     "entry": 1349.37,
-     "t_entry": "2026-10-13 11:00:00",
-     "stop": 1339.92,
-     "target": 1368.26,
-     "best": 1349.36982,
-     "hi_seen": 1357.4,
-     "lo_seen": 1329.4
-    },
-    "GRASIM": {
-     "sym": "GRASIM",
-     "qty": 86,
-     "entry": 2905.38,
-     "t_entry": "2026-10-13 11:40:00",
-     "stop": 2885.04,
-     "target": 2946.06,
-     "best": 2905.38096,
-     "hi_seen": 2916.8,
-     "lo_seen": 2854.0
-    },
-    "ULTRACEMCO": {
-     "sym": "ULTRACEMCO",
-     "qty": 23,
-     "entry": 10597.12,
-     "t_entry": "2026-10-13 11:50:00",
-     "stop": 10522.94,
-     "target": 10745.48,
-     "best": 10597.119,
-     "hi_seen": 10688.0,
-     "lo_seen": 10466.0
-    },
-    "WIPRO": {
-     "sym": "WIPRO",
-     "qty": 1494,
-     "entry": 167.23,
-     "t_entry": "2026-10-13 12:05:00",
-     "stop": 166.06,
-     "target": 169.57,
-     "best": 167.23343999999997,
-     "hi_seen": 168.1,
-     "lo_seen": 162.12
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "HDFCLIFE",
@@ -234,9 +191,57 @@
      "reason": "exit rule",
      "pnl": -1091.2,
      "pnl_pct": -0.377
+    },
+    {
+     "sym": "ULTRACEMCO",
+     "side": "long",
+     "qty": 23,
+     "entry": 10597.12,
+     "t_entry": "2026-10-13 11:50:00",
+     "exit": 10745.48,
+     "t_exit": "2026-10-13 14:54:26",
+     "reason": "target",
+     "pnl": 3265.02,
+     "pnl_pct": 1.4
+    },
+    {
+     "sym": "ICICIBANK",
+     "side": "long",
+     "qty": 185,
+     "entry": 1349.37,
+     "t_entry": "2026-10-13 11:00:00",
+     "exit": 1361.33,
+     "t_exit": "2026-10-13 15:15:26",
+     "reason": "square-off",
+     "pnl": 2061.73,
+     "pnl_pct": 0.886
+    },
+    {
+     "sym": "GRASIM",
+     "side": "long",
+     "qty": 86,
+     "entry": 2905.38,
+     "t_entry": "2026-10-13 11:40:00",
+     "exit": 2915.72,
+     "t_exit": "2026-10-13 15:15:26",
+     "reason": "square-off",
+     "pnl": 738.78,
+     "pnl_pct": 0.356
+    },
+    {
+     "sym": "WIPRO",
+     "side": "long",
+     "qty": 1494,
+     "entry": 167.23,
+     "t_entry": "2026-10-13 12:05:00",
+     "exit": 168.57,
+     "t_exit": "2026-10-13 15:15:26",
+     "reason": "square-off",
+     "pnl": 1845.9,
+     "pnl_pct": 0.799
     }
    ],
-   "realized": -6547.323533027949,
+   "realized": 1662.01483014406,
    "entries": {
     "HDFCLIFE": 1,
     "HINDALCO": 1,
@@ -248,34 +253,11 @@
     "ULTRACEMCO": 1,
     "WIPRO": 1
    },
-   "last_bar": "2026-10-13 14:25:00",
-   "squared_off": false
+   "last_bar": "2026-10-13 15:10:00",
+   "squared_off": true
   },
   "app_aintorbshort1": {
-   "positions": {
-    "ETERNAL": {
-     "sym": "ETERNAL",
-     "qty": -778,
-     "entry": 321.14,
-     "t_entry": "2026-10-13 12:15:00",
-     "stop": 323.38,
-     "target": 316.64,
-     "best": 321.13576,
-     "hi_seen": 328.6,
-     "lo_seen": 318.0
-    },
-    "KOTAKBANK": {
-     "sym": "KOTAKBANK",
-     "qty": -568,
-     "entry": 439.46,
-     "t_entry": "2026-10-13 12:15:00",
-     "stop": 442.54,
-     "target": 433.31,
-     "best": 439.46209000000005,
-     "hi_seen": 443.35,
-     "lo_seen": 437.5
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "MARUTI",
@@ -312,9 +294,33 @@
      "reason": "stop",
      "pnl": -1941.68,
      "pnl_pct": -0.72
+    },
+    {
+     "sym": "ETERNAL",
+     "side": "short",
+     "qty": 778,
+     "entry": 321.14,
+     "t_entry": "2026-10-13 12:15:00",
+     "exit": 320.51,
+     "t_exit": "2026-10-13 15:15:26",
+     "reason": "square-off",
+     "pnl": 337.2,
+     "pnl_pct": 0.195
+    },
+    {
+     "sym": "KOTAKBANK",
+     "side": "short",
+     "qty": 568,
+     "entry": 439.46,
+     "t_entry": "2026-10-13 12:15:00",
+     "exit": 439.09,
+     "t_exit": "2026-10-13 15:15:26",
+     "reason": "square-off",
+     "pnl": 61.71,
+     "pnl_pct": 0.085
     }
    ],
-   "realized": -4690.867419261424,
+   "realized": -4142.1283889874185,
    "entries": {
     "MARUTI": 1,
     "BSE": 1,
@@ -322,8 +328,8 @@
     "KOTAKBANK": 1,
     "ADANIPORTS": 1
    },
-   "last_bar": "2026-10-13 14:25:00",
-   "squared_off": false
+   "last_bar": "2026-10-13 15:10:00",
+   "squared_off": true
   },
   "app_amv26tvmw80lkt": {
    "positions": {},
