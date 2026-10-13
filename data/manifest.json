@@ -6,9 +6,9 @@
  "symbols": {
   "NIFTY": {
    "yahoo": "^NSEI",
-   "rows": 130,
+   "rows": 131,
    "first": "2026-04-06",
-   "last": "2026-10-12"
+   "last": "2026-10-13"
   },
   "BANKNIFTY": {
    "yahoo": "^NSEBANK",
@@ -18,9 +18,9 @@
   },
   "SENSEX": {
    "yahoo": "^BSESN",
-   "rows": 130,
+   "rows": 131,
    "first": "2026-04-06",
-   "last": "2026-10-12"
+   "last": "2026-10-13"
   },
   "NIFTYFIN": {
    "yahoo": "NIFTY_FIN_SERVICE.NS",
@@ -30,27 +30,27 @@
   },
   "INDIAVIX": {
    "yahoo": "^INDIAVIX",
-   "rows": 130,
+   "rows": 131,
    "first": "2026-04-06",
-   "last": "2026-10-12"
+   "last": "2026-10-13"
   },
   "NIFTYBANK": {
    "yahoo": "^NSEBANK",
-   "rows": 130,
+   "rows": 131,
    "first": "2026-04-06",
-   "last": "2026-10-12"
+   "last": "2026-10-13"
   },
   "NIFTYIT": {
    "yahoo": "^CNXIT",
-   "rows": 130,
+   "rows": 131,
    "first": "2026-04-06",
-   "last": "2026-10-12"
+   "last": "2026-10-13"
   },
   "NIFTYPHARMA": {
    "yahoo": "^CNXPHARMA",
-   "rows": 130,
+   "rows": 131,
    "first": "2026-04-06",
-   "last": "2026-10-12"
+   "last": "2026-10-13"
   },
   "NIFTYFMCG": {
    "yahoo": "^CNXFMCG",
@@ -102,33 +102,33 @@
   },
   "NIFTYNEXT50": {
    "yahoo": "^NSMIDCP",
-   "rows": 130,
+   "rows": 131,
    "first": "2026-04-06",
-   "last": "2026-10-12"
+   "last": "2026-10-13"
   },
   "NIFTY100": {
    "yahoo": "^CNX100",
-   "rows": 130,
+   "rows": 131,
    "first": "2026-04-06",
-   "last": "2026-10-12"
+   "last": "2026-10-13"
   },
   "NIFTY200": {
    "yahoo": "^CNX200",
-   "rows": 130,
+   "rows": 131,
    "first": "2026-04-06",
-   "last": "2026-10-12"
+   "last": "2026-10-13"
   },
   "NIFTY500": {
    "yahoo": "^CRSLDX",
-   "rows": 130,
+   "rows": 131,
    "first": "2026-04-06",
-   "last": "2026-10-12"
+   "last": "2026-10-13"
   },
   "NIFTYMIDCAP50": {
    "yahoo": "^NSEMDCP50",
-   "rows": 130,
+   "rows": 131,
    "first": "2026-04-06",
-   "last": "2026-10-12"
+   "last": "2026-10-13"
   },
   "NIFTYMIDCAP100": {
    "yahoo": "NIFTY_MIDCAP_100.NS",
@@ -408,6 +408,7 @@
   }
  },
  "failed": {
+  "BANKNIFTY": "no data",
   "NIFTYFIN": "no data",
   "NIFTYFMCG": "no data",
   "NIFTYAUTO": "no data",
@@ -434,11 +435,12 @@
   "BANKEX": "no data",
   "BSEMIDCAP": "no data",
   "BSESMALLCAP": "no data",
+  "USVIX": "no data",
   "JPYINR": "no data",
   "NATGAS": "no data",
   "COPPER": "no data",
   "BITCOIN": "no data",
   "ETHEREUM": "no data"
  },
- "fetched_at": "2026-10-13T15:13:27Z"
+ "fetched_at": "2026-10-13T17:44:48Z"
 }
