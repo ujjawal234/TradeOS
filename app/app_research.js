@@ -293,12 +293,122 @@
     const prev = t.match(/Prev\. close\s*₹?\s?([\d,]+(?:\.\d+)?)/);
     return { name: m[1].trim(), price: num(m[2]), change_pct: num(m[3]), change: num(m[4]), as_of: m[5].trim(), prev_close: prev ? num(prev[1]) : null };
   }
+  // ---- NSE's own live data through the "cm-market" connector (https://mcp.nseindia.in/cmmkt/mcp, no auth; NSE crawls
+  // stocks every minute, indices every minute, gainers/losers every 5). Tools used (exact upstream names):
+  //   cm_get_stock_quote {symbol} → {updatedAt, stock:{symbol, series, openPrice, highPrice, lowPrice, preClosePrice, lastTradedPrice,
+  //     change, perChange, volume, value (₹ cr), fiftyTwoWeekHigh/Low, perChange30d, latestTimestamp "YYYY-MM-DD HH:MM:SS" IST}} | {error}
+  //   cm_get_live_indices {group, nameFilter} → {nseTimestamp "DD-Mon-YYYY HH:MM:SS", indices:{<group>:[{indexName, last, previousClose,
+  //     change, percChange, open, high, low, timeVal}]}}   (~140 NSE indices; no BSE indices, no BSE-only stocks)
+  //   nse_get_market_movers {indexName, limit} → {gainers:[…], losers:[…]} rows {symbol, series, ltp, prev_price, perChange, trade_quantity, turnover}
+  //   cm_get_live_market_data {index:"gainers"|"loosers"} → {data:{NIFTY|BANKNIFTY|NIFTYNEXT50|SecGtr20|SecLwr20|FOSec|allSec:{data:[…], timestamp}}}
+  // NSE's data is for information/education; TradeOS uses it for research and paper trading only.
+  const NSE_SERVER = "cm-market";
+  let nseDown = null; // the error code once the connector is missing/blocked for this page load (skip it after that)
+  const nsePayload = (r) => {
+    if (r && r.payload !== undefined) return r.payload;
+    const t = (r?.content || []).find((c) => c.type === "text")?.text; if (!t) return r?.structuredContent ?? null;
+    try { return JSON.parse(t); } catch (e) { return { error: t }; }
+  };
+  async function nseCall(tool, input) {
+    if (!S.mcp) throw Object.assign(new Error("no mcp"), { code: "unavailable" });
+    if (nseDown) throw Object.assign(new Error(nseDown), { code: nseDown });
+    try {
+      const p = nsePayload(await S.mcp.callTool(NSE_SERVER, tool, input, { cache: false }));
+      if (p && p.error) throw Object.assign(new Error(String(p.error)), { code: "nse_error" });
+      return p;
+    } catch (e) {
+      if (["server_not_connected", "server_not_found", "not_in_manifest", "blocked_by_policy", "not_granted", "capability_disabled", "capability_removed"].includes(e?.code)) nseDown = e.code;
+      throw e;
+    }
+  }
+  const nseHint = (code) => code === "server_not_connected" || code === "server_not_found" ? "add NSE's free \"cm-market\" connector (https://mcp.nseindia.in/cmmkt/mcp) in claude.ai → Settings → Connectors"
+    : code === "not_in_manifest" || code === "not_granted" ? "allow cm-market in this page's permissions" : code === "blocked_by_policy" ? "your organisation's settings block the cm-market connector" : null;
+  // index symbols: TradeOS keys (NIFTY, BANKNIFTY, NIFTY_IT, NIFTY_PRIVATE_BANK…) ↔ NSE live short names (NIFTY 50, NIFTY BANK, NIFTY IT, NIFTY PVT BANK…)
+  const NSE_IX_ALIAS = { NIFTY: "NIFTY50", BANKNIFTY: "NIFTYBANK", FINNIFTY: "NIFTYFINSERVICE", MIDCPNIFTY: "NIFTYMIDSELECT", NIFTYNXT50: "NIFTYNEXT50" };
+  const NSE_IX_NAME = { // NSE's short live names the abbreviation rules below don't reach (TradeOS key → NSE live name)
+    NIFTY_INDIA_FPI_150: "NIFTY FPI 150", NIFTY_MIDSMALLCAP_400: "NIFTY MIDSML 400", NIFTY500_MULTICAP_50_25_25: "NIFTY500 MULTICAP", NIFTY_LARGEMIDCAP_250: "NIFTY LARGEMID250",
+    NIFTY500_LARGEMIDSMALL_EQUAL_CAP_WEIGHTED: "NIFTY500 LMS EQL", NIFTY_MIDSMALLCAP400_50_50: "NIFTY MIDSMALL 50 50", NIFTY_FINANCIAL_SERVICES_25_50: "NIFTY FINSRV25 50",
+    NIFTY_MIDSMALL_HEALTHCARE: "NIFTY MIDSML HLTH", NIFTY_FINANCIAL_SERVICES_EX_BANK: "NIFTY FINSEREXBNK", NIFTY_MIDSMALL_FINANCIAL_SERVICES: "NIFTY MS FIN SERV",
+    NIFTY_MIDSMALL_IT_TELECOM: "NIFTY MS IT TELCM", NIFTY500_HEALTHCARE: "NIFTY500 HEALTH", NIFTY_GROWTH_SECTORS_15: "NIFTY GROWSECT 15", NIFTY50_TR_2X_LEVERAGE: "NIFTY50 TR 2X LEV",
+    NIFTY50_PR_2X_LEVERAGE: "NIFTY50 PR 2X LEV", NIFTY50_TR_1X_INVERSE: "NIFTY50 TR 1X INV", NIFTY50_PR_1X_INVERSE: "NIFTY50 PR 1X INV", NIFTY_ALPHA_LOW_VOLATILITY_30: "NIFTY ALPHALOWVOL",
+    NIFTY_MIDCAP150_QUALITY_50: "NIFTY M150 QLTY50", NIFTY_MIDCAP150_MOMENTUM_50: "NIFTYM150MOMNTM50", NIFTY_MIDSMALLCAP400_MOMENTUM_QUALITY_100: "NIFTYMS400 MQ 100",
+    NIFTY_SMALLCAP250_MOMENTUM_QUALITY_100: "NIFTYSML250MQ 100", NIFTY_TOP_10_EQUAL_WEIGHT: "NIFTY TOP 10 EW", NIFTY_TOP_15_EQUAL_WEIGHT: "NIFTY TOP 15 EW", NIFTY_TOP_20_EQUAL_WEIGHT: "NIFTY TOP 20 EW",
+    NIFTY_ALPHA_QUALITY_LOW_VOLATILITY_30: "NIFTY AQL 30", NIFTY_ALPHA_QUALITY_VALUE_LOW_VOLATILITY_30: "NIFTY AQLV 30", NIFTY_QUALITY_LOW_VOLATILITY_30: "NIFTY QLTY LV 30",
+    NIFTY_SMALLCAP250_QUALITY_50: "NIFTY SML250 Q50", NIFTY500_EQUAL_WEIGHT: "NIFTY500 EW", NIFTY500_MULTICAP_MOMENTUM_QUALITY_50: "NIFTY MULTI MQ 50", NIFTY500_QUALITY_50: "NIFTY500 QLTY50",
+    NIFTY500_MULTIFACTOR_MQVLV_50: "NIFTY500 MQVLV50", NIFTY500_FLEXICAP_QUALITY_30: "NIFTY500 FLEXICAP", NIFTY_TOTAL_MARKET_MOMENTUM_QUALITY_50: "NIFTY TMMQ 50",
+    NIFTY_INDIA_CONSUMPTION: "NIFTY CONSUMPTION", NIFTY_INFRASTRUCTURE: "NIFTY INFRA", NIFTY100_LIQUID_15: "NIFTY100 LIQ 15", NIFTY_MIDCAP_LIQUID_15: "NIFTY MID LIQ 15",
+    NIFTY100_ESG_SECTOR_LEADERS: "NIFTY100ESGSECLDR", NIFTY_INDIA_CORPORATE_GROUP_INDEX_TATA_GROUP_25_CAP: "NIFTY TATA 25 CAP", NIFTY500_MULTICAP_INDIA_MANUFACTURING_50_30_20: "NIFTY MULTI MFG",
+    NIFTY500_MULTICAP_INFRASTRUCTURE_50_30_20: "NIFTY MULTI INFRA", NIFTY_EV_NEW_AGE_AUTOMOTIVE: "NIFTY EV", NIFTY_INDIA_NEW_AGE_CONSUMPTION: "NIFTY NEW CONSUMP",
+    NIFTY_INDIA_SELECT_5_CORPORATE_GROUPS_MAATR: "NIFTY CORP MAATR", NIFTY100_ENHANCED_ESG: "NIFTY100 ENH ESG", NIFTY_MIDSMALL_INDIA_CONSUMPTION: "NIFTY MS IND CONS",
+    NIFTY_NON_CYCLICAL_CONSUMER: "NIFTY NONCYC CONS", NIFTY_TRANSPORTATION_LOGISTICS: "NIFTY TRANS LOGIS", NIFTY_INDIA_INTERNET: "NIFTY INTERNET", NIFTY_INDIA_INFRASTRUCTURE_LOGISTICS: "NIFTY INFRALOG",
+    NIFTY_INDIA_RAILWAYS_PSU: "NIFTY RAILWAYSPSU", NIFTY_CONGLOMERATE_50: "NIFTYCONGLOMERATE", NIFTY_8_13_YR_G_SEC: "NIFTY GS 8 13YR", NIFTY_10_YR_BENCHMARK_G_SEC: "NIFTY GS 10YR",
+    NIFTY_10_YR_BENCHMARK_G_SEC_CLEAN_PRICE: "NIFTY GS 10YR CLN", NIFTY_4_8_YR_G_SEC_INDEX: "NIFTY GS 4 8YR", NIFTY_11_15_YR_G_SEC_INDEX: "NIFTY GS 11 15YR",
+    NIFTY_15_YR_AND_ABOVE_G_SEC_INDEX: "NIFTY GS 15YRPLUS", NIFTY_COMPOSITE_G_SEC_INDEX: "NIFTY GS COMPSITE", NIFTY_BHARAT_BOND_INDEX_APRIL_2030: "BHARATBOND-APR30",
+    NIFTY_BHARAT_BOND_INDEX_APRIL_2031: "BHARATBOND-APR31", NIFTY_BHARAT_BOND_INDEX_APRIL_2032: "BHARATBOND-APR32", NIFTY_BHARAT_BOND_INDEX_APRIL_2033: "BHARATBOND-APR33" };
+  const NSE_ABBR = [[/FINANCIALSERVICES?/g, "FINSERVICE"], [/SMALLCAP/g, "SMLCAP"], [/CONSUMERDURABLES|CONSDURABLES/g, "CONSRDURBL"], [/OIL(AND)?GAS/g, "OILANDGAS"],
+    [/PRIVATEBANK/g, "PVTBANK"], [/SERVICESSECTOR|NIFTYSERVICES$/g, (m) => m === "NIFTYSERVICES" ? "NIFTYSERVSECTOR" : "SERVSECTOR"], [/MIDSMALLCAP/g, "MIDSML"], [/MIDCAPSELECT/g, "MIDSELECT"],
+    [/MOMENTUM/g, "MOMENTM"], [/QUALITY/g, "QUALTY"], [/LOWVOLATILITY/g, "LOWVOL"], [/EQUALWEIGHT/g, "EQLWGT"], [/DIVIDENDOPPORTUNITIES/g, "DIVOPPS"],
+    [/INDIADIGITAL/g, "INDDIGITAL"], [/INDIADEFENCE/g, "INDDEFENCE"], [/INDIATOURISM/g, "INDTOURISM"], [/CAPITALMARKETS?/g, "CAPITALMKT"], [/INDIAMANUFACTURING/g, "INDIAMFG"],
+    [/TOTALMARKET/g, "TOTALMKT"], [/COMMODITIES$/g, "COMMODITIES"], [/HEALTHCARE(INDEX)?$/g, "HEALTHCARE"], [/INDEX$/g, ""]];
+  const nseNorm = (s) => { let t = String(s || "").toUpperCase().replace(/&/g, "AND").replace(/[^A-Z0-9]+/g, ""); for (const [rx, to] of NSE_ABBR) t = t.replace(rx, to); return t; };
+  let nseIxAt = 0, nseIxPr = null;
+  function nseIndexTable() { // every NSE index in one call, reused for 45 s
+    if (nseIxPr && Date.now() - nseIxAt < 45e3) return nseIxPr;
+    nseIxAt = Date.now();
+    nseIxPr = nseCall("cm_get_live_indices", { group: "", nameFilter: "" }).then((p) => {
+      const byKey = {}, rows = [];
+      for (const [group, list] of Object.entries(p?.indices || {})) for (const r of list || []) { const row = { ...r, group }; rows.push(row); byKey[nseNorm(r.indexName)] = row; }
+      return { ts: p?.nseTimestamp || null, rows, byKey };
+    }).catch((e) => { nseIxPr = null; throw e; });
+    return nseIxPr;
+  }
+  function nseIndexRow(sym, table) {
+    const m = S.man.symbols[sym] || {}, tries = [NSE_IX_NAME[sym] && nseNorm(NSE_IX_NAME[sym]), NSE_IX_ALIAS[sym], nseNorm(sym), m.alias_of && NSE_IX_NAME[m.alias_of] && nseNorm(NSE_IX_NAME[m.alias_of]), m.alias_of && (NSE_IX_ALIAS[m.alias_of] || nseNorm(m.alias_of)), m.name && nseNorm(m.name)].filter(Boolean);
+    for (const k of tries) if (table.byKey[k]) return table.byKey[k];
+    return null;
+  }
+  const MON = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
+  const nseIsoTs = (s) => { // "13-Oct-2026 14:07:33" or "2026-10-13 14:07:26" → "2026-10-13 14:07:33"
+    const a = String(s || "").match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)/); if (a) return `${a[3]}-${MON[a[2]] || "??"}-${a[1].padStart(2, "0")} ${a[4]}`;
+    const b = String(s || "").match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)/); return b ? `${b[1]} ${b[2]}` : null;
+  };
+  const r2 = (x) => x == null || !isFinite(+x) ? null : +(+x).toFixed(2);
+  async function nseQuotes(syms) { // → {quotes:{sym: q}, left:[syms cm-market didn't answer], error}
+    const quotes = {}, left = [];
+    if (!S.mcp || nseDown) return { quotes, left: syms, error: nseDown };
+    const idx = syms.filter((s) => S.man.symbols[s]?.kind === "index"), stocks = syms.filter((s) => !idx.includes(s));
+    let error = null;
+    if (idx.length) {
+      try {
+        const t = await nseIndexTable(), ts = nseIsoTs(t.ts);
+        for (const s of idx) { const r = nseIndexRow(s, t); if (!r || r.last == null) { left.push(s); continue; }
+          const at = nseIsoTs(r.timeVal) || ts;
+          quotes[s] = { name: r.indexName, price: r2(r.last), change: r2(r.change), change_pct: r2(r.percChange), prev_close: r2(r.previousClose), open: r2(r.open), high: r2(r.high), low: r2(r.low),
+            as_of: at ? `${at} IST` : null, _date: at ? at.slice(0, 10) : null, source: "NSE (cm-market)" }; }
+      } catch (e) { error = e?.code || e?.message; left.push(...idx); }
+    }
+    let i = 0; const work = stocks.filter((s) => S.man.symbols[s]?.ex !== "BSE"); left.push(...stocks.filter((s) => !work.includes(s)));
+    const one = async () => { while (i < work.length) { const s = work[i++];
+      try { const p = await nseCall("cm_get_stock_quote", { symbol: s }), q = p?.stock;
+        if (!q || q.lastTradedPrice == null) { left.push(s); continue; }
+        const at = nseIsoTs(q.latestTimestamp);
+        quotes[s] = { name: S.man.symbols[s]?.name || s, price: r2(q.lastTradedPrice), change: r2(q.change), change_pct: r2(q.perChange), prev_close: r2(q.preClosePrice),
+          open: r2(q.openPrice), high: r2(q.highPrice), low: r2(q.lowPrice), volume: q.volume ?? null, value_cr: r2(q.value), high_52w: r2(q.fiftyTwoWeekHigh), low_52w: r2(q.fiftyTwoWeekLow),
+          change_30d_pct: r2(q.perChange30d), series: q.series || null, as_of: at ? `${at} IST` : null, _date: at ? at.slice(0, 10) : null, source: "NSE (cm-market)" };
+      } catch (e) { if (e?.code !== "nse_error") error = error || e?.code || e?.message; left.push(s); } } };
+    await Promise.all(Array.from({ length: Math.min(6, work.length) }, one));
+    return { quotes, left, error };
+  }
   async function liveQuotes(input, progress) {
-    const syms = [...new Set((Array.isArray(input?.symbols) ? input.symbols : [input?.symbols || input?.symbol]).map((x) => E.symKey(String(x || ""))).filter(Boolean))].slice(0, 25);
+    const syms = [...new Set((Array.isArray(input?.symbols) ? input.symbols : [input?.symbols || input?.symbol]).map((x) => E.symKey(String(x || ""))).filter(Boolean))].slice(0, 40);
     if (!syms.length) throw new Error("Give the symbols to quote.");
     progress(`Getting live prices for ${syms.slice(0, 4).join(", ")}${syms.length > 4 ? "…" : ""}`);
     const todayLbl = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Kolkata" }), stamp = Date.now().toString(36);
-    const coded = syms.map((s) => ({ s, code: gfCode(s) })), withCode = coded.filter((x) => x.code), out = {}, misses = coded.filter((x) => !x.code).map((x) => x.s);
+    const todayIso = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+    const nse = await nseQuotes(syms), out = { ...nse.quotes };
+    for (const q of Object.values(out)) { q.today = q._date === todayIso; delete q._date; }
+    const gfSyms = syms.filter((s) => !out[s]).slice(0, 25);
+    const coded = gfSyms.map((s) => ({ s, code: gfCode(s) })), withCode = coded.filter((x) => x.code), misses = coded.filter((x) => !x.code).map((x) => x.s);
     const batches = []; for (let i = 0; i < withCode.length; i += 10) batches.push(withCode.slice(i, i + 10));
     const fetchBatch = async (b, tag) => {
       let res = null;
@@ -308,28 +418,70 @@
       for (const x of b) {
         const row = rows.find((r) => decodeURIComponent(r.url || "").includes(x.code));
         const q = row ? parseGF(String(row.full_content || "") + "\n" + (row.excerpts || []).join("\n"), x.code) : null;
-        if (q && q.price) out[x.s] = q; else left.push(x);
+        if (q && q.price) { q.today = q.as_of.startsWith(todayLbl); q.source = "Google Finance"; out[x.s] = q; } else left.push(x);
       }
       return left;
     };
-    const retry = (await Promise.all(batches.map((b) => fetchBatch(b, "a")))).flat();
-    if (retry.length) { const still = []; for (let i = 0; i < retry.length; i += 10) still.push(...await fetchBatch(retry.slice(i, i + 10), "b")); misses.push(...still.map((x) => x.s)); }
+    if (withCode.length) progress(`Reading ${withCode.length} quote${withCode.length > 1 ? "s" : ""} from Google Finance`);
+    let retry = [];
+    try { retry = (await Promise.all(batches.map((b) => fetchBatch(b, "a")))).flat(); }
+    catch (e) { if (Object.keys(out).length) retry = withCode.filter((x) => !out[x.s]); else throw e; } // Parallel Search missing: keep what NSE gave
+    if (retry.length) { const still = []; for (let i = 0; i < retry.length; i += 10) { try { still.push(...await fetchBatch(retry.slice(i, i + 10), "b")); } catch (e) { still.push(...retry.slice(i, i + 10)); } } misses.push(...still.map((x) => x.s)); }
     for (const [s, q] of Object.entries(out)) { // returns with the live price as today's bar
-      q.today = q.as_of.startsWith(todayLbl);
       const f = S.light[s]; if (!f || !q.today) continue;
       const c = f.c, n = c.length, k = (back) => n - back >= 0 && c[n - back] ? +((q.price / c[n - back] - 1) * 100).toFixed(2) : null;
       q.stored_close = +c[n - 1].toFixed(2); q.ret_1m_live = k(21); q.ret_3m_live = k(63); q.ret_6m_live = k(126);
     }
+    misses.push(...syms.filter((s) => !out[s] && !gfSyms.includes(s)));
     let fallback = null;
     if (misses.length) { try { fallback = await webCall("web_search", { objective: `Current market price today (${todayLbl}) of: ${misses.map((s) => S.man.symbols[s]?.name || s).join(", ")}`, search_queries: misses.slice(0, 4).map((s) => `${S.man.symbols[s]?.name || s} price today`) }, progress, "Looking up the rest on the web"); } catch (e) { fallback = { error: e.message }; } }
-    return { quotes: out, not_parsed: misses, web_results_for_the_rest: fallback, source: "Google Finance via Parallel Search (NSE quotes, may lag up to ~15 minutes); as_of is the quote time",
-      how_to_use: "ret_*_live = return over the last 21/63/126 sessions counting today's live price as the latest bar (stored data ends at the last close). Use these for decisions 'at current prices'. Always state the quote time." };
+    const nNse = Object.values(out).filter((q) => q.source === "NSE (cm-market)").length, hint = nseHint(nse.error);
+    return { quotes: out, not_parsed: misses, web_results_for_the_rest: fallback,
+      source: `${nNse ? `NSE's own live data via the cm-market connector for ${nNse} symbol${nNse > 1 ? "s" : ""} (about 1–3 min behind real time)` : "NSE live data unavailable"}${nNse < Object.keys(out).length ? "; the rest from Google Finance via Parallel Search (may lag up to ~15 minutes)" : ""}. Each quote's source and as_of (quote time, IST) are on it.`,
+      ...(hint ? { nse_note: `NSE live data is off for this page: ${hint}. Mention this once.` } : {}),
+      how_to_use: "ret_*_live = return over the last 21/63/126 sessions counting today's live price as the latest bar (stored data ends at the last close). Use these for decisions 'at current prices'. today=false means the quote is the last close from an earlier day (market closed). Always state the quote time." };
+  }
+  // what's moving today: NSE's own gainers/losers lists (refreshed every 5 minutes)
+  const MOVER_GROUPS = { all: "allSec", nifty: "NIFTY", banknifty: "BANKNIFTY", niftynext50: "NIFTYNEXT50", fo: "FOSec", above20: "SecGtr20", below20: "SecLwr20" };
+  const moverRow = (r) => ({ symbol: r.symbol, series: r.series, ltp: r2(r.ltp), prev_close: r2(r.prev_price), change_pct: r2(r.perChange ?? r.net_price), ...(r.open_price != null ? { open: r2(r.open_price), high: r2(r.high_price), low: r2(r.low_price) } : {}),
+    shares: r.trade_quantity ?? null, turnover_lakh: r2(r.turnover), in_tradeos: !!S.man.symbols[r.symbol] });
+  async function nseMovers(input, progress) {
+    const g = String(input?.group || "all").toLowerCase().replace(/[^a-z0-9]/g, ""), key = MOVER_GROUPS[g] || "allSec", limit = Math.max(1, Math.min(50, +input?.limit || 15));
+    progress("Reading NSE's top gainers and losers…");
+    try {
+      if (["allSec", "NIFTY", "BANKNIFTY", "NIFTYNEXT50"].includes(key)) {
+        const p = await nseCall("nse_get_market_movers", { indexName: key === "allSec" ? "" : key, limit });
+        return { group: key, as_of: p?.gainersUpdatedAt ? `${nseIsoTs(new Date(Date.parse(p.gainersUpdatedAt) + 5.5 * 3600e3).toISOString())} IST` : null, gainers: (p?.gainers || []).map(moverRow), losers: (p?.losers || []).map(moverRow),
+          note: "NSE's lists, refreshed every 5 minutes; as_of is IST. turnover_lakh is traded value in ₹ lakh. Thin, low-priced or BE-series names often top these lists — check value traded before using them. For research and paper trading only." };
+      }
+      const [gn, ls] = await Promise.all([nseCall("cm_get_live_market_data", { index: "gainers" }), nseCall("cm_get_live_market_data", { index: "loosers" })]);
+      const G = gn?.data?.[key], L = ls?.data?.[key];
+      return { group: key, as_of: nseIsoTs(G?.timestamp || L?.timestamp) ? `${nseIsoTs(G?.timestamp || L?.timestamp)} IST` : null, gainers: (G?.data || []).slice(0, limit).map(moverRow), losers: (L?.data || []).slice(0, limit).map(moverRow),
+        note: "NSE's lists (top 20 each for this group), refreshed every 5 minutes; as_of is IST. turnover_lakh is traded value in ₹ lakh. For research and paper trading only." };
+    } catch (e) { const h = nseHint(e?.code); throw new Error(h ? `NSE live data needs the cm-market connector: ${h}.` : `NSE gainers/losers failed: ${e?.message || e?.code || e}`); }
+  }
+  // the live index board: every NSE index (sectors, broad, strategy, thematic) with today's move, sorted by % change
+  async function nseIndices(input, progress) {
+    progress("Reading NSE's live index values…");
+    try {
+      const t = await nseIndexTable(), grp = String(input?.group || "").toLowerCase(), f = String(input?.filter || "").toUpperCase();
+      const toKey = {}; for (const s of Object.keys(S.man.symbols)) if (S.man.symbols[s].kind === "index") { const r = nseIndexRow(s, t); if (r && !toKey[r.indexName]) toKey[r.indexName] = s; }
+      const rows = t.rows.filter((r) => (!grp || grp === "all" || r.group === grp) && (!f || r.indexName.includes(f)))
+        .map((r) => ({ index: r.indexName, tradeos_symbol: toKey[r.indexName] || null, group: r.group, last: r2(r.last), change_pct: r2(r.percChange), prev_close: r2(r.previousClose), open: r2(r.open), high: r2(r.high), low: r2(r.low) }))
+        .sort((a, b) => (b.change_pct ?? -1e9) - (a.change_pct ?? -1e9));
+      return { as_of: nseIsoTs(t.ts) ? `${nseIsoTs(t.ts)} IST` : null, count: rows.length, indices: rows,
+        note: "NSE's own live index values (refreshed every minute). Use tradeos_symbol to pull history or backtest with the other tools. Outside 09:15–15:30 IST these are the last published values." };
+    } catch (e) { const h = nseHint(e?.code); throw new Error(h ? `NSE live data needs the cm-market connector: ${h}.` : `NSE live indices failed: ${e?.message || e?.code || e}`); }
   }
   function webTools(progress) {
     if (!S.mcp) return [];
     return [
-      { name: "live_quotes", description: "Live prices NOW (during market hours; otherwise the latest close) for up to 25 TradeOS symbols — stocks (NSE or BSE), Nifty/sector/thematic indices, India VIX, Sensex. TradeOS's stored data ends at the last close, so use this whenever the user says now / today / live / current, or a decision should use today's prices. Returns price, change %, previous close, the quote time, and 1m/3m/6m returns counting today's live price as the latest bar (for re-ranking momentum at current prices).",
+      { name: "live_quotes", description: "Live prices NOW (during market hours; otherwise the latest close) for up to 40 TradeOS symbols — stocks, Nifty/sector/thematic/strategy indices, India VIX. Comes from NSE's own live data (cm-market connector, ~1–3 min behind) with Google Finance as the fallback for BSE-only stocks, Sensex and anything NSE doesn't answer. TradeOS's stored data ends at the last close, so use this whenever the user says now / today / live / current, or a decision should use today's prices. Returns price, change %, previous close, day open/high/low, volume and value traded (NSE stocks), 52-week range, the quote time and source, and 1m/3m/6m returns counting today's live price as the latest bar (for re-ranking momentum at current prices).",
         inputSchema: { type: "object", properties: { symbols: { type: "array", items: { type: "string" } } }, required: ["symbols"] }, execute: async (input) => liveQuotes(input || {}, progress) },
+      { name: "nse_movers", description: "Today's top gainers and losers from NSE, live (refreshed every 5 minutes). group: all (every NSE security, default), nifty, banknifty, niftynext50, fo (F&O stocks), above20 / below20 (by share price). Returns price, change %, shares and value traded, and whether TradeOS has the stock. Use for 'what's moving today', momentum/breakout ideas at the open, or to check a daily list against today's tape.",
+        inputSchema: { type: "object", properties: { group: { type: "string", enum: Object.keys(MOVER_GROUPS) }, limit: { type: "number" } } }, execute: async (input) => nseMovers(input || {}, progress) },
+      { name: "nse_indices", description: "Live values of every NSE index (~140: sectoral, broad, strategy/factor, thematic, fixed income) with today's change %, open/high/low, sorted from best to worst. Optional group (sectoral, broad, strategy, thematic, derivatives, fixed_income) and name filter (e.g. 'BANK'). Use for 'which sectors are leading today', sector rotation at current prices, or the market's tone (Nifty, midcaps vs smallcaps, India VIX).",
+        inputSchema: { type: "object", properties: { group: { type: "string" }, filter: { type: "string" } } }, execute: async (input) => nseIndices(input || {}, progress) },
       { name: "web_search", description: "Search the live web — news, company announcements and websites, results coverage, management interviews, regulators, global events, anything outside TradeOS's data. Give an objective (what you want to find, one specific thing) and 2–3 short keyword queries (3–6 words). Returns pages with links, dates and excerpts that usually answer directly. For several independent questions, call it once per question. Cite the links.",
         inputSchema: { type: "object", properties: { objective: { type: "string" }, queries: { type: "array", items: { type: "string" } } }, required: ["objective"] },
         execute: async (input) => { const obj = String(input?.objective || input?.query || "").slice(0, 600), qs = (Array.isArray(input?.queries) ? input.queries : [input?.query || obj]).map((q) => String(q).slice(0, 120)).filter(Boolean).slice(0, 4);
@@ -495,4 +647,5 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, compute 
     });
   }
   // read-only hooks for testing the research tools from the browser console
-  window.__tradeosResearch = { macroDashboard, companyResearch, screen: (a) => screenTool(a, null), compute: (a) => computeTool(a, null), sectorView, news: newsTool, brief: () => dataBrief(), toolNames: () => makeTools(() => {}).map((t) => t.name) };
+  window.__tradeosResearch = { macroDashboard, companyResearch, screen: (a) => screenTool(a, null), compute: (a) => computeTool(a, null), sectorView, news: newsTool, brief: () => dataBrief(), toolNames: () => makeTools(() => {}).map((t) => t.name),
+    liveQuotes: (a) => liveQuotes(a, () => {}), nseMovers: (a) => nseMovers(a || {}, () => {}), nseIndices: (a) => nseIndices(a || {}, () => {}) };

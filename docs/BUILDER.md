@@ -36,10 +36,11 @@ readers, new scheduled tasks, changing or removing existing features, changing h
 | Data policy | ~6 months of daily data for every NSE/BSE stock, rolling 20 sessions of 1-minute bars (the user's choice; change only if a ticket asks) |
 | Publishing data | `scripts/publish_plan.py` (changed files only, ≤200 entries a batch), `state/published.json` |
 | Live prices | `tradeos/live/market_feed.py` inside the intraday runner (`scripts/intraday_run.py`, `.github/workflows/intraday.yml`): every 5 min of the session, every NSE stock (NSE live data) + main indices (Yahoo) → `quotes.json` on the `live-quotes` branch (replaced each time; day history to the `live-quotes` release). Scheduled task "TradeOS live prices" copies it to db `live/quotes` (`scripts/live_wait.py`). App: `loadLive`/`liveQuote`/`liveStamp` in `app/app_home.js` (symbol page "Live" line), CIO tool `live_prices` + as-of rule in `app/app.js`. The page also tries the GitHub connector (`github` get_file_contents) if the page's capabilities ever allow it |
+| NSE live connector | NSE's official `cm-market` connector (https://mcp.nseindia.in/cmmkt/mcp, no auth, declared in the app's `mcp` capability with `cm_get_stock_quote`, `cm_get_live_indices`, `nse_get_market_movers`, `cm_get_live_market_data`). `app/app_research.js`: `nseQuotes` (CIO/agent tool `live_quotes` asks NSE first — stocks per symbol, all ~140 indices in one call, `NSE_IX_NAME`/`nseNorm` map TradeOS index keys to NSE's short live names — then Google Finance via Parallel Search for the rest), tools `nse_movers` and `nse_indices`. Seconds-to-a-minute behind during the session; no BSE-only stocks, no Sensex/BSE indices, no breadth or index constituents |
 | Readers | X: `scripts/x_collect.js` (in-browser collector) + `scripts/x_ideas.mjs` (scoring, learning) + scheduled task "TradeOS X ideas reader"; results in db `x_ideas/*`, settings `x/config` |
 | App database | the artifact's shared db: `agents` (+`/versions`), `desks`, `orders`, `book/*`, `alerts`, `alert_events`, `research/*`, `feed/*`, `data_requests`, `x/config`, `x_ideas/*`, `changes/*` (tickets) |
 | Scheduled tasks | daily paper run & alerts (20:38 IST), X ideas reader (19:07 IST) — see `list_triggers` |
-| The app (artifact) | https://claude.ai/artifact/UzWps1YcpqDBjcPfmDupkW — capabilities sample, db, user |
+| The app (artifact) | https://claude.ai/artifact/UzWps1YcpqDBjcPfmDupkW — capabilities sample, db, user {scopes: [profile]}, mcp {servers: Parallel Search [web_search, web_fetch], cm-market [cm_get_stock_quote, cm_get_live_indices, nse_get_market_movers, cm_get_live_market_data]} |
 
 Patterns to reuse:
 - **New reader** (YouTube, a website, PDFs/reports, Telegram channels the team can read…): a collector (a GitHub Action
@@ -94,7 +95,7 @@ changes/<id> {
    f. Publish: copy `build/` into the session's working directory if the repo is elsewhere; Artifact publish with
       `url` = the app, `file_path` = build/index.html and — if data files changed — the batches from
       `python3 scripts/publish_plan.py build --live <live files list>` (see the daily task). Pass `capabilities` only
-      when the change needs a new capability (then restate all of them: sample, db, user, plus the new one). If a newer
+      when the change needs a new capability (then restate all of them — see the app row in the map — plus the new one). If a newer
       version is live, read it, confirm it's the same app, and publish again. Copy `build/published_next.json` to
       `state/published.json` after data publishes and commit it.
    g. Set `status: "done"`, `finished_at`, `result` {summary (2–4 plain sentences: what changed and where to find it),
