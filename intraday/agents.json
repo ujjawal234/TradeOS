@@ -312,6 +312,61 @@
    "max_trades_per_symbol": 1,
    "cost_pct": 0.03,
    "slippage_pct": 0.02
+  },
+  {
+   "id": "app_amv6bzrax3dpdn",
+   "name": "Intraday Breakout Buyer (5-min)",
+   "enabled": true,
+   "engine": "js",
+   "source": "app",
+   "version": 1,
+   "paper_since": "2026-10-12",
+   "symbols": [
+    "CPPLUS",
+    "DELTACORP",
+    "ETERNAL"
+   ],
+   "bar_minutes": 5,
+   "side": "long",
+   "entry": "close > or_high and close > vwap and volume > prev(volume)",
+   "exit": "close < vwap or close < lowest(low,3) or close > ema(close,9) + 2.5*atr(14)",
+   "opening_range_minutes": 15,
+   "capital": 2500000,
+   "max_positions": 3,
+   "position_pct": 10,
+   "start_after": "09:30",
+   "no_entry_after": "14:45",
+   "square_off": "15:30",
+   "max_trades_per_symbol": 1,
+   "cost_pct": 0.03,
+   "slippage_pct": 0.02
+  },
+  {
+   "id": "app_amv6c0fvlb31vd",
+   "name": "Intraday Breakout Buyer (5-min)",
+   "enabled": true,
+   "engine": "js",
+   "source": "app",
+   "version": 2,
+   "paper_since": "2026-10-12",
+   "symbols": [
+    "CPPLUS"
+   ],
+   "bar_minutes": 5,
+   "side": "long",
+   "entry": "close > or_high and close > vwap and volume > prev(volume)",
+   "exit": "close < vwap or close < lowest(low,3) or close > ema(close,9) + 2.5*atr(14)",
+   "rank_by": "day_ret",
+   "opening_range_minutes": 15,
+   "capital": 2500000,
+   "max_positions": 6,
+   "position_pct": 10,
+   "start_after": "09:30",
+   "no_entry_after": "14:45",
+   "square_off": "15:30",
+   "max_trades_per_symbol": 1,
+   "cost_pct": 0.03,
+   "slippage_pct": 0.02
   }
  ]
 }
