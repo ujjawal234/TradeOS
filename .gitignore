@@ -18,4 +18,4 @@ build_opt/
 .intra/
 .fo_cache/
 .part_cache/
-live/
+/live/
