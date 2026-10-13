@@ -642,7 +642,7 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
                     <button class="iconbtn round" type="button" data-menu="roomMenu" aria-haspopup="true" aria-expanded="false" aria-label="Add a photo, file or part of the page">+</button>
                     <div class="menu" id="roomMenu" hidden>
                       <label for="roomPhoto" data-photo><span>Photo or screenshot</span></label>
-                      <label for="roomFile"><span>PDF or text file</span></label>
+                      <label for="roomFile"><span>Any file<span class="sub">PDF, Excel, Word, PowerPoint, CSV, video, audio</span></span></label>
                       <button type="button" data-cap="room"><span>Select part of this page</span></button>
                     </div>
                   </div>
@@ -651,7 +651,7 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
                 </div>
               </div>
               <input id="roomPhoto" type="file" multiple hidden accept="image/*">
-              <input id="roomFile" type="file" multiple hidden accept=".pdf,.txt,.md,.csv,.json,image/*">
+              <input id="roomFile" type="file" multiple hidden>
             </div>
           </aside>
         </div>
@@ -677,7 +677,7 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
             <button class="iconbtn round" type="button" data-menu="mainMenu" aria-haspopup="true" aria-expanded="false" aria-label="Add a photo, file or part of the page">+</button>
             <div class="menu" id="mainMenu" hidden>
               <label for="photoIn" data-photo><span>Photo or screenshot<span class="sub">Chart, broker note, anything</span></span></label>
-              <label for="fileIn"><span>PDF or text file<span class="sub">Reports, results, CSV</span></span></label>
+              <label for="fileIn"><span>Any file<span class="sub">PDF, Excel, Word, PowerPoint, CSV, video, audio</span></span></label>
               <button type="button" data-cap="main"><span>Select part of this page<span class="sub">Drag a box or tap a card</span></span></button>
             </div>
           </div>
@@ -692,7 +692,7 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
         </div>
       </div>
       <input id="photoIn" type="file" multiple hidden accept="image/*">
-      <input id="fileIn" type="file" multiple hidden accept=".pdf,.txt,.md,.csv,.json,image/*">
+      <input id="fileIn" type="file" multiple hidden>
     </div>
   </aside>
 </div>
