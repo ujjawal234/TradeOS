@@ -218,6 +218,7 @@ details.fold > summary::before { content: "▸"; transition: transform .15s; } d
 .seg button { border: 0; background: transparent; padding: 5px 11px; font-size: var(--t-xs); cursor: pointer; color: var(--muted); font-weight: 600; }
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed="true"] { background: var(--sunken); color: var(--ink); }
+.seg-scroll { max-width: 100%; overflow-x: auto; scrollbar-width: none; } .seg-scroll button { flex: none; }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; margin-bottom: 18px; scrollbar-width: none; }
 .tabs button { border: 0; background: none; padding: 10px 4px; margin-right: 14px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; font-weight: 600; font-size: var(--t-sm); display: inline-flex; gap: 6px; align-items: center; }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }

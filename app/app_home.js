@@ -127,8 +127,9 @@
   }
 
   // ---------------------------------------------------------------- SYMBOL
-  S.symRange = "1Y"; S.symSma = true;
-  const RANGES = { "1M": 22, "3M": 66, "6M": 130, "1Y": 252, "3Y": 756, "5Y": 1260, "Max": 1e9 };
+  S.symRange = "1Y"; S.symSma = true; S.symDay = 0;
+  const RANGES = { "1D": "1D", "1W": "1W", "1M": 22, "3M": 66, "6M": 130, "1Y": 252, "3Y": 756, "5Y": 1260, "Max": 1e9 };
+  const INTRA_RANGES = new Set(["1D", "1W"]);
   async function renderSymbol(sym) {
     sym = E.symKey(sym); S.symView = sym; const box = $("view-symbol"), m = S.man.symbols[sym];
     if (!m) { box.innerHTML = `<div class="card empty"><h2>No data for ${esc(sym)}</h2><p>It isn't in TradeOS yet. The CIO can request it: any NSE stock, index, ETF or global ticker.</p><button class="btn cio" type="button" data-ask="Add ${esc(sym)} to TradeOS's data (request_data), and tell me when it will be available." data-send="1">Ask the CIO to add it</button></div>`; return; }
@@ -136,6 +137,8 @@
     if (!["basket", "series"].includes(m.kind)) await ensureFull([sym]).catch(() => null);
     if (S.symView !== sym) return;
     const f = S.full[sym] || S.light[sym]; f.sym = sym;
+    const hasIntra = !!S.man.intraday?.symbols?.[sym] && (S.man.intraday.sessions || []).length > 0;
+    if (!hasIntra && INTRA_RANGES.has(S.symRange)) S.symRange = "1Y";
     const L = f.c.length, c = f.c[L - 1], prev = f.c[L - 2], ch = (c / prev - 1) * 100;
     const yr = Array.from(f.c.slice(Math.max(0, L - 252))), hi = Math.max(...yr), lo = Math.min(...yr);
     const ev = (x) => { try { const v = E.evaluate(E.parse(x), f, { frames: S.light }); return typeof v === "number" ? v : v[v.length - 1]; } catch (e) { return null; } };
@@ -154,7 +157,7 @@
         <span class="grow"></span>
         <div class="row"><button class="btn ghost" type="button" id="symWatch">${watched ? "Watching" : "Watch"}</button><button class="btn ghost" type="button" id="symAlert">Set alert</button><button class="btn cio" type="button" data-ask="${esc(isStock ? `Give me your full view on ${sym} (${m.name}): business, results trend, valuation vs history and peers, technicals, options positioning, catalysts and risks, and exactly how you'd trade it now — entry, size, stop, or an option structure — with a backtest of the idea.` : `Give me your view on ${m.name || sym}: trend, what's driving it, how it connects to our book and sectors, and how you'd trade it.`)}"><svg><use href="#i-cio"/></svg>Ask the CIO</button></div></div>
       <div class="split" style="margin-bottom:18px">
-        <div class="card"><div class="chart-head"><div class="seg" role="group" aria-label="Range" id="symRange">${Object.keys(RANGES).map((k) => `<button type="button" data-r="${k}" aria-pressed="${S.symRange === k}">${k}</button>`).join("")}</div><span class="grow"></span><label class="xs muted row" style="gap:6px"><input type="checkbox" id="symSma" ${S.symSma ? "checked" : ""}> 50 &amp; 200-day averages</label></div><div class="chart" id="symChart"></div></div>
+        <div class="card"><div class="chart-head"><div class="seg seg-scroll" role="group" aria-label="Range" id="symRange">${Object.keys(RANGES).filter((k) => hasIntra || !INTRA_RANGES.has(k)).map((k) => `<button type="button" data-r="${k}" aria-pressed="${S.symRange === k}" title="${k === "1D" ? "One session, 1-minute bars" : k === "1W" ? "Last 5 sessions, 5-minute bars" : "Daily bars"}">${k}</button>`).join("")}</div><span class="grow"></span><span id="symDayNav" class="row" style="gap:6px"></span><label class="xs muted row" style="gap:6px" id="symSmaWrap"><input type="checkbox" id="symSma" ${S.symSma ? "checked" : ""}> 50 &amp; 200-day averages</label></div><div class="chart" id="symChart"></div></div>
         <div class="card"><h2 style="margin-bottom:10px">Key figures</h2><dl class="kv">${stats.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl></div>
       </div>
       ${inBook.length || ords.length || myAlerts.length ? `<div class="card" style="margin-bottom:18px"><h2 style="margin-bottom:10px">In the fund</h2>${inBook.length ? `<p class="small">Held: ${inBook.map((p) => `<b>${p.qty.toLocaleString("en-IN")}</b> by ${esc(agentName(p.agent))} (${esc(deskName(p.desk))}) at ${px(p.avg)}, <span class="${cls(p.pnl)}">${inr(p.pnl)}</span>`).join("; ")}</p>` : ""}
@@ -162,9 +165,15 @@
         ${myAlerts.length ? `<p class="small" style="margin-top:6px">Alerts: ${myAlerts.map((a) => esc(alertSummary(a))).join("; ")}</p>` : ""}</div>` : ""}
       <div id="symMore" class="stack">${hasFund ? '<p class="muted small">Loading results, valuation, peers and news…</p>' : ""}</div>`;
     wireGo(box);
-    const draw = () => candleChart($("symChart"), f, RANGES[S.symRange], S.symSma);
+    const draw = () => {
+      const intra = INTRA_RANGES.has(S.symRange);
+      $("symSmaWrap").hidden = intra; if (!intra) $("symDayNav").innerHTML = "";
+      if (intra) return drawIntra(sym, f);
+      candleChart($("symChart"), f, RANGES[S.symRange], S.symSma);
+    };
     draw();
-    box.querySelector("#symRange").addEventListener("click", (e) => { const t = e.target.closest("[data-r]"); if (!t) return; S.symRange = t.dataset.r; box.querySelectorAll("#symRange button").forEach((x) => x.setAttribute("aria-pressed", String(x === t))); draw(); });
+    box.querySelector("#symRange").addEventListener("click", (e) => { const t = e.target.closest("[data-r]"); if (!t) return; S.symRange = t.dataset.r; S.symDay = 0; box.querySelectorAll("#symRange button").forEach((x) => x.setAttribute("aria-pressed", String(x === t))); draw(); });
+    box.querySelector("#symDayNav").addEventListener("click", (e) => { const t = e.target.closest("[data-step]"); if (!t || t.disabled) return; S.symDay = Math.max(0, S.symDay + Number(t.dataset.step)); draw(); });
     box.querySelector("#symSma").addEventListener("change", (e) => { S.symSma = e.target.checked; draw(); });
     box.querySelector("#symWatch").addEventListener("click", () => saveWatch(watched ? watchList().filter((s) => s !== sym) : [...watchList(), sym]));
     box.querySelector("#symAlert").addEventListener("click", () => { alertForm = { kind: "price", sym, expr: `close > ${Math.round(hi)}`, name: `${sym} above ${px(hi)}` }; go("alerts"); });
@@ -229,6 +238,110 @@
       const X = fx(i); xh.setAttribute("x1", X); xh.setAttribute("x2", X); xh.setAttribute("visibility", "visible");
       const chg = i > 0 ? (f.c[i] / f.c[i - 1] - 1) * 100 : null;
       tip.innerHTML = `<b>${fmtDate(E.isoOf(f.d[i]))}</b>${ohlc || f.o ? `<div>O ${px(f.o?.[i])} · H ${px(f.h?.[i])} · L ${px(f.l?.[i])}</div>` : ""}<div>Close <b>${px(f.c[i])}</b> <span class="${cls(chg)}">${pct(chg, 2)}</span></div>${f.v?.[i] ? `<div class="muted">Volume ${(f.v[i] / 1e5).toFixed(1)} L</div>` : ""}`;
+      tip.hidden = false; const pxl = X / W * r.width, tw = tip.offsetWidth; tip.style.left = Math.min(Math.max(0, pxl + 12), r.width - tw) + "px"; tip.style.top = "6px";
+    });
+  }
+
+  // ---- intraday chart on the symbol page (1D: one session of 1-minute bars; 1W: last 5 sessions as 5-minute bars).
+  // Bars come from data/intra/<YYYYMMDD>_<gg>.json (one file per session and symbol group, rolling 20 sessions); only the
+  // sessions on screen are fetched, and only this symbol's day is decoded and kept.
+  S.symIntra = new Map(); // "SYM|YYYY-MM-DD" -> decoded day {d, b0, o, h, l, c, v} (1-minute) or null
+  async function intraDays(sym, dates) {
+    const I = S.man.intraday, g = I?.symbols?.[sym]?.g; if (g == null) return [];
+    const loaded = E.intradayData(sym)?.[1]?.days || []; // already in memory for an intraday backtest
+    await Promise.all(dates.map(async (iso) => {
+      const key = sym + "|" + iso; if (S.symIntra.has(key)) return;
+      const dn = E.dayOf(iso), mem = loaded.find((x) => x.d === dn);
+      if (mem) { S.symIntra.set(key, mem); return; }
+      let js = null; try { js = await fetchJsonGz(`data/intra/${iso.replace(/-/g, "")}_${String(g).padStart(2, "0")}.json`); } catch (e) { js = null; }
+      const arr = js?.[sym]; S.symIntra.set(key, arr ? E.decodeIntra({ step: 1, days: [arr] }).days[0] : null);
+    }));
+    return dates.map((iso) => S.symIntra.get(sym + "|" + iso)).filter(Boolean);
+  }
+  function aggBars(day, m) { // 1-minute day -> m-minute bars on the 09:15 grid; volume NaN only when every minute's is unknown
+    const out = []; const n = day.c.length;
+    for (let i = 0; i < n; i++) {
+      const min = day.b0 + i, k = Math.floor(min / m); let b = out[out.length - 1];
+      if (!b || b.k !== k) { b = { d: day.d, k, min: k * m, o: day.o[i], h: day.h[i], l: day.l[i], c: day.c[i], v: NaN }; out.push(b); }
+      else { b.h = Math.max(b.h, day.h[i]); b.l = Math.min(b.l, day.l[i]); b.c = day.c[i]; }
+      const v = day.v[i]; if (v === v) b.v = (b.v === b.v ? b.v : 0) + v;
+    }
+    return out;
+  }
+  const clock = (min) => { const t = 555 + min; return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
+  async function drawIntra(sym, f) {
+    const el = $("symChart"), nav = $("symDayNav"), I = S.man.intraday, sess = (I?.sessions || []).slice().sort();
+    if (!el) return;
+    const is1D = S.symRange === "1D", want = S.symRange;
+    if (!sess.length) { el.innerHTML = '<p class="small muted">No minute bars in this build.</p>'; return; }
+    S.symDay = Math.min(S.symDay, sess.length - 1);
+    const dates = is1D ? [sess[sess.length - 1 - S.symDay]] : sess.slice(-5);
+    if (is1D) {
+      const cur = dates[0], lab = new Date(cur + "T00:00:00Z").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+      nav.innerHTML = `<button class="btn ghost small" type="button" data-step="1" aria-label="Previous session" ${S.symDay >= sess.length - 1 ? "disabled" : ""}>‹</button><span class="xs" style="min-width:92px;text-align:center;font-weight:600">${esc(lab)}</span><button class="btn ghost small" type="button" data-step="-1" aria-label="Next session" ${S.symDay <= 0 ? "disabled" : ""}>›</button>`;
+    } else nav.innerHTML = `<span class="xs muted">${esc(fmtDate(dates[0]))} – ${esc(fmtDate(dates[dates.length - 1]))}</span>`;
+    el.innerHTML = '<p class="small muted" style="padding:40px 0;text-align:center">Loading minute bars…</p>';
+    const days = await intraDays(sym, dates);
+    if (S.symView !== sym || S.symRange !== want || !$("symChart")) return;
+    if (!days.length) { el.innerHTML = `<p class="small muted" style="padding:40px 0;text-align:center">No minute bars for ${esc(sym)} ${is1D ? "on this session" : "in the last 5 sessions"} (it may not have traded).</p>`; return; }
+    const step = is1D ? 1 : 5, bars = days.flatMap((d) => aggBars(d, step));
+    // previous close for the day's change: the bar data's previous session, else the daily series
+    let prevClose = NaN;
+    if (is1D) { const di = sess.indexOf(dates[0]); const pd = di > 0 ? S.symIntra.get(sym + "|" + sess[di - 1]) : null;
+      if (pd) prevClose = pd.c[pd.c.length - 1]; else { const k = f.d.findIndex((x) => x >= days[0].d); const j = k < 0 ? f.d.length - 1 : k - 1; if (j >= 0) prevClose = f.c[j]; } }
+    intraChart(el, bars, { is1D, step, prevClose, sym });
+  }
+  function intraChart(el, bars, o) {
+    const N = bars.length, noVol = !bars.some((b) => b.v > 0), W = Math.max(320, el.clientWidth || 640), H = 340, padL = 8, padR = 62, padT = 10, volH = noVol ? 0 : 54, padB = 22;
+    const ih = H - padT - padB - volH - (volH ? 8 : 0), iw = W - padL - padR, step = iw / N, fx = (i) => padL + (i + 0.5) * step;
+    // VWAP and the opening range (first 15 minutes) for 1D; indices have no volume, so no VWAP
+    const OR_MIN = 15; let vw = null, orH = NaN, orL = NaN;
+    if (o.is1D) {
+      if (!noVol) { vw = new Float64Array(N); let pv = 0, vv = 0; for (let i = 0; i < N; i++) { const b = bars[i], t = (b.h + b.l + b.c) / 3, v = b.v > 0 ? b.v : 0; pv += t * v; vv += v; vw[i] = vv > 0 ? pv / vv : t; } }
+      for (const b of bars) if (b.min < OR_MIN) { orH = orH === orH ? Math.max(orH, b.h) : b.h; orL = orL === orL ? Math.min(orL, b.l) : b.l; }
+      if (bars[bars.length - 1].min < OR_MIN) orH = orL = NaN; // the range isn't complete yet
+    }
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < N; i++) { lo = Math.min(lo, bars[i].l); hi = Math.max(hi, bars[i].h); if (vw) { lo = Math.min(lo, vw[i]); hi = Math.max(hi, vw[i]); } }
+    if (orH === orH) { lo = Math.min(lo, orL); hi = Math.max(hi, orH); }
+    const pad = (hi - lo) * 0.06 || 1; lo -= pad; hi += pad;
+    const fy = (v) => padT + ih - (v - lo) / (hi - lo) * ih, yt = niceTicks(lo, hi, 5), fmtY = (v) => v >= 1e4 ? Math.round(v).toLocaleString("en-IN") : +v.toFixed(2);
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.is1D ? "One-session 1-minute" : "Five-session 5-minute"} price chart"><g class="grid">${yt.map((v) => `<line x1="${padL}" x2="${W - padR}" y1="${fy(v).toFixed(1)}" y2="${fy(v).toFixed(1)}"/>`).join("")}</g><g class="axis">${yt.map((v) => `<text x="${W - padR + 6}" y="${(fy(v) + 4).toFixed(1)}">${fmtY(v)}</text>`).join("")}`;
+    // x labels: hours on 1D, session days on 1W (with a separator line at each new session)
+    const xl = [];
+    if (o.is1D) { for (let i = 0; i < N; i++) if ((555 + bars[i].min) % 60 === 0) xl.push([i, clock(bars[i].min)]); }
+    else for (let i = 0; i < N; i++) if (i === 0 || bars[i].d !== bars[i - 1].d) xl.push([i, new Date(bars[i].d * 864e5).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", timeZone: "UTC" })]);
+    const every = Math.max(1, Math.ceil(xl.length / Math.max(2, Math.floor(iw / 64))));
+    svg += xl.filter((_, k) => k % every === 0).map(([i, t]) => `<text x="${(o.is1D ? fx(i) : padL + i * step + 4).toFixed(1)}" y="${H - 6}" text-anchor="${o.is1D ? "middle" : "start"}">${esc(t)}</text>`).join("") + "</g>";
+    if (!o.is1D) svg += xl.slice(1).map(([i]) => `<line x1="${(padL + i * step).toFixed(1)}" x2="${(padL + i * step).toFixed(1)}" y1="${padT}" y2="${padT + ih}" stroke="var(--line-strong)" stroke-dasharray="2 3"/>`).join("");
+    if (o.is1D && o.prevClose === o.prevClose) { const y = fy(o.prevClose); if (y > padT && y < padT + ih) svg += `<line x1="${padL}" x2="${W - padR}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--muted)" stroke-dasharray="1 4" opacity="0.8"/>`; }
+    if (orH === orH) { const x0 = fx(bars.findIndex((b) => b.min >= OR_MIN) < 0 ? 0 : bars.findIndex((b) => b.min >= OR_MIN)) - step / 2;
+      for (const v of [orH, orL]) svg += `<line x1="${x0.toFixed(1)}" x2="${W - padR}" y1="${fy(v).toFixed(1)}" y2="${fy(v).toFixed(1)}" stroke="var(--series-c)" stroke-width="1.2" stroke-dasharray="5 4"/>`;
+      svg += `<rect x="${padL}" y="${fy(orH).toFixed(1)}" width="${Math.max(0, x0 - padL).toFixed(1)}" height="${Math.max(1, fy(orL) - fy(orH)).toFixed(1)}" fill="var(--series-c)" opacity="0.08"/>`; }
+    const bw = Math.max(1, Math.min(9, step * 0.62));
+    if (step >= 2.2) for (let i = 0; i < N; i++) { const b = bars[i], up = b.c >= b.o, col = up ? "var(--up)" : "var(--down)", x = fx(i);
+      svg += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${fy(b.h).toFixed(1)}" y2="${fy(b.l).toFixed(1)}" stroke="${col}" stroke-width="1"/><rect x="${(x - bw / 2).toFixed(1)}" y="${fy(Math.max(b.o, b.c)).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, Math.abs(fy(b.o) - fy(b.c))).toFixed(1)}" fill="${up ? "var(--surface)" : col}" stroke="${col}" stroke-width="1"/>`; }
+    else { // too many bars for candles at this width: a close line with the high-low band
+      let d = "", band = "", band2 = ""; for (let i = 0; i < N; i++) { d += (i ? "L" : "M") + fx(i).toFixed(1) + " " + fy(bars[i].c).toFixed(1); band += (i ? "L" : "M") + fx(i).toFixed(1) + " " + fy(bars[i].h).toFixed(1); }
+      for (let i = N - 1; i >= 0; i--) band2 += "L" + fx(i).toFixed(1) + " " + fy(bars[i].l).toFixed(1);
+      svg += `<path d="${band}${band2}Z" fill="var(--accent-soft)" opacity="0.7"/><path d="${d}" fill="none" stroke="var(--series-a)" stroke-width="1.4"/>`; }
+    if (vw) { let d = ""; for (let i = 0; i < N; i++) d += (i ? "L" : "M") + fx(i).toFixed(1) + " " + fy(vw[i]).toFixed(1); svg += `<path d="${d}" fill="none" stroke="var(--series-b)" stroke-width="1.5"/>`; }
+    if (volH) { let vmax = 0; for (const b of bars) if (b.v > vmax) vmax = b.v; const y0 = padT + ih + 8 + volH, vb = Math.max(1, step * 0.7);
+      for (let i = 0; i < N; i++) { const b = bars[i]; if (!(b.v > 0)) continue; const hgt = b.v / vmax * volH; svg += `<rect x="${(fx(i) - vb / 2).toFixed(1)}" y="${(y0 - hgt).toFixed(1)}" width="${vb.toFixed(1)}" height="${hgt.toFixed(1)}" fill="${b.c >= b.o ? "var(--up)" : "var(--down)"}" opacity="0.35"/>`; } }
+    const lc = bars[N - 1].c; svg += `<line x1="${padL}" x2="${W - padR}" y1="${fy(lc).toFixed(1)}" y2="${fy(lc).toFixed(1)}" stroke="var(--ink)" stroke-dasharray="2 3" opacity="0.5"/><rect x="${W - padR + 2}" y="${(fy(lc) - 9).toFixed(1)}" width="${padR - 4}" height="18" rx="4" fill="var(--ink)"/><text x="${W - padR + 6}" y="${(fy(lc) + 4).toFixed(1)}" fill="var(--ground)" style="font-size:11px;font-weight:600">${fmtY(lc)}</text>`;
+    svg += `<line class="xh" x1="0" x2="0" y1="${padT}" y2="${H - padB}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden"/><rect x="${padL}" y="${padT}" width="${iw}" height="${H - padT - padB}" fill="transparent" style="cursor:crosshair"/></svg><div class="tip" hidden></div>`;
+    const dayChgTxt = o.is1D && o.prevClose === o.prevClose ? `<span>Close ${px(lc)} <b class="${cls(lc / o.prevClose - 1)}">${pct((lc / o.prevClose - 1) * 100, 2)}</b> vs prev close ${px(o.prevClose)}</span>` : "";
+    const legend = [o.is1D ? "1-minute bars, 09:15–15:30 IST" : "5-minute bars, last 5 sessions", vw ? '<span><i style="background:var(--series-b)"></i>VWAP</span>' : o.is1D ? '<span>no VWAP (no volume for indices)</span>' : "",
+      orH === orH ? `<span><i style="background:var(--series-c)"></i>opening range (first ${OR_MIN} min) ${px(orL)} – ${px(orH)}</span>` : "", volH ? '<span><i style="background:var(--muted)"></i>volume (none reported for the 09:15 bar)</span>' : "", dayChgTxt].filter(Boolean);
+    el.innerHTML = svg + `<div class="legend" style="margin-top:6px">${legend.map((x) => x.startsWith("<span") ? x : `<span>${x}</span>`).join("")}</div>`;
+    el.__chart = null;
+    const sv = el.querySelector("svg"), tip = el.querySelector(".tip"), xh = el.querySelector(".xh");
+    sv.addEventListener("pointerleave", () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
+    sv.addEventListener("pointermove", (e) => {
+      const r = sv.getBoundingClientRect(), sx = (e.clientX - r.left) * W / r.width, i = Math.max(0, Math.min(N - 1, Math.floor((sx - padL) / step))), b = bars[i];
+      const X = fx(i); xh.setAttribute("x1", X); xh.setAttribute("x2", X); xh.setAttribute("visibility", "visible");
+      const dl = o.is1D ? "" : new Date(b.d * 864e5).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }) + " ";
+      tip.innerHTML = `<b>${esc(dl)}${clock(b.min)}</b><div>O ${px(b.o)} · H ${px(b.h)} · L ${px(b.l)}</div><div>Close <b>${px(b.c)}</b></div>${vw ? `<div>VWAP ${px(vw[i])}</div>` : ""}${b.v > 0 ? `<div class="muted">Volume ${b.v.toLocaleString("en-IN")}</div>` : ""}`;
       tip.hidden = false; const pxl = X / W * r.width, tw = tip.offsetWidth; tip.style.left = Math.min(Math.max(0, pxl + 12), r.width - tw) + "px"; tip.style.top = "6px";
     });
   }
