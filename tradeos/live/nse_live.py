@@ -120,15 +120,16 @@ class NseLive:
         raise NseLiveError(f"{tool} failed after {self.retries} tries: {last}")
 
     # ---------------------------------------------------------------- data
-    def quotes(self, symbols: list[str], workers: int = 7, budget: float = 40) -> tuple[dict[str, Quote], str | None]:
+    def quotes(self, symbols: list[str] | None, workers: int = 7, budget: float = 40) -> tuple[dict[str, Quote], str | None]:
         """Latest quotes for these symbols (EQ series only) and the server's crawl time (UTC ISO).
         One call per distinct first letter, `workers` at a time (each worker has its own MCP session);
         a failed letter is skipped, so the caller sees missing symbols. Letters not started within `budget` seconds
         are skipped too, so one stalled minute can't delay the next poll. Per-letter seconds go to self.timings."""
-        want = set(symbols)
+        everything = symbols is None  # None = every EQ stock on NSE (one call per first letter A-Z, 0-9)
+        want = set() if everything else set(symbols)
         out: dict[str, Quote] = {}
         updated = None
-        letters = sorted({s[0] for s in want})
+        letters = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") if everything else sorted({s[0] for s in want})
         if not hasattr(self, "_pool"):
             self._pool = [self] + [NseLive(self.url, self.timeout, self.retries) for _ in range(max(0, workers - 1))]
         self.timings: dict[str, float] = {}
@@ -157,7 +158,7 @@ class NseLive:
             updated = max(updated or "", d.get("updatedAt") or "") or None
             for s in d.get("stocks", []):
                 sym = s.get("symbol")
-                if sym in want and s.get("series") == "EQ" and s.get("lastTradedPrice"):
+                if sym and (everything or sym in want) and s.get("series") == "EQ" and s.get("lastTradedPrice"):
                     out[sym] = Quote(sym, float(s["lastTradedPrice"]), float(s.get("openPrice") or 0),
                                      float(s.get("highPrice") or 0), float(s.get("lowPrice") or 0),
                                      float(s.get("preClosePrice") or 0), float(s.get("volume") or 0),

@@ -1,6 +1,9 @@
 name: Intraday paper trading (NSE live)
 
 # Polls NSE's live data once a minute from 09:14 to 15:31 IST and paper-trades the agents in intraday/agents.json.
+# Every 5 minutes it also snapshots every NSE stock (NSE live data) and the main indices (Yahoo) into the `live-quotes`
+# branch (live/quotes.json, replaced each time) for the app and the CIO; the day's snapshots go to the `live-quotes`
+# release after the close (last 20 sessions kept).
 # A job may run at most 6 hours, so the run hands off to a fresh one before then and that one resumes from the
 # saved state. Two schedules: if GitHub drops or delays the first, the second starts the day (a run that finds the
 # day already finished, or a non-trading day, exits at once).
@@ -34,7 +37,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install
-        run: pip install pandas numpy requests
+        run: pip install pandas numpy requests yfinance
       - name: Paper-trade the session
         id: run
         env:
@@ -50,6 +53,16 @@ jobs:
           if git diff --cached --quiet; then echo "Nothing to save"; exit 0; fi
           git commit -m "intraday: $(TZ=Asia/Kolkata date +%Y-%m-%d) $([ '${{ steps.run.outputs.handoff }}' = 'true' ] && echo 'midday handoff' || echo 'results')"
           for i in 1 2 3 4 5; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 5; done
+      - name: Keep the day's live price snapshots (last 20 sessions)
+        if: always() && !inputs.probe && steps.run.outputs.handoff != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          D=$(TZ=Asia/Kolkata date +%Y-%m-%d); f="live/history_$D.csv.gz"
+          [ -f "$f" ] || { echo "no live snapshots today"; exit 0; }
+          gh release view live-quotes >/dev/null 2>&1 || gh release create live-quotes --title "Live prices (5-minute snapshots)" --notes "Every NSE stock (NSE live data) and the main indices (Yahoo), every 5 minutes of each session; kept by .github/workflows/intraday.yml. history_<date>.csv.gz: asof,sym,ltp,open,high,low,prev_close,value_cr,ts"
+          gh release upload live-quotes "$f" --clobber
+          gh release view live-quotes --json assets -q '.assets[].name' | grep '^history_' | sort | head -n -20 | xargs -r -I{} gh release delete-asset live-quotes {} -y
       - name: Continue in a new run (6-hour job limit)
         if: steps.run.outputs.handoff == 'true'
         env:

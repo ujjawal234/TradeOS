@@ -5,7 +5,7 @@
     const open = weekday && mins >= 555 && mins < 930, pre = weekday && mins < 555;
     const date = t.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
     const nx = nextSessionIso(), nxs = new Date(nx + "T00:00:00Z").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-    return `${date} · ${open ? "market open" : pre ? "opens at 09:15" : "market closed"} · ${open ? `data to the close of ${fmtDate(S.lastDay)}` : `next session ${nxs}`}`;
+    return `${date} · ${open ? "market open" : pre ? "opens at 09:15" : "market closed"} · ${open ? `daily data to the close of ${fmtDate(S.lastDay)}${S.live ? ` · live prices ${liveTime(S.live)} IST` : ""}` : `next session ${nxs}`}`;
   }
   const heatBg = (x, span = 3) => { if (x == null || !isFinite(x)) return "var(--sunken)"; const k = Math.min(1, Math.abs(x) / span) * 55 + 6; return `color-mix(in srgb, var(${x >= 0 ? "--up" : "--down"}) ${k.toFixed(0)}%, var(--surface))`; };
   function movers(list, n = 6) {
@@ -152,7 +152,7 @@
       sym !== "NIFTY" ? ["Beta to Nifty (1y)", n2(ev('beta(ret(close,1), ref("NIFTY", ret(close,1)), 252)'))] : null, f.pe ? ["P/E · P/B · yield", `${n2(f.pe[L - 1])} · ${n2(f.pb?.[L - 1])} · ${n2(f.dy?.[L - 1])}%`] : null].filter(Boolean);
     box.innerHTML = `<div class="crumbs"><button type="button" data-go="markets">Markets</button><span aria-hidden="true">/</span><span>${esc(m.industry && m.industry !== "Index" ? m.industry : m.group || m.kind)}</span></div>
       <div class="symhead"><div><h1>${esc(m.name || sym)}</h1><p class="small muted" style="margin-top:4px">${esc(sym)}${m.ex === "BSE" ? ` · BSE${m.bse ? " " + esc(m.bse) : ""}` : m.kind === "stock" && m.series && m.series !== "EQ" ? ` · NSE ${esc(m.series)}` : ""}${m.fno ? ` · F&amp;O lot ${m.lot}` : ""}${m.n50 ? " · Nifty 50" : m.n200 ? " · Nifty 200" : m.n500 ? " · Nifty 500" : ""}</p></div>
-        <div><div class="px">${px(c)}</div><div class="chg ${cls(ch)}">${pct(ch, 2)} <span class="small muted" style="font-weight:500">${fmtDate(E.isoOf(f.d[L - 1]))}</span></div></div>
+        <div><div class="px">${px(c)}</div><div class="chg ${cls(ch)}">${pct(ch, 2)} <span class="small muted" style="font-weight:500">${fmtDate(E.isoOf(f.d[L - 1]))}</span></div><div class="xs" id="symLive" style="margin-top:4px"></div></div>
         <div class="range52"><span>${S.man.keep_days ? "Range, last 6 months" : "52-week range"}</span><div class="bar"><i style="left:${((c - lo) / ((hi - lo) || 1) * 100).toFixed(1)}%"></i></div><div class="row" style="justify-content:space-between"><span>${px(lo)}</span><span>${px(hi)}</span></div></div>
         <span class="grow"></span>
         <div class="row"><button class="btn ghost" type="button" id="symWatch">${watched ? "Watching" : "Watch"}</button><button class="btn ghost" type="button" id="symAlert">Set alert</button><button class="btn cio" type="button" data-ask="${esc(isStock ? `Give me your full view on ${sym} (${m.name}): business, results trend, valuation vs history and peers, technicals, options positioning, catalysts and risks, and exactly how you'd trade it now — entry, size, stop, or an option structure — with a backtest of the idea.` : `Give me your view on ${m.name || sym}: trend, what's driving it, how it connects to our book and sectors, and how you'd trade it.`)}"><svg><use href="#i-cio"/></svg>Ask the CIO</button></div></div>
@@ -165,6 +165,7 @@
         ${myAlerts.length ? `<p class="small" style="margin-top:6px">Alerts: ${myAlerts.map((a) => esc(alertSummary(a))).join("; ")}</p>` : ""}</div>` : ""}
       <div id="symMore" class="stack">${hasFund ? '<p class="muted small">Loading results, valuation, peers and news…</p>' : ""}</div>`;
     wireGo(box);
+    showSymLive(sym);
     const draw = () => {
       const intra = INTRA_RANGES.has(S.symRange);
       $("symSmaWrap").hidden = intra; if (!intra) $("symDayNav").innerHTML = "";
@@ -344,4 +345,58 @@
       tip.innerHTML = `<b>${esc(dl)}${clock(b.min)}</b><div>O ${px(b.o)} · H ${px(b.h)} · L ${px(b.l)}</div><div>Close <b>${px(b.c)}</b></div>${vw ? `<div>VWAP ${px(vw[i])}</div>` : ""}${b.v > 0 ? `<div class="muted">Volume ${b.v.toLocaleString("en-IN")}</div>` : ""}`;
       tip.hidden = false; const pxl = X / W * r.width, tw = tip.offsetWidth; tip.style.left = Math.min(Math.max(0, pxl + 12), r.width - tw) + "px"; tip.style.top = "6px";
     });
+  }
+
+  // ---- LIVE PRICES during the session. The intraday runner (GitHub Actions) snapshots every NSE stock (NSE live data,
+  // 1–3 min behind) and the main indices (Yahoo) every 5 minutes into live/quotes.json on the `live-quotes` branch.
+  // The page reads it two ways and keeps the newer: the team's GitHub connector (fresh to ~5 min, asks once for consent)
+  // and the database doc live/quotes (copied there during the session by the "TradeOS live prices" scheduled task).
+  const LIVE_SRC = { server: "github", tool: "get_file_contents", input: { owner: "ujjawal234", repo: "TradeOS", path: "quotes.json", ref: "refs/heads/live-quotes" } };
+  S.live = null; let liveAt = 0, livePr = null;
+  const istToday = () => istNow().toISOString().slice(0, 10);
+  function liveParse(x) {
+    if (!x) return null;
+    if (typeof x === "string") { const i = x.indexOf('{"asof"'); if (i < 0) return null; try { return liveParse(JSON.parse(x.slice(i, x.lastIndexOf("}") + 1))); } catch (e) { return null; } }
+    if (x.asof && x.quotes && typeof x.quotes === "object") return x;
+    if (Array.isArray(x)) { for (const y of x) { const r = liveParse(y); if (r) return r; } return null; }
+    if (typeof x === "object") { for (const k of ["resource", "text", "content", "contents", "payload", "structuredContent", "data"]) if (x[k] != null) { const r = liveParse(x[k]); if (r) return r; } }
+    return null;
+  }
+  async function liveFromGithub() {
+    if (!S.mcp) return null;
+    try { const r = await S.mcp.callTool(LIVE_SRC.server, LIVE_SRC.tool, LIVE_SRC.input); const doc = liveParse(r?.payload) || liveParse(r); if (doc) doc.via = "GitHub"; return doc; } catch (e) { return null; }
+  }
+  async function liveFromDb() { try { const s = await S.db.doc("live/quotes").get(); if (!s.exists) return null; const d = liveParse(s.data()); if (d) d.via = "database"; return d; } catch (e) { return null; } }
+  // the latest snapshot (cached 2 minutes); null when there is none for today
+  function loadLive(force) {
+    if (!force && livePr && Date.now() - liveAt < 120e3) return livePr;
+    liveAt = Date.now();
+    livePr = (async () => {
+      const db = await liveFromDb(), fresh = db && db.date === istToday() && Date.now() - Date.parse(db.asof) < 7 * 60e3;
+      const gh = fresh ? null : await liveFromGithub();
+      const best = [db, gh].filter(Boolean).sort((a, b) => Date.parse(b.asof) - Date.parse(a.asof))[0] || null;
+      S.live = best && best.date === istToday() ? best : null;
+      return S.live;
+    })().catch(() => (S.live = null));
+    return livePr;
+  }
+  const liveOn = () => { const t = istNow(), wd = t.getUTCDay(), m = t.getUTCHours() * 60 + t.getUTCMinutes(); return wd >= 1 && wd <= 5 && m >= 550 && m <= 1200; }; // 09:10–20:00 IST
+  const liveTime = (L) => L ? new Date(Date.parse(L.asof) + 5.5 * 3600e3).toISOString().slice(11, 16) : null;
+  function liveQuote(sym, L = S.live) {
+    if (!L) return null; const k = E.symKey(sym), r = L.quotes?.[k] || L.indices?.[k]; if (!r) return null;
+    const [ltp, open, high, low, prev, value_cr, ts] = r;
+    return { sym: k, ltp, open, high, low, prev_close: prev, value_cr, ts, chg_pct: prev ? +((ltp / prev - 1) * 100).toFixed(2) : null, from_open_pct: open ? +((ltp / open - 1) * 100).toFixed(2) : null };
+  }
+  function liveStamp(L = S.live) {
+    const last = fmtDate(S.lastDay);
+    if (!L) return `As of the close of ${last} (no live prices for today yet) · last daily bar ${last}`;
+    const age = Math.round((Date.now() - Date.parse(L.asof)) / 60e3);
+    return `As of ${liveTime(L)} IST today (live, NSE, ${age} min ago) · last daily bar ${last}`;
+  }
+  async function showSymLive(sym) {
+    if (!liveOn()) return; const el = $("symLive"); if (!el) return;
+    const L = await loadLive(); if (S.symView !== sym || !$("symLive")) return;
+    const q = liveQuote(sym, L);
+    if (!q) { if (L) $("symLive").innerHTML = `<span class="muted">No live price for ${esc(sym)} in the ${esc(liveTime(L))} IST snapshot.</span>`; return; }
+    $("symLive").innerHTML = `<span class="pill" style="font-weight:600">Live</span> <b>${px(q.ltp)}</b> <span class="${cls(q.chg_pct)}">${pct(q.chg_pct, 2)}</span> <span class="muted">vs prev close · ${q.from_open_pct != null ? `${pct(q.from_open_pct, 2)} from the open · ` : ""}as of ${esc(liveTime(L))} IST${q.ts ? ` (last trade ${esc(q.ts)})` : ""}</span>`;
   }

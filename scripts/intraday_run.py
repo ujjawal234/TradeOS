@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tradeos.live.intraday import COLS, Session, tm  # noqa: E402
 from tradeos.live.nse_live import NseLive, Quote  # noqa: E402
+from tradeos.live.market_feed import MarketFeed  # noqa: E402
 
 IST = ZoneInfo("Asia/Kolkata")
 CONFIG = ROOT / "intraday" / "agents.json"
@@ -109,6 +110,7 @@ def main() -> int:
     ap.add_argument("--out", default="")
     ap.add_argument("--max-runtime-min", type=float, default=0, help="stop early and hand off (0 = no limit)")
     ap.add_argument("--end", default="15:31", help="IST time to stop polling")
+    ap.add_argument("--feed-min", type=float, default=5, help="minutes between full-market price snapshots (0 = off)")
     args = ap.parse_args()
     specs, universe = load_specs(Path(args.config)), load_universe()
 
@@ -153,6 +155,10 @@ def main() -> int:
         return 0
     end_t = day + pd.Timedelta(hours=tm(args.end).hour, minutes=tm(args.end).minute)
     started, resumed = time.monotonic(), state is not None
+    # near-live prices for every NSE stock and the indices, for the app and the CIO (live-quotes branch)
+    feed = MarketFeed(ROOT, args.feed_min, push=bool(os.environ.get("GITHUB_ACTIONS"))) if args.feed_min > 0 else None
+    if feed and resumed:
+        feed.restore(ds)
     while now_ist() < day + pd.Timedelta(hours=9, minutes=14):
         time.sleep(15)
     if not resumed:
@@ -174,6 +180,8 @@ def main() -> int:
         except Exception as e:  # never let one bad poll end the day
             print(f"{now:%H:%M:%S} poll failed: {e}", flush=True)
             quotes = {}
+        if feed and feed.due() and now.time() >= tm("09:15"):
+            feed.start()
         msgs = sess.feed(now, quotes) if quotes else []
         msgs += sess.force_square_off(now)
         if now.time() >= tm("09:35") and sess.store.clock() is None:
@@ -197,6 +205,14 @@ def main() -> int:
                 pass
         time.sleep(wait)
 
+    if feed:
+        if feed.thread:
+            feed.thread.join(timeout=120)
+        if not handoff:  # closing prices
+            try:
+                feed.snapshot()
+            except Exception as e:  # noqa: BLE001
+                print(f"live feed: final snapshot failed: {e}", flush=True)
     if handoff:
         print("Run time limit reached: handing off to a new run.", flush=True)
         gh_output("handoff", "true")
