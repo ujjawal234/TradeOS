@@ -14,6 +14,18 @@
 //              calls are scored on what the stock did over the next 5 sessions against NIFTY.
 //
 // Output: {date, posts, ideas[], picks[], rejected[], authors{}, summary, push_text}; x_log.json is updated in place.
+//
+// Through the day (scheduled hourly 09:30–15:30 IST) the same script runs with:
+//   --prior <day_posts.json>   the stock-naming posts of earlier runs today (db x_posts/<date>); merged with --posts by id,
+//                              so accounts are counted over the whole day. --posts-out writes the merged list back.
+//   --prev <out.json>          today's earlier output (db x_ideas/latest when its date is today): keeps when each name was
+//                              first sent ("added_at") and the list of runs.
+//   --intraday --live <quotes.json> [--live-history <history.csv.gz>] [--now ISO]
+//                              live-session mode: a name joins today's list only when the live prices confirm it — above
+//                              today's open and above the first 5-minute close, not already up more than intraday_chase_pct
+//                              today, and enough value traded so far (min_value_cr pro-rata to the session elapsed). Names
+//                              already on today's list are never re-added; at most max_picks X names a day in total.
+//   Picks are always ADDED to today's list (inbox_log): names sent earlier, by the team or an earlier run, stay.
 import fs from "node:fs";
 import path from "node:path";
 import { loadData } from "./lib_frames.mjs";
@@ -21,13 +33,17 @@ import { loadData } from "./lib_frames.mjs";
 const args = process.argv.slice(2), build = args[0];
 const opt = (k, d = null) => { const i = args.indexOf(k); return i > 0 ? args[i + 1] : d; };
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch (e) { return d; } };
-const posts = readJson(opt("--posts"), []), extract = readJson(opt("--extract"), {}) || {};
+const zlibMod = await import("node:zlib");
+const postsNew = readJson(opt("--posts"), []) || [], prior = readJson(opt("--prior"), []) || [];
+const posts = [...(Array.isArray(prior) ? prior : prior.posts || []), ...postsNew];
+const INTRADAY = args.includes("--intraday"), prevOut0 = readJson(opt("--prev"), null), nowIso = opt("--now") || new Date().toISOString();
+const extract = readJson(opt("--extract"), {}) || {};
 const cfgIn = readJson(opt("--config"), {}) || {}, logFile = opt("--log"), outFile = opt("--out");
 const log = readJson(logFile, { ideas: [] }) || { ideas: [] };
 
 const CFG = {
   accounts: [], list_url: "", keywords: [],
-  min_value_cr: 2, min_price: 20, allow_sme: false, max_picks: 8, min_authors: 2, chase_pct: 25, exclude: [],
+  min_value_cr: 2, min_price: 20, allow_sme: false, max_picks: 8, min_authors: 2, chase_pct: 25, exclude: [], intraday_chase_pct: 8,
   ...cfgIn,
 };
 const trusted = new Set((CFG.accounts || []).map((h) => String(h).replace(/^@/, "").toLowerCase()).filter(Boolean));
@@ -37,7 +53,8 @@ const D = loadData(build), man = D.man, syms = man.symbols;
 const dayNum = (iso) => Math.floor(Date.parse(iso.slice(0, 10) + "T00:00:00Z") / 864e5);
 const isoOf = (n) => new Date(n * 864e5).toISOString().slice(0, 10);
 const istDate = (t) => new Date(Date.parse(t) + 5.5 * 3600e3).toISOString().slice(0, 10);
-const today = opt("--date") || istDate(new Date().toISOString());
+const today = opt("--date") || istDate(nowIso);
+const prevOut = prevOut0 && (prevOut0.data || prevOut0).date === today ? (prevOut0.data || prevOut0) : null;
 const NIFTY = D.light.NIFTY;
 const sessions = Array.from(NIFTY.d);
 
@@ -199,9 +216,83 @@ for (const [sym, ms] of bySym) {
   if (why.length) { idea.why_not = why; rejected.push(idea); } else ideas.push(idea);
 }
 ideas.sort((a, b) => b.score - a.score);
-const picks = ideas.slice(0, CFG.max_picks).map((x) => x.sym);
-for (const x of ideas.slice(CFG.max_picks)) { x.why_not = [`below the top ${CFG.max_picks}`]; rejected.push(x); }
-const ideasOut = ideas.slice(0, CFG.max_picks);
+
+// ---------------------------------------------------------------- today's list so far (team names + earlier X names)
+const agentDoc = readJson(opt("--agent"), null), agentData = agentDoc ? agentDoc.data || agentDoc : null;
+const todayEnt = (agentData?.inbox_log || []).find((x) => x.date === today) || null;
+const onList = new Set(todayEnt?.syms || []);
+const xToday = [...new Set([...(todayEnt?.x || []), ...(prevOut?.x_today || prevOut?.picks || [])])];
+const addedAt = Object.fromEntries((prevOut?.ideas || []).map((i) => [i.sym, i.added_at || ((prevOut.picks || []).includes(i.sym) ? prevOut.generated : null)]).filter((x) => x[1]));
+
+// ---------------------------------------------------------------- live confirmation (intraday mode)
+const LIVE = (() => {
+  if (!INTRADAY) return null;
+  const q = readJson(opt("--live"), null); if (!q || !q.quotes) return { missing: true };
+  const first5 = {}; // sym → close of the first 5-minute bar (first snapshot stamped 09:20–09:35)
+  try {
+    const raw = zlibMod.gunzipSync(fs.readFileSync(opt("--live-history"))).toString("utf8").split("\n");
+    for (const ln of raw.slice(1)) {
+      const c = ln.split(","); if (c.length < 9 || first5[c[1]] != null) continue;
+      if (!String(c[0]).startsWith(q.date)) continue;
+      if (c[8] >= "09:20" && c[8] <= "09:35" && c[2] !== "") first5[c[1]] = +c[2];
+    }
+  } catch (e) { /* no history: the move since the open is used alone */ }
+  const age = (Date.parse(nowIso) - Date.parse(q.asof)) / 60e3;
+  return { q, first5, age, date: q.date };
+})();
+const hm = (t) => { const m = String(t || "").match(/(\d\d):(\d\d)/); return m ? +m[1] * 60 + +m[2] : null; };
+function confirm(sym) {
+  if (!LIVE || LIVE.missing) return { why: ["no live prices to confirm it (the intraday runner's feed is missing)"] };
+  if (LIVE.date !== today) return { why: [`live prices are from ${LIVE.date}, not today`] };
+  if (LIVE.age > 30) return { why: [`live prices are ${Math.round(LIVE.age)} min old`] };
+  const v = LIVE.q.quotes[sym]; if (!v || !v[0]) return { why: ["no live NSE price"] };
+  const [ltp, open, , , prev, value] = v, p5 = LIVE.first5[sym] ?? null;
+  const mins = Math.min(375, Math.max(0, (hm(v[6]) ?? hm(LIVE.q.asof.slice(11))) - 555)), frac = Math.max(0.1, mins / 375);
+  const live = { ltp, open, first5: p5, chg_open: open ? +((ltp / open - 1) * 100).toFixed(2) : null, chg_day: prev ? +((ltp / prev - 1) * 100).toFixed(2) : null, value_cr: value ?? null, at: v[6] || null };
+  const why = [];
+  if (open && ltp < open) why.push(`below today's open (${live.chg_open}% since the open)`);
+  if (p5 != null && ltp < p5) why.push(`below the first 5-minute close ₹${p5}`);
+  if (live.chg_day != null && live.chg_day > CFG.intraday_chase_pct) why.push(`already up ${live.chg_day}% today`);
+  const need = CFG.min_value_cr * frac;
+  if (value != null && value < need) why.push(`only ₹${value} cr traded so far today (needs ₹${need.toFixed(1)} cr by now)`);
+  return { live, why };
+}
+
+let picks, ideasOut;
+if (INTRADAY) {
+  const room = Math.max(0, CFG.max_picks - xToday.length), fresh = [], carried = [];
+  for (const x of ideas) {
+    if (xToday.includes(x.sym)) { carried.push(x); continue; }
+    if (onList.has(x.sym)) { x.why_not = ["already on today's list"]; rejected.push(x); continue; }
+    const c = confirm(x.sym); if (c.live) x.live = c.live;
+    if (c.why.length) { x.why_not = ["not confirmed by the live price: " + c.why.join("; ")]; rejected.push(x); continue; }
+    if (fresh.length >= room) { x.why_not = [`today's X list is full (${CFG.max_picks} names)`]; rejected.push(x); continue; }
+    fresh.push(x);
+  }
+  picks = fresh.map((x) => x.sym);
+  const keep = new Map((prevOut?.ideas || []).map((i) => [i.sym, i]));
+  for (const x of carried) keep.set(x.sym, { ...x, live: keep.get(x.sym)?.live || x.live });
+  for (const x of fresh) keep.set(x.sym, x);
+  ideasOut = [...keep.values()].filter((i) => xToday.includes(i.sym) || picks.includes(i.sym));
+} else {
+  let room = Math.max(0, CFG.max_picks - xToday.length); const top = [];
+  for (const [k, x] of ideas.entries()) {
+    if (xToday.includes(x.sym)) { top.push(x); continue; } // sent earlier today: refreshed, not re-added
+    if (onList.has(x.sym)) { x.why_not = ["already on today's list"]; rejected.push(x); continue; }
+    if (k >= CFG.max_picks) { x.why_not = [`below the top ${CFG.max_picks}`]; rejected.push(x); continue; }
+    if (room <= 0) { x.why_not = [`today's X list is full (${CFG.max_picks} names)`]; rejected.push(x); continue; }
+    room--; top.push(x);
+  }
+  picks = top.map((x) => x.sym);
+  const keep = new Map((prevOut?.ideas || []).filter((i) => xToday.includes(i.sym)).map((i) => [i.sym, i]));
+  for (const x of top) keep.set(x.sym, { ...x, live: keep.get(x.sym)?.live });
+  ideasOut = [...keep.values()];
+}
+for (const x of rejected) if (xToday.includes(x.sym)) x.why_not = [...(x.why_not || []), "(sent earlier today, stays on the list)"];
+const newPicks = picks.filter((s) => !xToday.includes(s) && !onList.has(s));
+for (const i of ideasOut) { i.added_at = addedAt[i.sym] || (picks.includes(i.sym) ? nowIso : null); i.new = newPicks.includes(i.sym); }
+ideasOut.sort((a, b) => String(a.added_at || "").localeCompare(String(b.added_at || "")) || b.score - a.score);
+const xTodayNext = [...new Set([...xToday, ...picks])];
 rejected.sort((a, b) => b.score - a.score);
 
 // ---------------------------------------------------------------- update the learning record (no post text kept)
@@ -218,20 +309,27 @@ log.updated = new Date().toISOString();
 if (logFile) { fs.mkdirSync(path.dirname(logFile), { recursive: true }); fs.writeFileSync(logFile, JSON.stringify(log)); }
 
 const topAuthors = Object.fromEntries(Object.entries(authors).filter(([h, a]) => a.trusted || a.scored >= 3 || a.muted).sort((x, y) => (y[1].skill - x[1].skill) || (y[1].n - x[1].n)).slice(0, 150));
-const summary = { date: today, posts: uniq.size, posts_with_stocks: usedPosts, promo_posts: promoPosts, mentions: mentions.length, stocks: bySym.size, picks: picks.length, rejected: rejected.length, log_added: added, log_size: log.ideas.length, data_last: D.lastDay };
-const out = { date: today, generated: new Date().toISOString(), config: CFG, summary, picks, ideas: ideasOut, rejected: rejected.slice(0, 60), authors: topAuthors,
-  push_text: picks.length ? `X ideas ${today}: ${picks.slice(0, 6).join(", ")}${picks.length > 6 ? ` +${picks.length - 6}` : ""} sent to the X-ideas agent` : "" };
+const summary = { date: today, mode: INTRADAY ? "intraday" : "evening", posts_new: postsNew.length, new_picks: newPicks.length, posts: uniq.size, posts_with_stocks: usedPosts, promo_posts: promoPosts, mentions: mentions.length, stocks: bySym.size, picks: picks.length, rejected: rejected.length, log_added: added, log_size: log.ideas.length, data_last: D.lastDay };
+const hhmm = (iso) => new Date(Date.parse(iso) + 5.5 * 3600e3).toISOString().slice(11, 16);
+const runs = [...(prevOut?.runs || []), { at: nowIso, ist: hhmm(nowIso), mode: summary.mode, posts: postsNew.length, added: newPicks }].slice(-24);
+const pt = (xs) => `${xs.slice(0, 6).join(", ")}${xs.length > 6 ? ` +${xs.length - 6}` : ""}`;
+const out = { date: today, generated: nowIso, mode: summary.mode, config: CFG, summary, picks, new_picks: newPicks, x_today: xTodayNext, runs, ideas: ideasOut, rejected: rejected.slice(0, 60), authors: topAuthors,
+  push_text: newPicks.length ? (INTRADAY ? `X ideas ${hhmm(nowIso)} IST: ${pt(newPicks)} confirmed on the live price and added to today's X-ideas list` : `X ideas ${today}: ${pt(newPicks)} sent to the X-ideas agent`) : "" };
 if (outFile) { fs.mkdirSync(path.dirname(outFile), { recursive: true }); fs.writeFileSync(outFile, JSON.stringify(out, null, 1)); }
-const agentDoc = readJson(opt("--agent"), null);
-if (agentDoc && outFile) { // today's picks join today's list (names the team typed for today stay)
-  const ag = agentDoc.data || agentDoc, logA = (ag.inbox_log || []).map((x) => ({ ...x })), i = logA.findIndex((x) => x.date === today);
+const postsOut = opt("--posts-out");
+if (postsOut) { // the day's stock-naming posts, for the next run's --prior (trimmed text; third-party content kept only for the day)
+  const keepP = [...uniq.values()].filter((p) => mentions.some((m) => m.post === String(p.id))).map((p) => ({ ...p, text: String(p.text || "").slice(0, 280) })).slice(-600);
+  fs.mkdirSync(path.dirname(postsOut), { recursive: true }); fs.writeFileSync(postsOut, JSON.stringify({ date: today, updated: nowIso, posts: keepP }));
+}
+if (agentDoc && outFile) { // today's picks join today's list (names the team typed for today, and earlier runs' names, stay)
+  const ag = agentData, logA = (ag.inbox_log || []).map((x) => ({ ...x })), i = logA.findIndex((x) => x.date === today);
   const prev = i >= 0 ? logA[i].syms || [] : [], next = [...new Set([...prev, ...picks])];
   const patch = picks.length || i >= 0 ? (() => {
-    const ent = { ...(i >= 0 ? logA[i] : {}), date: today, syms: next, x: picks, by: (i >= 0 && logA[i].by) || "x-reader", at: new Date().toISOString() };
+    const ent = { ...(i >= 0 ? logA[i] : {}), date: today, syms: next, x: [...new Set([...((i >= 0 && logA[i].x) || []), ...picks])], by: (i >= 0 && logA[i].by) || "x-reader", at: nowIso };
     if (i >= 0) logA[i] = ent; else logA.push(ent);
     logA.sort((x, y) => x.date.localeCompare(y.date));
-    return { inbox_log: logA.slice(-400), inbox: { date: today, syms: next }, x_last: { date: today, picks, posts: summary.posts } };
-  })() : { x_last: { date: today, picks, posts: summary.posts } };
+    return { inbox_log: logA.slice(-400), inbox: { date: today, syms: next }, x_last: { date: today, at: nowIso, mode: summary.mode, picks: newPicks, posts: summary.posts } };
+  })() : { x_last: { date: today, at: nowIso, mode: summary.mode, picks: newPicks, posts: summary.posts } };
   fs.writeFileSync(path.join(path.dirname(outFile), "agent_patch.json"), JSON.stringify(patch));
 }
 console.log(JSON.stringify(summary));

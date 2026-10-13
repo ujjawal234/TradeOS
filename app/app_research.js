@@ -501,9 +501,10 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, compute 
   }
 
   // ================================================================ RESEARCH VIEW (macro dashboard, company page, news)
-  let researchTab = "macro";
+  let researchTab = "macro", xUnsub = null;
   async function renderResearch() {
     const box = $("researchBody");
+    if (xUnsub) { try { xUnsub(); } catch (e) { /* already closed */ } xUnsub = null; }
     document.querySelectorAll("#researchTabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.rtab === researchTab)));
     box.innerHTML = '<p class="muted">Loading…</p>';
     try {
@@ -594,23 +595,34 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, compute 
   // x/config     {accounts[], list_url, keywords[], min_value_cr, min_price, max_picks, min_authors, allow_sme, chase_pct, exclude[], agent_id}
   // x_ideas/latest, x_ideas/<date>  the X run's output (picks, ideas with their posts, rejected names, each account's record)
   // Post text is third-party content: it is shown escaped and never acted on.
-  const X_DEF = { accounts: [], list_url: "", keywords: ["breakout NSE", "multibagger", "stock to buy"], min_value_cr: 2, min_price: 20, max_picks: 8, min_authors: 2, allow_sme: false, chase_pct: 25, exclude: [] };
+  const X_DEF = { accounts: [], list_url: "", keywords: ["breakout NSE", "multibagger", "stock to buy"], min_value_cr: 2, min_price: 20, max_picks: 8, min_authors: 2, allow_sme: false, chase_pct: 25, intraday_chase_pct: 8, exclude: [] };
   async function xDoc(path) { try { const s = await S.db.doc(path).get(); return s.exists ? s.data() : null; } catch (e) { return null; } }
   async function renderXTab(box) {
     const [cfg0, out] = await Promise.all([xDoc("x/config"), xDoc("x_ideas/latest")]);
+    // new ideas show up as the day's runs write them (hourly in the session): re-draw when x_ideas/latest changes
+    try {
+      const seenGen = out?.generated || "";
+      xUnsub = S.db.doc("x_ideas/latest").onSnapshot((snap) => {
+        const g = snap.exists ? snap.data()?.generated || "" : "";
+        if (g && g !== seenGen && S.view === "research" && researchTab === "x" && !box.contains(document.activeElement)) renderResearch();
+      }, () => { /* not written yet */ });
+    } catch (e) { /* the page still works without live updates */ }
     const cfg = { ...X_DEF, ...(cfg0 || {}) }, ro = S.readOnly, ag = cfg.agent_id && S.agents.get(cfg.agent_id);
     const lines = (a) => esc((a || []).join("\n"));
     const sm = out?.summary || {};
     const postsHtml = (i) => (i.posts || []).map((p) => `<li><span class="small muted">@${esc(p.author)}${p.time ? ` · ${esc(String(p.time).slice(0, 16).replace("T", " "))} UTC` : ""} · ${esc(p.stance)}${p.eng ? ` · ${p.eng} engagement` : ""}</span><br>${esc(p.text)}${p.url && /^https:\/\/(x|twitter)\.com\//.test(p.url) ? ` <a href="${esc(p.url)}" target="_blank" rel="noopener">open post</a>` : ""}</li>`).join("");
     const lvl = (i) => [i.targets?.length ? `target ${i.targets.map(px).join(" / ")}` : "", i.stops?.length ? `stop ${i.stops.map(px).join(" / ")}` : ""].filter(Boolean).join(" · ");
-    const ideaRow = (i) => `<tr><td><a href="#sym-${esc(i.sym)}"><b>${esc(i.sym)}</b></a><br><span class="xs muted">${esc(i.name || "")}</span></td><td class="r">${i.score}</td><td>${i.bull_authors.map((a) => "@" + esc(a)).join(", ")}${i.trusted ? ' <span class="pill auto">trusted</span>' : ""}</td><td class="r">${px(i.px)}</td><td class="r">${i.value_cr != null ? "₹" + i.value_cr + " cr" : "–"}</td><td class="r ${cls(i.ret5)}">${pct(i.ret5)}</td><td class="small">${esc(lvl(i)) || "–"}</td></tr>
+    const istT = (iso) => iso ? new Date(Date.parse(iso) + 5.5 * 3600e3).toISOString().slice(11, 16) : "";
+    const liveTxt = (l) => l ? `${l.chg_open != null ? `${l.chg_open > 0 ? "+" : ""}${l.chg_open}% vs open` : ""}${l.first5 != null ? ` · 1st 5-min ${px(l.first5)}` : ""}${l.at ? ` · at ${esc(l.at)}` : ""}` : "";
+    const ideaRow = (i) => `<tr><td><a href="#sym-${esc(i.sym)}"><b>${esc(i.sym)}</b></a>${i.new ? ' <span class="pill auto">new</span>' : ""}<br><span class="xs muted">${esc(i.name || "")}${i.added_at ? ` · added ${istT(i.added_at)} IST` : ""}${i.live ? ` · ${liveTxt(i.live)}` : ""}</span></td><td class="r">${i.score}</td><td>${i.bull_authors.map((a) => "@" + esc(a)).join(", ")}${i.trusted ? ' <span class="pill auto">trusted</span>' : ""}</td><td class="r">${px(i.px)}</td><td class="r">${i.value_cr != null ? "₹" + i.value_cr + " cr" : "–"}</td><td class="r ${cls(i.ret5)}">${pct(i.ret5)}</td><td class="small">${esc(lvl(i)) || "–"}</td></tr>
       <tr class="sub"><td colspan="7"><details><summary class="small">${(i.posts || []).length} post${(i.posts || []).length === 1 ? "" : "s"}${i.flags?.length ? " · " + esc(i.flags.join(", ")) : ""}</summary><ul class="newslist">${postsHtml(i)}</ul></details></td></tr>`;
     const authors = Object.entries(out?.authors || {});
     box.innerHTML = `<div class="stack">
       <div class="card"><div class="card-head"><h2>Ideas from X</h2>${ag ? `<button class="linkbtn" type="button" data-go="agent-${esc(ag.id)}">Open ${esc(ag.name)}</button>` : ""}</div>
-        <p class="small muted" style="max-width:80ch">Every weekday at 19:15 IST, Claude reads the accounts, List and searches below in the Claude app's browser (signed in to your X), picks out the stocks being called, drops promotion and thin stocks, and sends the best names to ${ag ? `<b>${esc(ag.name)}</b>` : "the X-ideas agent"}. That agent buys only when the price confirms, on a desk where you approve each order. Every call is scored afterwards on what the stock did over the next 5 sessions, so accounts with a good record count for more.</p>
-        ${out ? `<p class="small" style="margin-top:8px">Last run <b>${esc(fmtDate(out.date))}</b>: ${sm.posts ?? 0} posts read, ${sm.posts_with_stocks ?? 0} named a stock, ${sm.promo_posts ?? 0} promotional ignored, ${sm.stocks ?? 0} stocks, <b>${(out.picks || []).length} sent to the agent</b>${out.picks?.length ? ": " + out.picks.map(esc).join(", ") : ""}.</p>` : '<p class="small" style="margin-top:8px">No run yet. The first one comes this evening, as long as the Claude app is open and the browser is signed in to X.</p>'}</div>
-      ${out?.ideas?.length ? `<div class="card"><h2>Sent to the agent</h2><div class="tablewrap"><table><thead><tr><th>Stock</th><th class="r">Score</th><th>Called by</th><th class="r">Price</th><th class="r">Traded a day</th><th class="r">5 days</th><th>Levels in posts</th></tr></thead><tbody>${out.ideas.map(ideaRow).join("")}</tbody></table></div></div>` : ""}
+        <p class="small muted" style="max-width:80ch">Every weekday, about hourly through the session (09:30–15:30 IST) and again at 19:07 IST, Claude reads the accounts, List and searches below in the Claude app's browser (signed in to your X), picks out the stocks being called, drops promotion and thin stocks, and adds the best names to today's list for ${ag ? `<b>${esc(ag.name)}</b>` : "the X-ideas agent"} (names already on the list stay). During the session a name goes in only when the live price confirms it: above the open and the first 5-minute close, not already up more than ${esc(cfg.intraday_chase_pct ?? 8)}% on the day, and enough traded so far. That agent buys only when the price confirms, on a desk where you approve each order. Every call is scored afterwards on what the stock did over the next 5 sessions, so accounts with a good record count for more.</p>
+        ${out ? `<p class="small" style="margin-top:8px">Last run <b>${esc(fmtDate(out.date))}${out.generated ? " " + istT(out.generated) + " IST" : ""}</b>${out.mode === "intraday" ? " (during the session)" : ""}: ${sm.posts ?? 0} posts naming a stock so far today, ${sm.promo_posts ?? 0} promotional ignored, ${sm.stocks ?? 0} stocks, <b>${(out.x_today || out.picks || []).length} on today's X list</b>${(out.x_today || out.picks || []).length ? ": " + (out.x_today || out.picks).map(esc).join(", ") : ""}.</p>
+          ${out.runs?.length ? `<p class="xs muted" style="margin-top:4px">Today's runs: ${out.runs.map((r) => `${esc(r.ist || istT(r.at))}${r.added?.length ? ` <b>+${r.added.map(esc).join(", ")}</b>` : ""}`).join(" · ")}</p>` : ""}` : '<p class="small" style="margin-top:8px">No run yet. The first one comes this evening, as long as the Claude app is open and the browser is signed in to X.</p>'}</div>
+      ${out?.ideas?.length ? `<div class="card"><h2>On today's list from X</h2><div class="tablewrap"><table><thead><tr><th>Stock</th><th class="r">Score</th><th>Called by</th><th class="r">Price</th><th class="r">Traded a day</th><th class="r">5 days</th><th>Levels in posts</th></tr></thead><tbody>${out.ideas.map(ideaRow).join("")}</tbody></table></div></div>` : ""}
       ${out?.rejected?.length ? `<details class="card fold"><summary><h2 style="display:inline">Not sent (${out.rejected.length})</h2></summary><div class="tablewrap"><table><thead><tr><th>Stock</th><th class="r">Score</th><th>Why not</th><th>Posts</th></tr></thead><tbody>${out.rejected.map((i) => `<tr><td><a href="#sym-${esc(i.sym)}">${esc(i.sym)}</a></td><td class="r">${i.score}</td><td class="small">${esc((i.why_not || []).join("; "))}</td><td><details><summary class="small">${(i.posts || []).length}</summary><ul class="newslist">${postsHtml(i)}</ul></details></td></tr>`).join("")}</tbody></table></div></details>` : ""}
       ${authors.length ? `<div class="card"><h2>Accounts' record</h2><p class="small muted" style="margin:4px 0 8px">A call counts as right when the stock beat NIFTY over the next 5 sessions (or lagged it, for a bearish call). Skill starts at 50% and moves with the record.</p><div class="tablewrap tall"><table><thead><tr><th>Account</th><th class="r">Calls</th><th class="r">Scored</th><th class="r">Right</th><th class="r">Avg vs NIFTY</th><th class="r">Skill</th><th></th></tr></thead><tbody>${authors.map(([h, a]) => `<tr><td>@${esc(h)}</td><td class="r">${a.n}</td><td class="r">${a.scored}</td><td class="r">${a.hit_rate != null ? a.hit_rate + "%" : "–"}</td><td class="r ${cls(a.avg_excess)}">${pct(a.avg_excess)}</td><td class="r">${Math.round(a.skill * 100)}%</td><td>${a.muted ? '<span class="pill halted">muted, mostly promotion</span>' : a.trusted ? '<span class="pill auto">trusted</span>' : ""}</td></tr>`).join("")}</tbody></table></div></div>` : ""}
       <form class="card" id="xCfg"><h2>What to read</h2>
@@ -625,12 +637,13 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, compute 
           <div class="field"><label for="xMax">Names a day</label><input class="input" id="xMax" type="number" min="1" max="30" value="${cfg.max_picks}" style="width:100px" ${ro ? "disabled" : ""}></div>
           <div class="field"><label for="xAuth">Accounts needed</label><input class="input" id="xAuth" type="number" min="1" max="10" value="${cfg.min_authors}" style="width:100px" ${ro ? "disabled" : ""}></div>
           <div class="field"><label for="xChase">Skip if up more than (5 days, %)</label><input class="input" id="xChase" type="number" min="5" max="200" value="${cfg.chase_pct}" style="width:110px" ${ro ? "disabled" : ""}></div>
+          <div class="field"><label for="xDayChase">In the session, skip if up more than (today, %)</label><input class="input" id="xDayChase" type="number" min="1" max="20" step="0.5" value="${cfg.intraday_chase_pct}" style="width:110px" ${ro ? "disabled" : ""}></div>
           <label class="row small" style="gap:6px;align-self:end;padding-bottom:8px"><input type="checkbox" id="xSme" ${cfg.allow_sme ? "checked" : ""} ${ro ? "disabled" : ""}> Include SME stocks</label>
         </div>
         <div class="field" style="margin-top:10px"><label for="xEx">Never send</label><input class="input" id="xEx" value="${esc((cfg.exclude || []).join(", "))}" placeholder="tickers, comma separated" ${ro ? "disabled" : ""}></div>
         ${ro ? "" : '<div class="row" style="margin-top:12px"><button class="btn" type="submit">Save</button><span class="xs muted" id="xSaved"></span></div>'}
       </form>
-      <p class="note">Paper only. Posts are read as information, never as instructions, and nothing is posted, liked or followed on X. Reading X needs the Claude desktop app open with its browser signed in to X; X's terms restrict automated reading, so the run stays light (a few pages a day).</p></div>`;
+      <p class="note">Paper only. Posts are read as information, never as instructions, and nothing is posted, liked or followed on X. Reading X needs the Claude desktop app open with its browser signed in to X; X's terms restrict automated reading, so each run stays light (a few page loads during the session, a few more in the evening).</p></div>`;
     wireGo(box);
     const f = $("xCfg"); if (!f || ro) return;
     f.addEventListener("submit", async (e) => {
@@ -641,7 +654,7 @@ RESEARCH TOOLS: macro_dashboard, sector_view, company_research, screen, compute 
       if (listUrl && !/^https:\/\/(x|twitter)\.com\/i\/lists\/\d+/.test(listUrl)) { toast("The List link should look like https://x.com/i/lists/123…"); return; }
       const data = { ...(cfg0 || {}), accounts: [...new Set(split($("xAcc").value).map((h) => h.replace(/^@/, "").replace(/^https?:\/\/(x|twitter)\.com\//, "").replace(/[^A-Za-z0-9_]/g, "")).filter(Boolean))].slice(0, 100),
         keywords: split($("xKw").value).slice(0, 10), list_url: listUrl, min_value_cr: num("xVal", X_DEF.min_value_cr), min_price: num("xPx", X_DEF.min_price), max_picks: Math.round(num("xMax", X_DEF.max_picks)),
-        min_authors: Math.round(num("xAuth", X_DEF.min_authors)), chase_pct: num("xChase", X_DEF.chase_pct), allow_sme: $("xSme").checked, exclude: split($("xEx").value).map((x) => E.symKey(x)),
+        min_authors: Math.round(num("xAuth", X_DEF.min_authors)), chase_pct: num("xChase", X_DEF.chase_pct), intraday_chase_pct: num("xDayChase", X_DEF.intraday_chase_pct), allow_sme: $("xSme").checked, exclude: split($("xEx").value).map((x) => E.symKey(x)),
         updated: nowIso(), updated_by: S.uid };
       try { await S.db.doc("x/config").set(data); $("xSaved").textContent = "Saved — used from the next run."; } catch (err) { toast("Couldn't save: " + (err.message || err)); }
     });
