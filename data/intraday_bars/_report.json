@@ -3,8 +3,8 @@
  "sessions": 20,
  "symbols": 2623,
  "requested": 5649,
- "fetched": 1535,
+ "fetched": 2288,
  "left_out_for_size": 0,
  "files": 240,
- "app_bytes": 63499857
+ "app_bytes": 64010552
 }
