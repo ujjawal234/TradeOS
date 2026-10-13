@@ -274,9 +274,62 @@
       throw new Error("Web search failed: " + (e?.message || code || e));
     }
   }
+  // ---- live quotes: Google Finance pages read through Parallel's web_fetch (a unique link each time, so never a cached copy)
+  const GF_INDEX = { NIFTY: "NIFTY_50", BANKNIFTY: "NIFTY_BANK", NIFTYBANK: "NIFTY_BANK", FINNIFTY: "NIFTY_FIN_SERVICE", NIFTYFIN: "NIFTY_FIN_SERVICE", NIFTYIT: "NIFTY_IT", NIFTYPHARMA: "NIFTY_PHARMA",
+    NIFTYAUTO: "NIFTY_AUTO", NIFTYFMCG: "NIFTY_FMCG", NIFTYMETAL: "NIFTY_METAL", NIFTYREALTY: "NIFTY_REALTY", NIFTYENERGY: "NIFTY_ENERGY", NIFTYPSUBANK: "NIFTY_PSU_BANK", NIFTYMEDIA: "NIFTY_MEDIA",
+    NIFTYNXT50: "NIFTY_NEXT_50", NIFTYNEXT50: "NIFTY_NEXT_50", MIDCPNIFTY: "NIFTY_MID_SELECT", NIFTY_SMALLCAP_100: "NIFTY_SMLCAP_100", INDIAVIX: "INDIA_VIX", NIFTY100: "NIFTY_100", NIFTY200: "NIFTY_200", NIFTY500: "NIFTY_500", NIFTYMIDCAP50: "NIFTY_MIDCAP_50" };
+  function gfCode(sym) {
+    const m = S.man.symbols[sym]; if (!m) return null;
+    if (sym === "SENSEX") return "SENSEX:INDEXBOM";
+    if (m.kind === "index") return `${GF_INDEX[sym] || sym}:INDEXNSE`;
+    if (m.kind === "stock") return m.ex === "BSE" ? (m.bse ? `${m.bse}:BOM` : null) : `${sym}:NSE`;
+    return null; // global assets, series: answered by web search instead
+  }
+  const num = (s) => s == null ? null : Number(String(s).replace(/[,\s]/g, "").replace("−", "-"));
+  function parseGF(text, code) {
+    const t = String(text || "").replace(/\r/g, "").replace(/\\([\\_.+\-*#()\[\]!])/g, "$1").replace(/\n[ \t]*(?=\n)/g, "").replace(/\n{2,}/g, "\n"), i = t.indexOf(code), s = i >= 0 ? t.slice(i, i + 1200) : "";
+    const m = s.match(/\n[^\n]*\n([^\n]+)\n₹?\s?([\d,]+(?:\.\d+)?)\n[^\n]*\n([+\-−]?[\d.]+)%\n\(\s*([+\-−]?[\d,.]+)\s*\)\s*Today\n([^\n]+)/);
+    if (!m) return null;
+    const prev = t.match(/Prev\. close\s*₹?\s?([\d,]+(?:\.\d+)?)/);
+    return { name: m[1].trim(), price: num(m[2]), change_pct: num(m[3]), change: num(m[4]), as_of: m[5].trim(), prev_close: prev ? num(prev[1]) : null };
+  }
+  async function liveQuotes(input, progress) {
+    const syms = [...new Set((Array.isArray(input?.symbols) ? input.symbols : [input?.symbols || input?.symbol]).map((x) => E.symKey(String(x || ""))).filter(Boolean))].slice(0, 25);
+    if (!syms.length) throw new Error("Give the symbols to quote.");
+    progress(`Getting live prices for ${syms.slice(0, 4).join(", ")}${syms.length > 4 ? "…" : ""}`);
+    const todayLbl = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Kolkata" }), stamp = Date.now().toString(36);
+    const coded = syms.map((s) => ({ s, code: gfCode(s) })), withCode = coded.filter((x) => x.code), out = {}, misses = coded.filter((x) => !x.code).map((x) => x.s);
+    const batches = []; for (let i = 0; i < withCode.length; i += 10) batches.push(withCode.slice(i, i + 10));
+    const fetchBatch = async (b, tag) => {
+      let res = null;
+      try { res = (await S.mcp.callTool(WEB_SERVER, "web_fetch", { urls: b.map((x) => `https://www.google.com/finance/quote/${encodeURIComponent(x.code).replace("%3A", ":")}?hl=en&t=${stamp}${tag}`), objective: "Current price, change and percent change today, previous close, and the time of the quote", full_content: true, session_id: webSession })).payload; }
+      catch (e) { if (e?.code === "server_not_connected") throw new Error("Live prices need the Parallel Search connector (claude.ai → Settings → Connectors)."); }
+      const rows = Array.isArray(res?.results) ? res.results : [], left = [];
+      for (const x of b) {
+        const row = rows.find((r) => decodeURIComponent(r.url || "").includes(x.code));
+        const q = row ? parseGF(String(row.full_content || "") + "\n" + (row.excerpts || []).join("\n"), x.code) : null;
+        if (q && q.price) out[x.s] = q; else left.push(x);
+      }
+      return left;
+    };
+    const retry = (await Promise.all(batches.map((b) => fetchBatch(b, "a")))).flat();
+    if (retry.length) { const still = []; for (let i = 0; i < retry.length; i += 10) still.push(...await fetchBatch(retry.slice(i, i + 10), "b")); misses.push(...still.map((x) => x.s)); }
+    for (const [s, q] of Object.entries(out)) { // returns with the live price as today's bar
+      q.today = q.as_of.startsWith(todayLbl);
+      const f = S.light[s]; if (!f || !q.today) continue;
+      const c = f.c, n = c.length, k = (back) => n - back >= 0 && c[n - back] ? +((q.price / c[n - back] - 1) * 100).toFixed(2) : null;
+      q.stored_close = +c[n - 1].toFixed(2); q.ret_1m_live = k(21); q.ret_3m_live = k(63); q.ret_6m_live = k(126);
+    }
+    let fallback = null;
+    if (misses.length) { try { fallback = await webCall("web_search", { objective: `Current market price today (${todayLbl}) of: ${misses.map((s) => S.man.symbols[s]?.name || s).join(", ")}`, search_queries: misses.slice(0, 4).map((s) => `${S.man.symbols[s]?.name || s} price today`) }, progress, "Looking up the rest on the web"); } catch (e) { fallback = { error: e.message }; } }
+    return { quotes: out, not_parsed: misses, web_results_for_the_rest: fallback, source: "Google Finance via Parallel Search (NSE quotes, may lag up to ~15 minutes); as_of is the quote time",
+      how_to_use: "ret_*_live = return over the last 21/63/126 sessions counting today's live price as the latest bar (stored data ends at the last close). Use these for decisions 'at current prices'. Always state the quote time." };
+  }
   function webTools(progress) {
     if (!S.mcp) return [];
     return [
+      { name: "live_quotes", description: "Live prices NOW (during market hours; otherwise the latest close) for up to 25 TradeOS symbols — stocks (NSE or BSE), Nifty/sector/thematic indices, India VIX, Sensex. TradeOS's stored data ends at the last close, so use this whenever the user says now / today / live / current, or a decision should use today's prices. Returns price, change %, previous close, the quote time, and 1m/3m/6m returns counting today's live price as the latest bar (for re-ranking momentum at current prices).",
+        inputSchema: { type: "object", properties: { symbols: { type: "array", items: { type: "string" } } }, required: ["symbols"] }, execute: async (input) => liveQuotes(input || {}, progress) },
       { name: "web_search", description: "Search the live web — news, company announcements and websites, results coverage, management interviews, regulators, global events, anything outside TradeOS's data. Give an objective (what you want to find, one specific thing) and 2–3 short keyword queries (3–6 words). Returns pages with links, dates and excerpts that usually answer directly. For several independent questions, call it once per question. Cite the links.",
         inputSchema: { type: "object", properties: { objective: { type: "string" }, queries: { type: "array", items: { type: "string" } } }, required: ["objective"] },
         execute: async (input) => { const obj = String(input?.objective || input?.query || "").slice(0, 600), qs = (Array.isArray(input?.queries) ? input.queries : [input?.query || obj]).map((q) => String(q).slice(0, 120)).filter(Boolean).slice(0, 4);
