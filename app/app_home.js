@@ -393,10 +393,27 @@
     const age = Math.round((Date.now() - Date.parse(L.asof)) / 60e3);
     return `As of ${liveTime(L)} IST today (live, NSE, ${age} min ago) · last daily bar ${last}`;
   }
+  // Direct from NSE's cm-market connector (seconds behind) when the 5-minute snapshot is missing, stale or lacks the symbol.
+  // → {sym: {sym, ltp, open, high, low, prev_close, value_cr, ts, chg_pct, from_open_pct, at}} for today's quotes only
+  async function liveFromNse(syms) {
+    const out = {}; if (!syms.length || typeof nseQuotes !== "function") return out;
+    try {
+      const r = await nseQuotes(syms), today = istToday();
+      for (const [s, q] of Object.entries(r.quotes || {})) {
+        if (q._date !== today || q.price == null) continue;
+        const at = (q.as_of || "").slice(11, 16);
+        out[s] = { sym: s, ltp: q.price, open: q.open, high: q.high, low: q.low, prev_close: q.prev_close, value_cr: q.value_cr ?? null, ts: at || null,
+          chg_pct: q.change_pct ?? (q.prev_close ? +((q.price / q.prev_close - 1) * 100).toFixed(2) : null), from_open_pct: q.open ? +((q.price / q.open - 1) * 100).toFixed(2) : null, at, via: "NSE cm-market" };
+      }
+    } catch (e) { /* connector missing or blocked: the snapshot (if any) stands */ }
+    return out;
+  }
   async function showSymLive(sym) {
     if (!liveOn()) return; const el = $("symLive"); if (!el) return;
     const L = await loadLive(); if (S.symView !== sym || !$("symLive")) return;
-    const q = liveQuote(sym, L);
+    let q = liveQuote(sym, L), at = L && liveTime(L);
+    const stale = !L || Date.now() - Date.parse(L.asof) > 7 * 60e3;
+    if (!q || stale) { const n = (await liveFromNse([E.symKey(sym)]))[E.symKey(sym)]; if (S.symView !== sym || !$("symLive")) return; if (n) { q = n; at = n.at; } }
     if (!q) { if (L) $("symLive").innerHTML = `<span class="muted">No live price for ${esc(sym)} in the ${esc(liveTime(L))} IST snapshot.</span>`; return; }
-    $("symLive").innerHTML = `<span class="pill" style="font-weight:600">Live</span> <b>${px(q.ltp)}</b> <span class="${cls(q.chg_pct)}">${pct(q.chg_pct, 2)}</span> <span class="muted">vs prev close · ${q.from_open_pct != null ? `${pct(q.from_open_pct, 2)} from the open · ` : ""}as of ${esc(liveTime(L))} IST${q.ts ? ` (last trade ${esc(q.ts)})` : ""}</span>`;
+    $("symLive").innerHTML = `<span class="pill" style="font-weight:600">Live</span> <b>${px(q.ltp)}</b> <span class="${cls(q.chg_pct)}">${pct(q.chg_pct, 2)}</span> <span class="muted">vs prev close · ${q.from_open_pct != null ? `${pct(q.from_open_pct, 2)} from the open · ` : ""}as of ${esc(at || "")} IST${q.via ? "" : q.ts ? ` (last trade ${esc(q.ts)})` : ""}</span>`;
   }

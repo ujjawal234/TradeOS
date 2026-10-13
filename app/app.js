@@ -529,7 +529,7 @@ Equal-weight baskets of Nifty 200 members by industry (closes only): ${secs}.
 Named groups usable as "symbols" entries or "universe": ${groups}.
 ${m.pit ? `SURVIVORSHIP-FREE universes (use these whenever the user wants no survivorship bias, point-in-time or realistic results): ${Object.entries(m.pit.universes).map(([k, v]) => `${k} = the ${v.size} most-traded NSE stocks at each March/September review since ${v.first} (${v.ever} different stocks over time)`).join("; ")}. Membership uses only what was known on each review date and includes stocks later delisted, merged or dropped (${m.pit.no_longer_trading} of them no longer trade); prices are NSE bhavcopy adjusted for splits/bonuses (price only). Use them as "universe" in rotation, or in "symbols" for rule strategies (entries only while a stock is a member). Data to ${m.pit.asof}.` : ""}
 ${intradayBrief(m)}
-LIVE PRICES (today, during the session): live_prices gives every NSE stock's last price (NSE live data, 1–3 min behind, snapshots every 5 minutes from ~09:20 IST to the close) and NIFTY/BANKNIFTY/FINNIFTY/SENSEX/INDIAVIX. Daily bars (every other tool) end at the last close (${S.lastDay}). For anything about today, now or the open, call live_prices first.
+LIVE PRICES (today, during the session): live_prices gives any NSE stock's last price, change, move since the open, day high/low and traded value (the 5-minute snapshot of every NSE stock, topped up straight from NSE's cm-market connector when the snapshot is late or lacks a name) and NIFTY/BANKNIFTY/FINNIFTY/SENSEX/INDIAVIX; use its "stamp" for the as-of line. Daily bars (every other tool) end at the last close (${S.lastDay}). For anything about today, now or the open, call live_prices first.
 ${m.options ? optionsBrief(m.options) : "OPTION PRICES: not loaded in this build — option strategies use the Black-Scholes model on India VIX (index options only)."}
 Market-cap weights: ${nSh ? `share counts available for ${nSh} stocks (Yahoo; free float = today's ratio)` : "no share-count data loaded yet — mcap weights fall back to equal"}.
 ${researchBrief(m)}
@@ -669,10 +669,17 @@ TEST WINDOW (only when a backtest is asked for): {"start":"YYYY-MM-DD","end":nul
       { name: "live_prices", description: "Today's live prices during the session (NSE live data for every NSE stock, 1–3 min behind, snapshotted every 5 minutes; NIFTY, BANKNIFTY, FINNIFTY, SENSEX, INDIAVIX from Yahoo): last price, change vs previous close, move since the open, day high/low, traded value so far (₹ cr) and the snapshot time. Use it for any question about today / now / the open; the other tools only have daily bars to the last close.",
         inputSchema: { type: "object", properties: { symbols: { type: "array", items: { type: "string" } } }, required: ["symbols"] },
         execute: async (input) => { progress("Reading live prices…"); const L = await loadLive(true);
-          if (!L) return { live: false, stamp: liveStamp(null), note: "No live snapshot for today yet (before 09:20 IST, a holiday, or the feed is down). Use the last close and say so." };
           const syms = (input.symbols || []).slice(0, 300).map((x) => E.symKey(String(x).replace(/\.NS$/i, "")));
-          return { live: true, stamp: liveStamp(L), asof_ist: liveTime(L), age_min: Math.round((Date.now() - Date.parse(L.asof)) / 60e3), via: L.via, last_daily_bar: S.lastDay,
-            quotes: Object.fromEntries(syms.map((s) => [s, liveQuote(s, L) || "no live quote (BSE-only stock, not traded yet, or not an NSE symbol)"])) }; } },
+          // the 5-minute snapshot first; NSE's cm-market connector directly for what it lacks (or all of it when the snapshot is missing/stale)
+          const stale = !L || Date.now() - Date.parse(L.asof) > 7 * 60e3, quotes = {};
+          for (const s of syms) { const q = !stale && liveQuote(s, L); if (q) quotes[s] = { ...q, at: liveTime(L), via: "snapshot" }; }
+          const nse = await liveFromNse(syms.filter((s) => !quotes[s]).slice(0, 40)); Object.assign(quotes, nse);
+          if (stale && L) for (const s of syms) { const q = !quotes[s] && liveQuote(s, L); if (q) quotes[s] = { ...q, at: liveTime(L), via: "snapshot" }; }
+          if (!Object.keys(quotes).length) return { live: false, stamp: liveStamp(L), note: L ? "No live quote for these symbols today (BSE-only, not traded yet, or not an NSE symbol)." : "No live prices for today yet (before 09:15 IST, a holiday, or the feeds are down). Use the last close and say so." };
+          const nAt = Object.values(nse).map((q) => q.at).filter(Boolean).sort().pop();
+          const stamp = nAt && (!L || stale) ? `As of ${nAt} IST today (live, NSE) · last daily bar ${fmtDate(S.lastDay)}` : liveStamp(L);
+          return { live: true, stamp, asof_ist: nAt && (!L || stale) ? nAt : liveTime(L), via: [!stale && L && "5-min snapshot", Object.keys(nse).length && "NSE cm-market (direct)"].filter(Boolean).join(" + "), last_daily_bar: S.lastDay,
+            quotes: Object.fromEntries(syms.map((s) => [s, quotes[s] || "no live quote (BSE-only stock, not traded yet, or not an NSE symbol)"])) }; } },
       { name: "market_snapshot", description: "Latest price, 1w–1y returns, distance from 50/200-day averages and 52-week range, RSI(14) and volatility for any list of symbols (stocks, indices, global assets, sector baskets).",
         inputSchema: { type: "object", properties: { symbols: { type: "array", items: { type: "string" } } }, required: ["symbols"] },
         execute: async (input) => { progress("Reading market data…"); return (input.symbols || []).slice(0, 500).map((s) => snapshot(String(s).toUpperCase().replace(/\.NS$/, ""))); } },
