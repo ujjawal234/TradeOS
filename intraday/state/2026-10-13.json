@@ -1,0 +1,404 @@
+{
+ "date": "2026-10-13",
+ "done": false,
+ "agents": {
+  "app_aintematrend1": {
+   "positions": {
+    "AXISBANK": {
+     "sym": "AXISBANK",
+     "qty": 262,
+     "entry": 1254.85,
+     "t_entry": "2026-10-13 11:09:00",
+     "stop": 1259.4,
+     "target": null,
+     "best": 1267.0,
+     "hi_seen": 1267.0,
+     "lo_seen": 1242.2
+    },
+    "BAJFINANCE": {
+     "sym": "BAJFINANCE",
+     "qty": 338,
+     "entry": 973.64,
+     "t_entry": "2026-10-13 13:30:00",
+     "stop": 978.1,
+     "target": null,
+     "best": 984.0,
+     "hi_seen": 984.0,
+     "lo_seen": 946.1
+    },
+    "TECHM": {
+     "sym": "TECHM",
+     "qty": 215,
+     "entry": 1532.21,
+     "t_entry": "2026-10-13 14:30:00",
+     "stop": 1524.55,
+     "target": null,
+     "best": 1532.8,
+     "hi_seen": 1539.0,
+     "lo_seen": 1479.5
+    }
+   },
+   "trades": [
+    {
+     "sym": "SBIN",
+     "side": "long",
+     "qty": 348,
+     "entry": 946.09,
+     "t_entry": "2026-10-13 11:09:00",
+     "exit": 945.91,
+     "t_exit": "2026-10-13 11:12:00",
+     "reason": "exit rule",
+     "pnl": -259.89,
+     "pnl_pct": -0.019
+    },
+    {
+     "sym": "SUNPHARMA",
+     "side": "long",
+     "qty": 186,
+     "entry": 1764.95,
+     "t_entry": "2026-10-13 11:06:00",
+     "exit": 1762.45,
+     "t_exit": "2026-10-13 11:15:00",
+     "reason": "exit rule",
+     "pnl": -662.3,
+     "pnl_pct": -0.142
+    },
+    {
+     "sym": "HINDUNILVR",
+     "side": "long",
+     "qty": 178,
+     "entry": 1847.27,
+     "t_entry": "2026-10-13 11:12:00",
+     "exit": 1864.37,
+     "t_exit": "2026-10-13 12:13:26",
+     "reason": "stop",
+     "pnl": 2845.07,
+     "pnl_pct": 0.926
+    },
+    {
+     "sym": "TCS",
+     "side": "long",
+     "qty": 146,
+     "entry": 2246.45,
+     "t_entry": "2026-10-13 11:39:00",
+     "exit": 2247.98,
+     "t_exit": "2026-10-13 13:25:26",
+     "reason": "stop",
+     "pnl": 26.57,
+     "pnl_pct": 0.068
+    },
+    {
+     "sym": "HINDALCO",
+     "side": "long",
+     "qty": 368,
+     "entry": 894.33,
+     "t_entry": "2026-10-13 12:21:00",
+     "exit": 892.47,
+     "t_exit": "2026-10-13 14:18:00",
+     "reason": "exit rule",
+     "pnl": -881.2,
+     "pnl_pct": -0.208
+    },
+    {
+     "sym": "BSE",
+     "side": "long",
+     "qty": 97,
+     "entry": 3379.48,
+     "t_entry": "2026-10-13 14:18:00",
+     "exit": 3382.1,
+     "t_exit": "2026-10-13 14:21:26",
+     "reason": "stop",
+     "pnl": 57.71,
+     "pnl_pct": 0.078
+    }
+   ],
+   "realized": 829.769400561603,
+   "entries": {
+    "SUNPHARMA": 1,
+    "AXISBANK": 1,
+    "SBIN": 1,
+    "HINDUNILVR": 1,
+    "TCS": 1,
+    "HINDALCO": 1,
+    "BAJFINANCE": 1,
+    "BSE": 1,
+    "TECHM": 1
+   },
+   "last_bar": "2026-10-13 14:30:00",
+   "squared_off": false
+  },
+  "app_aintorblong01": {
+   "positions": {
+    "ICICIBANK": {
+     "sym": "ICICIBANK",
+     "qty": 185,
+     "entry": 1349.37,
+     "t_entry": "2026-10-13 11:00:00",
+     "stop": 1339.92,
+     "target": 1368.26,
+     "best": 1349.36982,
+     "hi_seen": 1357.4,
+     "lo_seen": 1329.4
+    },
+    "GRASIM": {
+     "sym": "GRASIM",
+     "qty": 86,
+     "entry": 2905.38,
+     "t_entry": "2026-10-13 11:40:00",
+     "stop": 2885.04,
+     "target": 2946.06,
+     "best": 2905.38096,
+     "hi_seen": 2916.8,
+     "lo_seen": 2854.0
+    },
+    "ULTRACEMCO": {
+     "sym": "ULTRACEMCO",
+     "qty": 23,
+     "entry": 10597.12,
+     "t_entry": "2026-10-13 11:50:00",
+     "stop": 10522.94,
+     "target": 10745.48,
+     "best": 10597.119,
+     "hi_seen": 10688.0,
+     "lo_seen": 10466.0
+    },
+    "WIPRO": {
+     "sym": "WIPRO",
+     "qty": 1494,
+     "entry": 167.23,
+     "t_entry": "2026-10-13 12:05:00",
+     "stop": 166.06,
+     "target": 169.57,
+     "best": 167.23343999999997,
+     "hi_seen": 168.1,
+     "lo_seen": 162.12
+    }
+   },
+   "trades": [
+    {
+     "sym": "HDFCLIFE",
+     "side": "long",
+     "qty": 443,
+     "entry": 563.31,
+     "t_entry": "2026-10-13 10:05:00",
+     "exit": 561.44,
+     "t_exit": "2026-10-13 10:35:00",
+     "reason": "exit rule",
+     "pnl": -978.91,
+     "pnl_pct": -0.332
+    },
+    {
+     "sym": "HINDUNILVR",
+     "side": "long",
+     "qty": 135,
+     "entry": 1845.37,
+     "t_entry": "2026-10-13 10:05:00",
+     "exit": 1839.13,
+     "t_exit": "2026-10-13 11:00:00",
+     "reason": "exit rule",
+     "pnl": -991.34,
+     "pnl_pct": -0.338
+    },
+    {
+     "sym": "LT",
+     "side": "long",
+     "qty": 68,
+     "entry": 3645.53,
+     "t_entry": "2026-10-13 10:05:00",
+     "exit": 3627.47,
+     "t_exit": "2026-10-13 11:40:00",
+     "reason": "exit rule",
+     "pnl": -1376.15,
+     "pnl_pct": -0.495
+    },
+    {
+     "sym": "HINDALCO",
+     "side": "long",
+     "qty": 279,
+     "entry": 896.03,
+     "t_entry": "2026-10-13 10:05:00",
+     "exit": 890.07,
+     "t_exit": "2026-10-13 11:50:00",
+     "reason": "exit rule",
+     "pnl": -1811.79,
+     "pnl_pct": -0.665
+    },
+    {
+     "sym": "SHRIRAMFIN",
+     "side": "long",
+     "qty": 267,
+     "entry": 935.79,
+     "t_entry": "2026-10-13 10:40:00",
+     "exit": 932.26,
+     "t_exit": "2026-10-13 11:50:00",
+     "reason": "exit rule",
+     "pnl": -1091.2,
+     "pnl_pct": -0.377
+    }
+   ],
+   "realized": -6547.323533027949,
+   "entries": {
+    "HDFCLIFE": 1,
+    "HINDALCO": 1,
+    "HINDUNILVR": 1,
+    "LT": 1,
+    "SHRIRAMFIN": 1,
+    "ICICIBANK": 1,
+    "GRASIM": 1,
+    "ULTRACEMCO": 1,
+    "WIPRO": 1
+   },
+   "last_bar": "2026-10-13 14:25:00",
+   "squared_off": false
+  },
+  "app_aintorbshort1": {
+   "positions": {
+    "ETERNAL": {
+     "sym": "ETERNAL",
+     "qty": -778,
+     "entry": 321.14,
+     "t_entry": "2026-10-13 12:15:00",
+     "stop": 323.38,
+     "target": 316.64,
+     "best": 321.13576,
+     "hi_seen": 328.6,
+     "lo_seen": 318.0
+    },
+    "KOTAKBANK": {
+     "sym": "KOTAKBANK",
+     "qty": -568,
+     "entry": 439.46,
+     "t_entry": "2026-10-13 12:15:00",
+     "stop": 442.54,
+     "target": 433.31,
+     "best": 439.46209000000005,
+     "hi_seen": 443.35,
+     "lo_seen": 437.5
+    }
+   },
+   "trades": [
+    {
+     "sym": "MARUTI",
+     "side": "short",
+     "qty": 22,
+     "entry": 11198.76,
+     "t_entry": "2026-10-13 10:25:00",
+     "exit": 11222.24,
+     "t_exit": "2026-10-13 12:15:00",
+     "reason": "exit rule",
+     "pnl": -664.63,
+     "pnl_pct": -0.21
+    },
+    {
+     "sym": "BSE",
+     "side": "short",
+     "qty": 75,
+     "entry": 3305.74,
+     "t_entry": "2026-10-13 11:40:00",
+     "exit": 3329.55,
+     "t_exit": "2026-10-13 13:44:26",
+     "reason": "stop",
+     "pnl": -1934.73,
+     "pnl_pct": -0.72
+    },
+    {
+     "sym": "ADANIPORTS",
+     "side": "short",
+     "qty": 143,
+     "entry": 1739.95,
+     "t_entry": "2026-10-13 13:10:00",
+     "exit": 1752.48,
+     "t_exit": "2026-10-13 13:56:26",
+     "reason": "stop",
+     "pnl": -1941.68,
+     "pnl_pct": -0.72
+    }
+   ],
+   "realized": -4690.867419261424,
+   "entries": {
+    "MARUTI": 1,
+    "BSE": 1,
+    "ETERNAL": 1,
+    "KOTAKBANK": 1,
+    "ADANIPORTS": 1
+   },
+   "last_bar": "2026-10-13 14:25:00",
+   "squared_off": false
+  },
+  "app_amv26tvmw80lkt": {
+   "positions": {},
+   "trades": [
+    {
+     "sym": "ETERNAL",
+     "side": "long",
+     "qty": 1547,
+     "entry": 323.06,
+     "t_entry": "2026-10-13 09:16:00",
+     "exit": 323.99,
+     "t_exit": "2026-10-13 09:20:26",
+     "reason": "square-off",
+     "pnl": 1130.98,
+     "pnl_pct": 0.286
+    },
+    {
+     "sym": "HCLTECH",
+     "side": "long",
+     "qty": 395,
+     "entry": 1263.15,
+     "t_entry": "2026-10-13 09:16:00",
+     "exit": 1261.75,
+     "t_exit": "2026-10-13 09:20:26",
+     "reason": "square-off",
+     "pnl": -853.15,
+     "pnl_pct": -0.111
+    },
+    {
+     "sym": "HDFCBANK",
+     "side": "long",
+     "qty": 703,
+     "entry": 710.44,
+     "t_entry": "2026-10-13 09:16:00",
+     "exit": 712.96,
+     "t_exit": "2026-10-13 09:20:26",
+     "reason": "square-off",
+     "pnl": 1469.52,
+     "pnl_pct": 0.354
+    },
+    {
+     "sym": "INFY",
+     "side": "long",
+     "qty": 485,
+     "entry": 1030.71,
+     "t_entry": "2026-10-13 09:16:00",
+     "exit": 1031.49,
+     "t_exit": "2026-10-13 09:20:26",
+     "reason": "square-off",
+     "pnl": 80.02,
+     "pnl_pct": 0.076
+    },
+    {
+     "sym": "TATACONSUM",
+     "side": "long",
+     "qty": 516,
+     "entry": 968.89,
+     "t_entry": "2026-10-13 09:16:00",
+     "exit": 970.46,
+     "t_exit": "2026-10-13 09:20:26",
+     "reason": "square-off",
+     "pnl": 507.78,
+     "pnl_pct": 0.162
+    }
+   ],
+   "realized": 2335.150284527037,
+   "entries": {
+    "ETERNAL": 1,
+    "HCLTECH": 1,
+    "HDFCBANK": 1,
+    "INFY": 1,
+    "TATACONSUM": 1
+   },
+   "last_bar": "2026-10-13 09:19:00",
+   "squared_off": true
+  }
+ }
+}
