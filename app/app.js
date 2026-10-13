@@ -821,6 +821,8 @@ ${ordersBlock()}
 
 ${fundBrief()}
 
+${systemBrief()}
+
 HOW YOU WORK
 - The user is the portfolio manager and makes the decisions. Build exactly what they ask, with exactly the numbers, stocks and rules they give. Their instruction beats your preference, every default and every "best practice".
 - Never add anything they did not ask for: no trend or regime filters, score floors, stop-losses, position caps, sector caps, diversification rules or "safety" tweaks. When they ask to remove something, remove it completely the first time (set that field to null) and confirm what the spec now contains.
@@ -904,7 +906,7 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
       const keys = {};
       if (out?.apply_now === true && !S.readOnly && actions.length) {
         for (const a of actions.filter((x) => x.type === "set_status")) { try { const ag = S.agents.get(a.agent_id); if (ag) { await setStatus(ag, a.status); a.done = true; } } catch (e) { a.error = String(e.message || e); } }
-        await applyFundActions({ id: mid, actions });
+        await applyFundActions({ id: mid, actions }, null, true);
         for (const a of actions) if (a.type === "create_desk" && a.created_id) keys[a.key] = a.created_id;
       }
       // "do it": create the proposed systems now, straight onto paper and their desk

@@ -459,7 +459,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
   // ================================================================ router
   function wireGo(root) { root.querySelectorAll("[data-go]").forEach((b) => { if (b.__go) return; b.__go = true; b.addEventListener("click", () => go(b.dataset.go)); }); }
   function go(hash) { hash = hash === "main" ? "cio" : hash; if (location.hash.slice(1) === hash) route(); else location.hash = hash; }
-  const VIEWS = ["home", "markets", "symbol", "book", "orders", "desks", "alerts", "research", "room"];
+  const VIEWS = ["home", "markets", "symbol", "book", "orders", "desks", "alerts", "research", "system", "room"];
   function route() {
     let h = decodeURIComponent(location.hash.slice(1));
     if (h === "" || h === "main") h = S.lastHome || "home";
@@ -476,7 +476,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
     if (view === "cio") { S.suppressScroll = false; renderMain(); setTimeout(() => $("mainInput").focus({ preventScroll: true }), 30); }
     if (view === "research") renderResearch();
     if (view === "home") renderHome(); if (view === "markets") renderMarkets(); if (view === "symbol") renderSymbol(h.slice(4));
-    if (view === "book") renderBook(); if (view === "orders") renderOrders(); if (view === "desks") renderDesks(); if (view === "alerts") renderAlerts();
+    if (view === "book") renderBook(); if (view === "orders") renderOrders(); if (view === "desks") renderDesks(); if (view === "alerts") renderAlerts(); if (view === "system") renderSystem();
     window.scrollTo({ top: 0 });
   }
   function openCio(open) {
@@ -571,7 +571,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
     ordersRef().onSnapshot((snap) => { S.orders = snap.exists ? (snap.data().items || []) : []; renderOrdersAll(); }, () => { /* no orders yet */ });
     sessionRef().onSnapshot((snap) => { const since = snap.exists ? (snap.data().since || "") : ""; if (since !== (S.chatSince || "")) { S.chatSince = since; S.mainMsgs = visibleMain(S.allMainMsgs || []); if (S.view === "main") renderMain(); } }, () => { /* none yet */ });
     mainCol().orderBy("at", "desc").limit(400).onSnapshot((snap) => { S.allMainMsgs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.kind === "main").reverse(); S.mainMsgs = visibleMain(S.allMainMsgs); if (S.view === "main" || document.body.classList.contains("cio-open")) renderMain(); });
-    startFundData();
+    startFundData(); startSystemData();
     if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__tradeos = { S, go, fundChanged, route, fundActionsFrom, renderMain, fundBrief };  // local testing only
     route();
     window.addEventListener("hashchange", route);

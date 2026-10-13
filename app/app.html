@@ -544,6 +544,7 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
     <symbol id="i-desks" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
     <symbol id="i-research" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
     <symbol id="i-alerts" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.4 2.4-2.6-.6-.6-2.6z"/></symbol>
     <symbol id="i-select" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/></symbol>
     <symbol id="i-theme" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
@@ -568,6 +569,7 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
       <span class="nav-label">Intelligence</span>
       <button class="navbtn" type="button" data-view="research"><svg><use href="#i-research"/></svg><span class="lbl">Research</span></button>
       <button class="navbtn" type="button" data-view="alerts"><svg><use href="#i-alerts"/></svg><span class="lbl">Alerts</span><span class="badge alarm" data-count="alerts"></span></button>
+      <button class="navbtn" type="button" data-view="system"><svg><use href="#i-system"/></svg><span class="lbl">System</span><span class="badge hot" data-count="system"></span></button>
     </nav>
     <div class="side-foot">
       <div class="datastat" id="dataStat"><i class="dot off"></i><span id="dataChip">Loading market data…</span></div>
@@ -594,6 +596,7 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
       <section id="view-orders" aria-label="Orders" hidden></section>
       <section id="view-desks" aria-label="Desks and agents" hidden></section>
       <section id="view-alerts" aria-label="Alerts" hidden></section>
+      <section id="view-system" aria-label="System" hidden></section>
 
       <section id="view-research" aria-label="Research" hidden>
         <div class="pagehead"><div><h1>Research</h1><p>Macro, sectors, companies and news: the same data the CIO reasons with.</p></div><div class="actions"><button class="btn cio" type="button" data-ask="Read the macro dashboard and sector view. What regime are we in, what changed this week, and where is the opportunity?"><svg><use href="#i-cio"/></svg>Ask the CIO for a view</button></div></div>

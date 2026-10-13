@@ -1,7 +1,7 @@
   // ================================================================ CIO CONTROL: the fund the CIO sees and the changes it can make
   // Every change the CIO proposes is a typed action. It shows as a card the team applies with one tap, or applies at once
   // when the user told the CIO to go ahead. Actions are data validated here; nothing the model writes is executed as code.
-  const FUND_ACTIONS = new Set(["create_desk", "update_desk", "close_desk", "assign_agent", "unassign_agent", "create_alert", "delete_alert", "watch", "unwatch", "set_book", "decide_orders", "set_list"]);
+  const FUND_ACTIONS = new Set(["create_desk", "update_desk", "close_desk", "assign_agent", "unassign_agent", "create_alert", "delete_alert", "watch", "unwatch", "set_book", "decide_orders", "set_list", "request_change"]);
   const numOr = (v, d) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -36,6 +36,7 @@ CONTROLLING THE FUND — put changes in "actions" (they show as cards; the team 
 {"type":"watch","syms":["..."]} / {"type":"unwatch","syms":["..."]}
 {"type":"set_book","kill_switch":true|false,"max_dd_pct":number|null,"note":"why"}
 {"type":"set_list","agent_id":"a daily-list agent","syms":["RELIANCE","TRENT"],"mode":"replace"|"add"}   (today's names for a daily-list system; apply_now when the user sends names)
+{"type":"request_change","title":"short name","request":"the full change to TradeOS itself, written so it can be built without asking again","area":"ui"|"data"|"reader"|"agent"|"backend"|"other"}   (never applied automatically: the team taps Add to put it on the System page)
 {"type":"decide_orders","order_ids":["ids from the list above"] or "all_pending","decision":"approved"|"rejected","note":"why"}
 Rules: capital sums are rupees. Allocations in a desk should add to ≤100%. To turn an agent on in the book it must be paper trading (set_status "paper") AND assigned to an active desk. Set "apply_now": true only when the user told you to make the change ("do it", "set it up", "go ahead", "approve them"); otherwise propose and let them apply. Always explain the structure in "reply" (mandates, capital split, limits, why) — the cards carry the mechanics.`;
   }
@@ -69,6 +70,7 @@ Rules: capital sums are rupees. Allocations in a desk should add to ≤100%. To 
       case "delete_alert": return S.alertRules.some((r) => r.id === a.alert_id) ? { type: a.type, alert_id: a.alert_id } : null;
       case "watch": case "unwatch": { const syms = (Array.isArray(a.syms) ? a.syms : [a.sym]).map((s) => E.symKey(String(s || ""))).filter((s) => S.man.symbols[s]).slice(0, 50); return syms.length ? { type: a.type, syms } : null; }
       case "set_book": { const o = { type: a.type, note }; if (typeof a.kill_switch === "boolean") o.kill_switch = a.kill_switch; if (a.max_dd_pct === null || a.max_dd_pct != null) o.max_dd_pct = a.max_dd_pct == null ? null : clamp(numOr(a.max_dd_pct, 20), 1, 95); return Object.keys(o).length > 2 ? o : null; }
+      case "request_change": { const req = String(a.request || "").trim(); if (req.length < 10) return null; return { type: a.type, title: String(a.title || req.split(/[.\n]/)[0]).slice(0, 120), request: req.slice(0, 8000), area: ["ui", "data", "reader", "agent", "backend", "other"].includes(a.area) ? a.area : "other" }; }
       case "set_list": { const ag = S.agents.get(a.agent_id); if (!ag || ag.type !== "watchlist") return null; const { known } = parseNames((Array.isArray(a.syms) ? a.syms : [a.syms]).join("\n")); return known.length ? { type: a.type, agent_id: ag.id, syms: known.slice(0, 200), mode: a.mode === "add" ? "add" : "replace" } : null; }
       case "decide_orders": { const pend = S.ordersList.filter((o) => o.status === "pending").map((o) => o.id); const ids = a.order_ids === "all_pending" ? pend : (Array.isArray(a.order_ids) ? a.order_ids : []).filter((id) => pend.includes(id));
         return ids.length ? { type: a.type, order_ids: ids, decision: a.decision === "rejected" ? "rejected" : "approved", note } : null; }
@@ -95,6 +97,7 @@ Rules: capital sums are rupees. Allocations in a desk should add to ≤100%. To 
       case "watch": return ["Add to the watchlist", a.syms.join(", ")];
       case "unwatch": return ["Remove from the watchlist", a.syms.join(", ")];
       case "set_book": return ["Book controls", [a.kill_switch === true && "kill switch ON — every position closes at the next open", a.kill_switch === false && "kill switch off", "max_dd_pct" in a && (a.max_dd_pct == null ? "no book drawdown limit" : `book drawdown limit ${a.max_dd_pct}%`)].filter(Boolean).join(" · ") + (a.note ? ` — ${a.note}` : "")];
+      case "request_change": return [`Change TradeOS: ${a.title}`, a.request.length > 260 ? a.request.slice(0, 260) + "…" : a.request];
       case "set_list": return [`${a.mode === "add" ? "Add to" : "Today's names for"} ${agentName(a.agent_id)}`, a.syms.join(", ")];
       case "decide_orders": return [`${a.decision === "approved" ? "Approve" : "Reject"} ${a.order_ids.length} order${a.order_ids.length > 1 ? "s" : ""}`, a.order_ids.slice(0, 6).map((id) => { const o = S.ordersList.find((x) => x.id === id); return o ? `${o.side} ${o.qty} ${o.sym}` : id; }).join(", ") + (a.order_ids.length > 6 ? "…" : "") + (a.note ? ` — ${a.note}` : "")];
     }
@@ -116,16 +119,17 @@ Rules: capital sums are rupees. Allocations in a desk should add to ≤100%. To 
       case "unwatch": await saveWatch((S.watch || DEFAULT_WATCH).filter((s) => !a.syms.includes(s))); return {};
       case "set_book": { const c = { ...S.bookCfg }; if ("kill_switch" in a) { c.kill_switch = a.kill_switch; c.kill_reason = a.kill_switch ? `CIO, applied by ${nameOf(S.uid)}${a.note ? ": " + a.note : ""}` : null; c.kill_at = nowIso(); } if ("max_dd_pct" in a) c.max_dd_pct = a.max_dd_pct; await S.db.doc("book/config").set(c); return {}; }
       case "set_list": { const ag = S.agents.get(a.agent_id); if (!ag) return {}; await saveList(ag, a.syms, a.mode); const v = await S.db.doc(`agents/${ag.id}/versions/${verId(ag.version)}`).get(); if (v.exists) { const spec = E.normalize(v.data().spec, S.man.universes), w = await watchCalls(ag, spec); const r = await ordersNow(ag, spec, w.rows).catch(() => ({ made: 0 })); S.paperCache.clear(); return { orders: r.made || 0, buys: w.rows.filter((x) => x.action === "BUY").map((x) => x.symbol) }; } return {}; }
+      case "request_change": { const r = await fileChange(a, S.view === "room" && S.room.id ? `agent:${S.room.id}` : "cio"); return { ticket_id: r.ticket_id }; }
       case "decide_orders": { let n = 0; for (const id of a.order_ids) { const o = S.ordersList.find((x) => x.id === id); if (!o || o.status !== "pending") continue; await S.db.doc(`orders/${id}`).update({ status: a.decision, decided_by: S.uid, decided_at: nowIso(), note: a.note ? `CIO: ${a.note}` : "on the CIO's advice" }); n++; } return { n }; }
     }
     return {};
   }
   // Apply a message's fund actions in order (desks first), marking each done. Used by Apply all and by apply_now.
-  async function applyFundActions(m, only) {
+  async function applyFundActions(m, only, auto = false) {
     const ctx = { keys: {} }; for (const x of m.actions || []) if (x.type === "create_desk" && x.created_id) ctx.keys[x.key] = x.created_id;
     let acts = (m.actions || []).map((x) => ({ ...x })), n = 0, err = null;
     for (const a of acts) {
-      if (!FUND_ACTIONS.has(a.type) || a.done || (only && a.id !== only)) continue;
+      if (!FUND_ACTIONS.has(a.type) || a.done || (only && a.id !== only) || (auto && a.type === "request_change")) continue; // a change to TradeOS is always the team's tap
       try { Object.assign(a, await applyFundAction(a, ctx), { done: true, done_at: nowIso() }); n++; }
       catch (e) { a.error = String(e.message || e).slice(0, 200); err = e; if (only) break; }
     }
@@ -135,10 +139,11 @@ Rules: capital sums are rupees. Allocations in a desk should add to ≤100%. To 
   }
   function fundActionCard(m, a) {
     const [title, detail] = fundActionText(a, m), aid = `${m.id}_${a.id}`;
-    const icon = /desk/.test(a.type) ? "i-desks" : /agent/.test(a.type) ? "i-agent" : /alert/.test(a.type) ? "i-alerts" : /watch/.test(a.type) ? "i-markets" : a.type === "set_book" ? "i-stop" : "i-orders";
+    const icon = /desk/.test(a.type) ? "i-desks" : /agent/.test(a.type) ? "i-agent" : /alert/.test(a.type) ? "i-alerts" : /watch/.test(a.type) ? "i-markets" : a.type === "set_book" ? "i-stop" : a.type === "request_change" ? "i-system" : "i-orders";
+    const isCh = a.type === "request_change";
     const risky = a.type === "close_desk" || (a.type === "set_book" && a.kill_switch === true) || (a.type === "update_desk" && a.changes.status === "halted");
     return `<div class="ctl${a.done ? " done" : ""}${risky ? " risky" : ""}"><svg class="ico"><use href="#${icon}"/></svg><div class="txt"><b>${esc(title)}</b><span>${esc(detail)}</span>${a.error ? `<span class="flag bad">${esc(a.error)}</span>` : ""}</div>
-      ${a.done ? '<span class="pill plain" style="background:var(--up-soft);color:var(--up)">Applied</span>' : S.readOnly ? "" : `<button class="btn small ${risky ? "danger" : "ghost"}" type="button" data-fapply="${esc(aid)}">Apply</button>`}</div>`;
+      ${a.done ? '<span class="pill plain" style="background:var(--up-soft);color:var(--up)">${isCh ? "Added" : "Applied"}</span>' : S.readOnly ? "" : `<button class="btn small ${risky ? "danger" : "ghost"}" type="button" data-fapply="${esc(aid)}">${isCh ? "Add to the list" : "Apply"}</button>`}</div>`;
   }
   function fundActionsBlock(m) {
     const acts = (m.actions || []).filter((a) => FUND_ACTIONS.has(a.type)); if (!acts.length) return "";
