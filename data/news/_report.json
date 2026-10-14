@@ -1,14 +1,14 @@
 {
  "ET Markets": 50,
  "ET Stocks": 50,
- "ET Economy": 50,
+ "ET Economy": 49,
  "Mint Markets": 35,
  "Mint Economy": 35,
  "Mint Companies": 35,
  "RBI": 10,
- "filings_fetched": 904,
- "headlines": 1325,
- "filings": 2484,
- "events": 384,
- "asof": "2026-10-14 19:15"
+ "filings_fetched": 968,
+ "headlines": 1372,
+ "filings": 2560,
+ "events": 346,
+ "asof": "2026-10-15 00:09"
 }
