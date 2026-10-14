@@ -1,7 +1,7 @@
 {
- "at": "2026-10-13T17:44:48Z",
+ "at": "2026-10-14T15:14:56Z",
  "symbols": 70,
- "failed": 33,
+ "failed": 34,
  "errors": {
   "BANKNIFTY": "no data",
   "NIFTYFIN": "no data",
@@ -30,8 +30,9 @@
   "BANKEX": "no data",
   "BSEMIDCAP": "no data",
   "BSESMALLCAP": "no data",
-  "USVIX": "no data",
+  "USDINR": "no data",
   "JPYINR": "no data",
+  "SILVER": "no data",
   "NATGAS": "no data",
   "COPPER": "no data",
   "BITCOIN": "no data",
