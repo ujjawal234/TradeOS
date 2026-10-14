@@ -2,9 +2,9 @@
  "asof": "2026-10-14",
  "sessions": 20,
  "symbols": 2622,
- "requested": 5648,
- "fetched": 2081,
+ "requested": 5649,
+ "fetched": 1519,
  "left_out_for_size": 0,
  "files": 240,
- "app_bytes": 63730134
+ "app_bytes": 63745555
 }
