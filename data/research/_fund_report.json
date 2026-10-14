@@ -1,5 +1,5 @@
 {
- "asof": "2026-10-13",
+ "asof": "2026-10-14",
  "companies": 496,
  "of": 502,
  "new_quarters": 0,
@@ -7,5 +7,5 @@
  "error_examples": [],
  "profiles": 502,
  "minutes": 0.1,
- "hot": 20
+ "hot": 40
 }
