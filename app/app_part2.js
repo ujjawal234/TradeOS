@@ -11,7 +11,7 @@
     const ord = { BUY: 0, SHORT: 0, "SELL NEW": 0, "BUY NEW": 0, "OPEN NEW": 0, SELL: 1, COVER: 1, EXITED: 2 };
     act.sort((x, y) => (ord[x.s.action] ?? 5) - (ord[y.s.action] ?? 5));
     const list = (rs) => `<ul class="sig-list">${rs.map((r) => sigRow(r.s, withAgent ? r.a : null)).join("")}</ul>`;
-    return `${act.length ? `<div class="card"><div class="row" style="margin-bottom:4px"><h2>Act at next open</h2><span class="count hot">${act.length}</span></div>${list(act)}</div>` : `<div class="card"><h2>Act at next open</h2><p class="muted" style="margin-top:4px">No buys or sells for the next session.</p></div>`}
+    return `${act.length ? `<div class="card"><div class="row" style="margin-bottom:4px"><h2>Act now</h2><span class="count hot">${act.length}</span></div>${list(act)}</div>` : `<div class="card"><h2>Act now</h2><p class="muted" style="margin-top:4px">No buys or sells at these prices.</p></div>`}
       ${hold.length ? `<div class="card"><div class="row" style="margin-bottom:4px"><h2>Holding</h2><span class="count">${hold.length}</span></div>${list(hold)}</div>` : ""}
       ${rest.length ? `<details class="card fold"><summary>Waiting or in cash (${rest.length})</summary>${list(rest.slice(0, 200))}</details>` : ""}`;
   }
@@ -59,44 +59,100 @@
   function roomTabsFor(v) {
     const sp = v?.spec || {}, extra = (Array.isArray(sp.view) ? sp.view : []).filter((x) => VIEW_TABS[x]).map((x) => [x, VIEW_TABS[x]]);
     if (sp.type === "watchlist") return [...WATCH_TABS, ...extra];
-    const base = [["overview", "Today"], ...extra, ["performance", "Backtest"], ["stress", "Stress test"], ["trades", "Trades"], ["rules", "Rules & versions"]];
+    const base = [["overview", "Now"], ...extra, ["trades", "Trades"], ["backtest", "Backtest"], ["rules", "Rules & versions"]];
     if ((sp.type === "option_selling") && !extra.some(([k]) => k === "options")) base.splice(1, 0, ["options", "Option chain"]);
     return base;
   }
   function renderRoomTabs(v) {
     const tabs = roomTabsFor(v);
+    if (S.room.tab === "performance" || S.room.tab === "stress") S.room.tab = "backtest";
     if (!tabs.some(([k]) => k === S.room.tab)) S.room.tab = tabs[0][0];
     $("roomTabs").innerHTML = tabs.map(([k, l]) => `<button role="tab" type="button" data-tab="${k}" aria-selected="${k === S.room.tab}">${esc(l)}</button>`).join("");
   }
   const ranKey = (a, v) => `${a.id}:${v.n}`;
-  // backtests and stress tests run only when asked for
-  function askToRun(a, v, body, t) {
-    const what = t === "stress" ? ["Stress test", "Crisis replays, Monte Carlo, parameter and cost sensitivity — on demand."] : ["Backtest", "Not run unless you ask. Runs this version over the history in the data."];
-    body.innerHTML = `<div class="card empty"><h2>${what[0]}</h2><p>${what[1]}</p><button class="btn" type="button" id="runBt">Run ${what[0].toLowerCase()}</button></div>`;
-    $("runBt").addEventListener("click", () => { (S.ranAll ||= new Set()).add(ranKey(a, v)); if (t === "stress") (S.stressAsked ||= new Set()).add(ranKey(a, v)); renderRoomBody(); });
+  // the backtest runs only when asked for; everything else in the room is live
+  function askToRun(a, v, body) {
+    body.innerHTML = `<div class="card empty"><h2>Backtest</h2><p>Replays v${v.n}'s rules over the history in the data, with costs: growth of capital, year by year, every simulated trade, and — on demand — crisis replays, Monte Carlo and parameter sensitivity. The rest of this page is live.</p><button class="btn" type="button" id="runBt">Run the backtest</button></div>`;
+    $("runBt").addEventListener("click", () => { (S.ranAll ||= new Set()).add(ranKey(a, v)); renderRoomBody(); });
   }
   async function renderRoomBody() {
     const a = curAgent(), v = curVersion(), body = $("roomBody"), seq = ++roomRenderSeq;
     if (!a || !v) { body.innerHTML = '<p class="muted">Loading…</p>'; return; }
     renderRoomTabs(v);
     if (v.spec?.type === "watchlist") return renderWatchRoom(a, v, body, seq, S.room.tab);
-    const ran = (S.ranAll ||= new Set()).has(ranKey(a, v)), t0 = S.room.tab;
-    if ((t0 === "performance" || t0 === "trades") && !ran) return askToRun(a, v, body, t0);
-    if (t0 === "stress" && !(S.stressAsked ||= new Set()).has(ranKey(a, v))) return askToRun(a, v, body, t0);
+    const t0 = S.room.tab, test = v.test || { start: "2012-01-01" };
+    if (t0 === "overview") return tabNow(a, v, body, seq);
+    if (t0 === "trades") { body.innerHTML = `<div class="row" style="margin-bottom:10px"><h2>Paper trades</h2><span class="grow"></span><span class="small muted">filled at live NSE prices, with charges</span></div>` + tradeTable(fillsOf((o) => o.agent === a.id), { agentCol: false }); wireTrades(body); return; }
+    if (t0 === "rules") return tabRules(a, v, null, test, body);
     if (t0 === "fundamentals") return panelFundamentals(v.spec, body, seq);
     if (t0 === "options") return panelOptions(v.spec, body, seq);
     if (t0 === "chart") return panelChart(v.spec, body);
-    const test = v.test || { start: "2012-01-01" };
+    if (!(S.ranAll ||= new Set()).has(ranKey(a, v))) return askToRun(a, v, body);
     let res;
-    try { if (!S.cache.has(specKey(v.spec, test))) body.innerHTML = `<p class="muted">${t0 === "overview" ? "Working out today's signals…" : "Running the backtest…"}</p>`; res = await runSpec(v.spec, test, (d, n) => { if (seq === roomRenderSeq) body.innerHTML = `<p class="muted">Loading prices ${d} of ${n}…</p>`; }); }
+    try { if (!S.cache.has(specKey(v.spec, test))) body.innerHTML = '<p class="muted">Running the backtest…</p>'; res = await runSpec(v.spec, test, (d, n) => { if (seq === roomRenderSeq) body.innerHTML = `<p class="muted">Loading prices ${d} of ${n}…</p>`; }); }
     catch (e) { body.innerHTML = `<p class="flag">${esc(e.message || e)}</p>`; return; }
     if (seq !== roomRenderSeq) return;
-    const t = S.room.tab;
-    if (t === "overview") await tabOverview(a, v, res, test, body, seq);
-    else if (t === "performance") tabPerformance(a, v, res, test, body);
-    else if (t === "stress") await tabStress(a, v, res, test, body, seq);
-    else if (t === "trades") tabTrades(v, res, body);
-    else tabRules(a, v, res, test, body);
+    return tabBacktest(a, v, res, test, body, seq);
+  }
+  // Backtest: everything that looks back, in one tab
+  async function tabBacktest(a, v, res, test, body, seq) {
+    const h = headline(res, test), split = test.split ? E.splitMetrics(res, test.split) : null, intra = v.spec.type === "intraday";
+    const survivor = intra ? "" : E.usesPit(v.spec) ? `<p class="note">Survivorship-free: the universe is rebuilt at every March/September review from what was known then, including stocks later delisted or dropped.</p>`
+      : v.spec.type !== "option_selling" && E.symbolsNeeded(v.spec, S.man.universes).some((x) => S.man.symbols[x]?.kind === "stock")
+      ? `<p class="note">Uses today's index members for the whole period, which flatters results.${pitTarget(v.spec) ? ` <button class="linkbtn" type="button" id="pitCmpBtn">Compare without survivorship bias</button>` : ""}</p><div id="pitCmp"></div>` : "";
+    body.innerHTML = `<div class="banner" style="margin-bottom:14px">Backtest of v${v.n}: a replay on past data (${fmtDate(h.start)} – ${fmtDate(h.end)}), not its paper trades — those are on the Now and Trades tabs.</div>
+      <div class="stack"><div class="card stack">${verdictLine(res)}${survivor}
+        ${split ? `<div class="grid2">${["train", "test"].map((k) => { const s = split[k].strategy, n = split[k].nifty || {}; return `<div class="mini" style="padding:12px"><span class="k">${k === "train" ? "Training" : "Test (unseen)"} · ${fmtDate(s.start)} – ${fmtDate(s.end)}</span><span class="v">${pct(s.cagr_pct)} <span class="small muted" style="font-family:var(--font-ui);font-weight:400">vs ${esc(benchLabel(res))} ${pct(n.cagr_pct)}</span></span><span class="b">worst fall ${pct(s.max_drawdown_pct)} · Sharpe ${n2(s.sharpe)}</span></div>`; }).join("")}</div>
+          ${split.flags.length ? `<p class="note">Train vs test: ${esc(split.flags.join("; ").toLowerCase())}.</p>` : `<p class="note">Test period results are in line with training.</p>`}` : ""}</div>
+      <div id="btPerf" class="stack"></div>
+      <div id="btStress"><div class="card"><div class="row"><h2>Stress test</h2><span class="grow"></span><button class="btn ghost small" type="button" id="btStressGo">Run crisis replays, Monte Carlo and sensitivity</button></div></div></div>
+      <div id="btTrades"></div></div>`;
+    tabPerformance(a, v, res, test, $("btPerf"));
+    tabTrades(v, res, $("btTrades"));
+    $("btTrades").querySelector("h2")?.insertAdjacentHTML("afterbegin", "Simulated ");
+    $("pitCmpBtn")?.addEventListener("click", () => pitCompare(a, v, test, $("pitCmp")));
+    $("btStressGo").addEventListener("click", () => tabStress(a, v, res, test, $("btStress"), seq));
+  }
+  // NOW: the agent's sleeve at live prices, today's trades, and what it would do at live prices
+  async function tabNow(a, v, body, seq) {
+    const sl = S.bookState?.sleeves?.[a.id], oms = O.OMS_TYPES.has(v.spec.type), intra = v.spec.type === "intraday", fills = fillsOf((o) => o.agent === a.id);
+    const desk = a.desk_id && S.desks.get(a.desk_id), paperOn = a.status === "paper" && sl && oms && !sl.closing, open = marketOpenNow();
+    const prev = bookSummary()?.prevRow?.sleeves?.[a.id];
+    let sleeveHtml = "";
+    if (sl) {
+      const eq = O.sleeveEquity(sl, pxFn), pos = Object.entries(sl.positions || {});
+      sleeveHtml = `<div class="card"><div class="row"><h2>Paper book</h2><span class="pill paper">${esc(desk?.name || deskName(sl.desk))}</span><span class="grow"></span><span class="small muted">${esc(liveLabel())}</span></div>
+        <div class="mini-kpis" style="margin-top:10px"><div class="mini"><span class="k">Equity now</span><span class="v">${inrShort(eq)}</span><span class="b">capital ${inrShort(sl.capital)} · ${pct((eq / (sl.capital || 1) - 1) * 100)}</span></div>
+          <div class="mini"><span class="k">Today</span><span class="v ${cls(prev != null ? eq - prev : null)}">${prev != null ? inrShort(eq - prev) : "–"}</span><span class="b">${prev != null ? pct((eq / prev - 1) * 100, 2) : "no earlier close"}</span></div>
+          <div class="mini"><span class="k">Cash</span><span class="v">${inrShort(sl.cash)}</span><span class="b">${pos.length} position(s)</span></div>
+          <div class="mini"><span class="k">Booked P&amp;L</span><span class="v ${cls(sl.realized)}">${inrShort(sl.realized || 0)}</span><span class="b">after charges · ${fills.length} trade(s)</span></div></div>
+        ${pos.length ? `<div class="tablewrap" style="margin-top:10px"><table class="orders"><thead><tr><th>Symbol</th><th class="r">Qty</th><th class="r">Avg cost</th><th class="r">Now</th><th class="r">Today</th><th class="r">P&amp;L</th><th class="r">Return</th><th>Since</th><th></th></tr></thead><tbody>${pos.map(([s, p]) => { const x = lastPx(s) ?? p.last ?? p.avg, pnl = p.qty * (x - p.avg), q = quoteNow(s);
+          return `<tr class="click" data-go="sym-${esc(s)}"><td><span class="sym">${esc(s)}</span><span class="sub">${esc(nameOfSym(s))}</span></td><td class="r">${Number(p.qty).toLocaleString("en-IN")}</td><td class="r">${px(p.avg)}</td><td class="r"><b>${px(x)}</b><span class="sub">${q ? esc(q.time.slice(0, 5)) + " IST" : "close"}</span></td><td class="r ${cls(dayChg(s))}">${pct(dayChg(s), 2)}</td><td class="r ${cls(pnl)}">${inr(pnl)}</td><td class="r ${cls(pnl)}">${pct((x / p.avg - 1) * 100 * Math.sign(p.qty))}</td><td class="small">${p.since ? fmtDate(p.since) : ""}</td><td>${tradeBtns(s, a.id, p.qty > 0)}</td></tr>`; }).join("")}</tbody></table></div>` : '<p class="small muted" style="margin-top:8px">No open positions.</p>'}</div>`;
+    } else if (oms) sleeveHtml = `<div class="banner">${a.status !== "paper" ? "Not paper trading yet: start paper trading and put it on a desk with an allocation, and it trades on live prices." : "Paper trading, but not on a desk with an allocation, so it has no capital to trade. Give it a desk on Desks &amp; agents."}</div>`;
+    const liveHtml = intra && (a.status === "paper" || a.status === "paused") ? await liveCard(a, v.spec.capital) : "";
+    if (seq !== roomRenderSeq) return;
+    const canAct = oms && a.status === "paper";
+    body.innerHTML = `<div class="stack">${sleeveHtml}${liveHtml}
+      ${oms ? `<div class="card"><div class="row"><h2>${paperOn ? "Decide now" : "What it would do now"}</h2><span class="grow"></span>${paperOn && !S.readOnly ? `<button class="btn" type="button" data-run-agents="${esc(a.id)}" ${open ? "" : "disabled"}>Decide &amp; trade now</button>` : ""}<button class="btn ghost small" type="button" id="nowCheck">Check at live prices</button></div>
+        <p class="small muted" style="margin-top:4px">${open ? "Its rules run on today's live NSE prices (the live quote counts as today's bar); orders fill at once at the live price." : `${esc(closedMsg())} The check below uses the latest prices.`}${paperOn ? " It also runs by itself every hour in the session (09:20–15:20 IST)." : ""}</p><div id="nowSig"></div></div>` : ""}
+      ${!oms && !intra ? await (async () => { const p = await paperResult(a).catch(() => null); return p && !p.pending ? `<div class="card"><h2>Paper record</h2><p class="small">Since ${fmtDate(p.since)}: <b class="${cls(p.ret)}">${pct(p.ret)}</b> vs Nifty ${pct(p.nifty)} · worst fall ${pct(p.mdd)} (option positions are priced from NSE's daily option prices).</p></div>` : ""; })() : ""}
+      ${fills.length ? `<div><div class="row" style="margin-bottom:8px"><h2>Latest trades</h2><span class="grow"></span><button class="linkbtn" type="button" data-tabgo="trades">Every trade</button></div>${tradeTable(fills, { limit: 8, agentCol: false })}</div>` : ""}
+      ${(S.ranAll || new Set()).has(ranKey(a, v)) ? "" : `<p class="note">Backtests are on the <button class="linkbtn" type="button" data-tabgo="backtest">Backtest</button> tab.</p>`}</div>`;
+    wireGo(body); wireTrades(body);
+    body.querySelectorAll("[data-tabgo]").forEach((b) => b.addEventListener("click", () => { S.room.tab = b.dataset.tabgo; renderRoomBody(); }));
+    const check = async () => {
+      const el = $("nowSig"); if (!el) return; el.innerHTML = '<p class="thinking">Reading live prices and running the rules<span class="dots"></span></p>';
+      try {
+        const spec = E.normalize(v.spec, S.man.universes), frames = await framesFor(spec), tday = E.dayOf(todayIST());
+        const need = Object.keys(frames).filter((s) => ["stock", "index"].includes(S.man.symbols[s]?.kind)), qr = await quotesFor(need);
+        const L = E.withLiveBars(frames, (s) => { const q = quoteNow(s); return q && q.date === todayIST() ? { ltp: q.ltp, open: q.open, high: q.high, low: q.low, value_cr: q.value_cr, volume: q.volume } : null; }, tday);
+        const res = E.run(spec, L.frames, S.man.universes, { start: v.test?.start || "2012-01-01" }), sigs = E.signals(spec, res).map((x) => L.live ? { ...x, note: String(x.note || "").replace("at today's close — exit at next open", "on live prices — sell now").replace("at today's close — enter at next open", "on live prices — buy now") } : x);
+        if (seq !== roomRenderSeq || !$("nowSig")) return;
+        $("nowSig").innerHTML = `<p class="xs muted" style="margin:6px 0">${L.live ? `${L.live} of ${need.length} symbols at live prices` : `no live prices (${esc(qr.error || "market closed")}) — latest closes`}${qr.missing.length && L.live ? ` · no live price for ${esc(qr.missing.slice(0, 5).join(", "))}` : ""}</p>${sigGroups(sigs.map((s) => ({ s, a })), false)}`;
+      } catch (e) { if ($("nowSig")) $("nowSig").innerHTML = `<p class="flag">${esc(e.message || e)}</p>`; }
+    };
+    $("nowCheck")?.addEventListener("click", check);
+    if (oms && open && E.symbolsNeeded(E.normalize(v.spec, S.man.universes), S.man.universes).length <= 60) check();
   }
   function signalTable(sigs, limit = 60) {
     if (!sigs.length) return '<p class="muted">No signals.</p>';
@@ -115,40 +171,6 @@
   }
   function verdictLine(res) { const m = res.metrics, b = res.benchMetrics || {}, d = (m.cagr_pct ?? 0) - (b.cagr_pct ?? 0);
     return `<p class="verdict">${pct(m.cagr_pct)} a year vs ${esc(benchLabel(res))}'s ${pct(b.cagr_pct)} — <span class="${d >= 0 ? "up" : "down"}">${d >= 0 ? "ahead" : "behind"} by ${Math.abs(d).toFixed(1)} points</span>, worst fall ${pct(m.max_drawdown_pct)} vs ${pct(b.max_drawdown_pct)}.</p>`; }
-  async function tabOverview(a, v, res, test, body, seq) {
-    let paperHtml = "";
-    if (a.status === "paper" || a.status === "paused") {
-      const p = await paperResult(a).catch(() => null); if (seq !== roomRenderSeq) return;
-      if (p?.pending) paperHtml = `<div class="banner">Paper trading on v${p.version} from the next session after ${fmtDate(p.since)}. Results appear after the next daily update.</div>`;
-      else if (p) paperHtml = `<div class="card"><div class="row"><h2>Paper trading</h2><span class="pill paper">v${p.version} since ${fmtDate(p.since)}</span><span class="grow"></span><span class="small muted">${p.days} trading days</span></div>
-        <div class="mini-kpis" style="margin-top:10px"><div class="mini"><span class="k">Return</span><span class="v ${cls(p.ret)}">${pct(p.ret)}</span><span class="b">Nifty ${pct(p.nifty)}</span></div><div class="mini"><span class="k">Worst fall</span><span class="v">${pct(p.mdd)}</span><span class="b">since start</span></div>
-        <div class="mini"><span class="k">Value</span><span class="v">${inrShort(p.res.metrics.end_equity)}</span><span class="b">from ${inrShort(p.res.metrics.start_equity)}</span></div></div>
-        <div class="chart" id="paperChart" style="margin-top:10px"></div></div>`;
-      if (a.paper && a.paper.version !== v.n) paperHtml = `<div class="banner warn">You're viewing v${v.n}. Paper trading runs v${a.paper.version}; its record stays tied to that version.</div>` + paperHtml;
-    }
-    const runs = (a.paper_runs || []).filter((r) => r.since);
-    const h = headline(res, test);
-    const split = test.split ? E.splitMetrics(res, test.split) : null;
-    const signals = a.status === "paper" ? ((await paperResult(a).catch(() => null))?.signals || res.signals) : res.signals;
-    if (seq !== roomRenderSeq) return;
-    const intra = v.spec.type === "intraday", rng = intra ? intraRange(v.spec.bar_minutes) : null, im = res.metrics;
-    const intraNote = intra ? `<p class="note">${v.spec.bar_minutes}-minute bars, ${im.sessions} sessions (${fmtDate(im.start)} – ${fmtDate(im.end)}; free intraday history starts ${fmtDate(rng?.first)} and grows every day). Average ${inr(im.avg_session_pnl)} a session, ${pct(im.positive_sessions_pct, 0, false)} of traded sessions positive, best ${inr(im.best_session)}, worst ${inr(im.worst_session)}. CAGR annualises this short sample.</p>` : "";
-    const liveHtml = intra && (a.status === "paper" || a.status === "paused") ? await liveCard(a, v.spec.capital) : "";
-    if (seq !== roomRenderSeq) return;
-    const survivor = intra ? intraNote : E.usesPit(v.spec) ? `<p class="note">Survivorship-free: the universe is rebuilt at every March/September review from what was known then, including stocks later delisted or dropped.</p>`
-      : v.spec.type !== "option_selling" && E.symbolsNeeded(v.spec, S.man.universes).some((x) => S.man.symbols[x]?.kind === "stock")
-      ? `<p class="note">Backtest uses today's index members for the whole period, which flatters results.${pitTarget(v.spec) ? ` <button class="linkbtn" type="button" id="pitCmpBtn">Compare without survivorship bias</button>` : ""}</p><div id="pitCmp"></div>` : "";
-    body.innerHTML = `${paperHtml}
-      ${liveHtml}<div class="stack"><div class="row"><h2>${intra ? (a.status === "paper" ? "Last session (replayed on bars)" : "Last session if this had run") : a.status === "paper" ? "Today's signals" : "Signals if this ran today"}</h2><span class="grow"></span><span class="note">${intra ? `${fmtDate(res.intraState?.lastDate)} · in and out the same day` : `close of ${fmtDate(S.lastDay)} · act at next open`}</span></div>${intra ? intraSessionTable(signals) : sigGroups(signals.map((s) => ({ s, a })), false)}</div>
-      ${!(S.ranAll || new Set()).has(ranKey(a, v)) ? `<p class="note">No backtest shown for v${v.n}. <button class="linkbtn" type="button" data-tabgo="performance">Run one</button> or a <button class="linkbtn" type="button" data-tabgo="stress">stress test</button> when you want them.</p>` : `<div class="card stack"><div class="row"><h2>Backtest v${v.n}</h2><span class="small muted">${fmtDate(h.start)} – ${fmtDate(h.end)}</span></div>${verdictLine(res)}${survivor}${kpiTiles(res)}
-        ${split ? `<div class="grid2">${["train", "test"].map((k) => { const s = split[k].strategy, n = split[k].nifty || {}; return `<div class="mini" style="padding:12px"><span class="k">${k === "train" ? "Training" : "Test (unseen)"} · ${fmtDate(s.start)} – ${fmtDate(s.end)}</span><span class="v">${pct(s.cagr_pct)} <span class="small muted" style="font-family:var(--font-ui);font-weight:400">vs ${esc(benchLabel(res))} ${pct(n.cagr_pct)}</span></span><span class="b">worst fall ${pct(s.max_drawdown_pct)} · Sharpe ${n2(s.sharpe)}${s.trades != null && v.spec.type !== "rotation" ? ` · ${s.trades} ${v.spec.type === "option_selling" ? "cycles" : "trades"}` : ""}</span></div>`; }).join("")}</div>
-          ${split.flags.length ? `<p class="note">Train vs test: ${esc(split.flags.join("; ").toLowerCase())}.</p>` : `<p class="note">Test period results are in line with training.</p>`}` : ""}</div>`}
-      ${runs.length ? `<div class="card"><h2>Earlier paper runs</h2><div class="tablewrap"><table><thead><tr><th>Version</th><th>From</th><th>Until</th></tr></thead><tbody>${runs.map((r) => `<tr><td>v${r.version}</td><td>${fmtDate(r.since)}</td><td>${fmtDate(r.until)}</td></tr>`).join("")}</tbody></table></div></div>` : ""}`;
-    $("pitCmpBtn")?.addEventListener("click", () => pitCompare(a, v, test, $("pitCmp")));
-    body.querySelectorAll("[data-tabgo]").forEach((b) => b.addEventListener("click", () => { S.room.tab = b.dataset.tabgo; renderRoomBody(); }));
-    const pc = document.getElementById("paperChart");
-    if (pc) { const p = await paperResult(a); if (p && !p.pending) chart(pc, p.res.days, [{ short: benchLabel(p.res), color: "var(--series-b)", values: p.res.bench || [], width: 1.6 }, { short: "Paper", color: "var(--series-a)", values: p.res.eq, width: 2 }], { height: 200, endLabels: true, aria: "Paper equity", fmt: inrShort, fmtEnd: inrShort, fmtTip: inr }); }
-  }
   function intraSessionTable(sigs) {
     const t = sigs.filter((x) => x.action === "TRADED");
     if (!t.length) return `<div class="card"><p class="muted">${esc(sigs[0]?.note || "No trades.")}</p></div>`;
@@ -428,8 +450,8 @@ USER NOW: ${text}${attachmentText(atts)}`;
       msg.text += await applyOrderChanges("agent", a, out);
       if (v.spec.type === "watchlist" && out?.list && Array.isArray(out.list.syms) && !S.readOnly) {
         const { known, unknown } = parseNames(out.list.syms.join(" "));
-        if (known.length) { await saveList(a, known, out.list.mode === "add" ? "add" : "replace"); const w2 = await watchCalls(a, E.normalize(v.spec, S.man.universes)); const r = await ordersNow(a, E.normalize(v.spec, S.man.universes), w2.rows).catch(() => ({ made: 0 }));
-          msg.text += `\n\n_Today's list ${out.list.mode === "add" ? "added to" : "set to"}: ${known.join(", ")}${unknown.length ? ` (no data: ${unknown.join(", ")})` : ""}. ${r.made ? `${r.made} order(s) set for ${fmtDate(r.session)}.` : ""}_`; S.paperCache.clear(); }
+        if (known.length) { await saveList(a, known, out.list.mode === "add" ? "add" : "replace"); const r = await tradeOnNames(a).catch((e) => ({ traded: false, why: e.message }));
+          msg.text += `\n\n_Today's list ${out.list.mode === "add" ? "added to" : "set to"}: ${known.join(", ")}${unknown.length ? ` (no data: ${unknown.join(", ")})` : ""}. ${r.traded ? "Trading now at live prices." : r.why ? `It trades ${r.why}.` : ""}_`; S.paperCache.clear(); }
       }
       if (out?.new_chat === true && !S.readOnly) await startNewRoomChat(true);
       const mid = await addAgentMsg(a.id, msg); st.textContent = "";
@@ -487,11 +509,11 @@ USER NOW: ${text}${attachmentText(atts)}`;
   // ================================================================ router
   function wireGo(root) { root.querySelectorAll("[data-go]").forEach((b) => { if (b.__go) return; b.__go = true; b.addEventListener("click", () => go(b.dataset.go)); }); }
   function go(hash) { hash = hash === "main" ? "cio" : hash; if (location.hash.slice(1) === hash) route(); else location.hash = hash; }
-  const VIEWS = ["home", "markets", "symbol", "book", "orders", "desks", "alerts", "research", "system", "room"];
+  const VIEWS = ["home", "markets", "symbol", "book", "orders", "desks", "alerts", "research", "system", "backtests", "room"];
   function route() {
     let h = decodeURIComponent(location.hash.slice(1));
     if (h === "" || h === "main") h = S.lastHome || "home";
-    if (h === "agents") h = "desks"; if (h === "signals") h = "orders";
+    if (h === "agents") h = "desks"; if (h === "signals" || h === "trades") h = "orders";
     const view = h.startsWith("agent-") ? "room" : h.startsWith("sym-") ? "symbol" : h === "cio" ? "cio" : VIEWS.includes(h) ? h : "home";
     document.body.classList.toggle("cio-page", view === "cio");
     if (view === "cio") document.body.classList.remove("cio-open");
@@ -504,7 +526,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
     if (view === "cio") { S.suppressScroll = false; renderMain(); setTimeout(() => $("mainInput").focus({ preventScroll: true }), 30); }
     if (view === "research") renderResearch();
     if (view === "home") renderHome(); if (view === "markets") renderMarkets(); if (view === "symbol") renderSymbol(h.slice(4));
-    if (view === "book") renderBook(); if (view === "orders") renderOrders(); if (view === "desks") renderDesks(); if (view === "alerts") renderAlerts(); if (view === "system") renderSystem();
+    if (view === "book") renderBook(); if (view === "orders") renderOrders(); if (view === "desks") renderDesks(); if (view === "alerts") renderAlerts(); if (view === "system") renderSystem(); if (view === "backtests") renderBacktests();
     window.scrollTo({ top: 0 });
   }
   function openCio(open) {
@@ -572,7 +594,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
   $("newChatBtn").addEventListener("click", () => startNewMainChat(false));
   $("roomNewChat").addEventListener("click", () => startNewRoomChat(false));
   $("roomInput").addEventListener("input", (e) => autoGrow(e.target));
-  let rsT; window.addEventListener("resize", () => { clearTimeout(rsT); rsT = setTimeout(() => { if (S.view === "room" && S.room.tab === "performance") renderRoomBody(); }, 200); });
+  let rsT; window.addEventListener("resize", () => { clearTimeout(rsT); rsT = setTimeout(() => { if (S.view === "room" && S.room.tab === "backtest") renderRoomBody(); }, 200); });
 
   (async () => {
     try { await loadBase(); } catch (e) { $("mainStatus").textContent = e.message; $("mainStatus").classList.add("err"); $("view-home").hidden = false; $("view-home").innerHTML = `<div class="empty"><h2>Market data didn't load</h2><p>${esc(e.message)}</p></div>`; return; }
@@ -600,7 +622,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
     ordersRef().onSnapshot((snap) => { S.orders = snap.exists ? (snap.data().items || []) : []; renderOrdersAll(); }, () => { /* no orders yet */ });
     sessionRef().onSnapshot((snap) => { const since = snap.exists ? (snap.data().since || "") : ""; if (since !== (S.chatSince || "")) { S.chatSince = since; S.mainMsgs = visibleMain(S.allMainMsgs || []); if (S.view === "main") renderMain(); } }, () => { /* none yet */ });
     mainCol().orderBy("at", "desc").limit(400).onSnapshot((snap) => { S.allMainMsgs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.kind === "main").reverse(); S.mainMsgs = visibleMain(S.allMainMsgs); if (S.view === "main" || document.body.classList.contains("cio-open")) renderMain(); });
-    startFundData(); startSystemData();
+    startFundData(); startSystemData(); startLive();
     if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__tradeos = { S, go, fundChanged, route, fundActionsFrom, renderMain, fundBrief };  // local testing only
     route();
     window.addEventListener("hashchange", route);

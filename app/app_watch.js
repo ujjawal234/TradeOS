@@ -1,6 +1,6 @@
   // ================================================================ DAILY-LIST SYSTEMS (strategy type "watchlist")
-  // The team sends names; the system calls BUY / SELL / HOLD on the latest close with its named conditions, the desk turns
-  // the calls into paper orders for the next open, and the record of every list sent teaches it better settings.
+  // The team sends names; the system calls BUY / SELL / HOLD on LIVE prices (today's live quote as the latest bar) with its
+  // named conditions, the desk's paper orders fill at once at the live price, and the record of every list teaches it better settings.
   const todayIST = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
   const sessionDays = () => Array.from(S.light.NIFTY?.d || []).filter((d) => d <= E.dayOf(S.lastDay));
   const learnedOver = (a) => a.auto_learn && a.learned?.params ? a.learned.params : null;
@@ -11,10 +11,12 @@
     return out;
   }
   async function watchCalls(a, spec, onProgress) {
-    const list = liveNames(a, spec), held = heldOf(a);
-    const frames = await framesFor(spec, onProgress, [...list, ...(spec.symbols || []), ...Object.keys(held)]);
-    const rows = E.watchSignals(spec, frames, { list, held, over: learnedOver(a) });
-    return { rows, list, held, frames };
+    const tday = E.dayOf(todayIST()), list = E.watchLive(a.inbox_log || [], sessionDays().filter((d) => d < tday), spec.list_days, true), held = heldOf(a);
+    const frames0 = await framesFor(spec, onProgress, [...list, ...(spec.symbols || []), ...Object.keys(held)]);
+    const qr = await quotesFor(Object.keys(frames0).filter((s) => S.man.symbols[s]?.kind === "stock")).catch(() => ({ missing: [] }));
+    const L = E.withLiveBars(frames0, (s) => { const q = quoteNow(s); return q && q.date === todayIST() ? { ltp: q.ltp, open: q.open, high: q.high, low: q.low, value_cr: q.value_cr, volume: q.volume } : null; }, tday);
+    const rows = E.watchSignals(spec, L.frames, { list, held, over: learnedOver(a) });
+    return { rows, list, held, frames: L.frames, live: L.live, missing: qr.missing || [] };
   }
   // Names out of anything pasted. One name per line (or comma / semicolon): a ticker ("RELIANCE", "NSE:TATAMOTORS")
   // or a company name ("Aditya Infotech", "Veljan Denison Ltd") — names are matched against every NSE and BSE company;
@@ -74,36 +76,29 @@
     await patchAgent(a.id, { inbox_log: a.inbox_log, inbox: { date: d, syms: next } });
     return ent;
   }
-  // When names arrive after the close (or on a holiday), the calls on the latest close become orders for the next open at once,
-  // instead of waiting for the evening run. Orders made earlier the same way for names no longer called are cancelled.
-  async function ordersNow(a, spec, rows) {
-    const sl = S.bookState?.sleeves?.[a.id], desk = a.desk_id && S.desks.get(a.desk_id), ns = nextSessionIso();
-    if (a.status !== "paper" || !sl || !desk || (desk.status || "active") !== "active" || S.bookCfg?.kill_switch) return { made: 0, why: !sl ? "after tonight's run (the desk opens this system's capital then)" : "after tonight's run" };
-    if (ns <= todayIST()) return { made: 0, why: "after tonight's run, from today's close" };
-    const plan = O.agentTargets(a, spec, { watch: rows }, O.sleeveEquity(sl, pxFn), pxFn, S.man.symbols, ns);
-    const built = O.buildOrders({ state: JSON.parse(JSON.stringify(S.bookState)), book: S.bookCfg || {}, desks: [...S.desks.values()], agents: [...S.agents.values()], plans: { [a.id]: plan }, px: pxFn, meta: S.man.symbols, date: S.lastDay, nextSession: ns });
-    const mine = built.orders.filter((o) => o.agent === a.id), have = new Map(S.ordersList.filter((o) => o.agent === a.id && o.session === ns).map((o) => [o.id, o]));
-    let made = 0, cancelled = 0;
-    for (const o of mine) if (!have.has(o.id)) { await S.db.doc(`orders/${o.id}`).set({ ...o, created_at: nowIso(), by_app: true, by: S.uid }); made++; }
-    const keep = new Set(mine.map((o) => o.id));
-    for (const [id, o] of have) if (o.by_app && !keep.has(id) && ["pending", "approved"].includes(o.status)) { await S.db.doc(`orders/${id}`).update({ status: "cancelled", note: "no longer called on the latest list" }); cancelled++; }
-    return { made, cancelled, session: ns };
+  // Names sent during the session are acted on at once at live prices; outside it, at the next run in the session.
+  async function tradeOnNames(a) {
+    const sl = S.bookState?.sleeves?.[a.id], desk = a.desk_id && S.desks.get(a.desk_id);
+    if (a.status !== "paper" || !sl || !desk || (desk.status || "active") !== "active" || S.bookCfg?.kill_switch) return { traded: false, why: !sl ? "once it is on a desk with an allocation" : "when its desk is active" };
+    if (!marketOpenNow()) return { traded: false, why: "at live prices when the market opens (the 09:20 run), or press Decide & trade now during the session" };
+    openRunAgents([a.id]); return { traded: true };
   }
 
   // ---------------------------------------------------------------- room: Today · Record · Settings
-  const WATCH_TABS = [["today", "Today"], ["record", "Record"], ["rules", "Settings"]];
+  const WATCH_TABS = [["today", "Now"], ["trades", "Trades"], ["record", "Backtest & learning"], ["rules", "Settings"]];
   const condChip = (c) => `<span class="cond ${c.on ? "on" : ""}" title="${esc(c.label)}">${c.on ? "✓" : "·"} ${esc(c.label)}${c.value != null ? ` <b>${esc(n2c(c.value))}${esc(c.unit || "")}</b>` : ""}</span>`;
   const n2c = (x) => x == null ? "–" : Math.abs(x) >= 100 ? Math.round(x).toLocaleString("en-IN") : (+x.toFixed(2)).toString();
   async function renderWatchRoom(a, v, body, seq, tab) {
     let spec; try { spec = E.normalize(v.spec, S.man.universes); } catch (e) { body.innerHTML = `<p class="flag">${esc(e.message || e)}</p>`; return; }
     if (tab === "record") return watchRecord(a, v, spec, body, seq);
+    if (tab === "trades") { body.innerHTML = `<div class="row" style="margin-bottom:10px"><h2>Paper trades</h2><span class="grow"></span><span class="small muted">filled at live NSE prices, with charges</span></div>` + tradeTable(fillsOf((o) => o.agent === a.id), { agentCol: false }); wireTrades(body); return; }
     if (tab === "rules") return watchSettings(a, v, spec, body);
     return watchToday(a, v, spec, body, seq);
   }
   async function watchToday(a, v, spec, body, seq) {
     const ro = S.readOnly, today = todayIST(), todays = (a.inbox_log || []).find((x) => x.date === today);
-    const sl = S.bookState?.sleeves?.[a.id], desk = a.desk_id && S.desks.get(a.desk_id), ns = nextSessionIso();
-    const head = `<div class="card wl-in"><div class="row"><h2>Today's names</h2><span class="grow"></span><span class="xs muted">${todays ? `${todays.syms.length} sent today` : "none sent today yet"} · calls use the ${esc(fmtDate(S.lastDay))} close</span></div>
+    const sl = S.bookState?.sleeves?.[a.id], desk = a.desk_id && S.desks.get(a.desk_id), ns = todayIST();
+    const head = `<div class="card wl-in"><div class="row"><h2>Today's names</h2><span class="grow"></span><span class="xs muted">${todays ? `${todays.syms.length} sent today` : "none sent today yet"} · calls on ${esc(liveLabel())} prices</span></div>
       ${ro ? "" : `<form id="wlForm" class="wl-form"><textarea class="input" id="wlNames" rows="2" placeholder="One per line — ticker or company name: RELIANCE, Aditya Infotech, Veljan Denison…" aria-label="Today's names"></textarea>
         <div class="row"><button class="btn" type="submit" data-mode="replace">Run on these</button><button class="btn ghost" type="button" id="wlAdd">Add to today's list</button><span class="status" id="wlStatus"></span></div></form>`}
       <div class="namechips" id="wlChips"></div></div>`;
@@ -111,23 +106,24 @@
     const deskOpts = [...S.desks.values()].filter((d) => (d.status || "active") !== "halted").map((d) => `<option value="${esc(d.id)}" ${d.id === a.desk_id ? "selected" : ""}>${esc(d.name)}</option>`).join("");
     const start = notOn && !ro ? `<div class="banner wl-start"><span>${a.status !== "paper" ? "Calls only — no orders yet." : "Paper trading, but not on a desk with capital — no orders yet."} Put it on a desk to send orders:</span>
       ${S.desks.size ? `<select class="input" id="wlDesk" aria-label="Desk">${deskOpts}</select><input class="input alloc" id="wlAlloc" type="number" min="1" max="100" value="${a.alloc_pct || 100}" aria-label="Share of the desk (%)"><span class="xs">% of desk</span><button class="btn small" type="button" id="wlGo">Start paper orders</button>` : '<button class="btn small" type="button" data-go="desks">Create a desk</button>'}</div>` : "";
-    body.innerHTML = head + start + `<div id="wlCalls"><p class="thinking">Reading the latest close<span class="dots"></span></p></div>`;
+    body.innerHTML = head + start + `<div id="wlCalls"><p class="thinking">Reading live prices<span class="dots"></span></p></div>`;
     wireGo(body);
     let w; try { w = await watchCalls(a, spec, (d, n) => { const el = $("wlCalls"); if (el && seq === roomRenderSeq) el.innerHTML = `<p class="muted">Loading prices ${d} of ${n}…</p>`; }); }
     catch (e) { $("wlCalls").innerHTML = `<p class="flag">${esc(e.message || e)}</p>`; return; }
     if (seq !== roomRenderSeq) return;
-    const plan = sl && a.status === "paper" ? O.agentTargets(a, spec, { watch: w.rows }, O.sleeveEquity(sl, pxFn), pxFn, S.man.symbols, ns) : null;
+    const plan = sl && a.status === "paper" ? O.agentTargets(a, spec, { watch: w.rows }, O.sleeveEquity(sl, pxFn), pxFn, S.man.symbols, nextSessionIso()) : null;
     const todays2 = new Set(todays?.syms || []);
     $("wlChips").innerHTML = w.list.length ? w.list.map((s) => `<span class="namechip">${esc(s)}${todays2.has(s) && !ro ? `<button type="button" data-rmname="${esc(s)}" aria-label="Remove ${esc(s)}">✕</button>` : ""}</span>`).join("") : '<span class="xs muted">No names are live. Send today\'s list above — names count for ' + spec.list_days + ' session' + (spec.list_days > 1 ? "s" : "") + '.</span>';
     const orderCell = (r) => { if (!plan) return ""; const t = plan.targets[r.symbol], cur = r.qty || 0; if (t == null || t === cur) return '<span class="xs muted">–</span>'; const q = t - cur, p = r.price || 0; return `<span class="side-tag ${q > 0 ? "BUY" : "SELL"}">${q > 0 ? "BUY" : "SELL"} ${Math.abs(q).toLocaleString("en-IN")}</span><span class="sub">${inrShort(Math.abs(q) * p)}</span>`; };
     const rows = w.rows.filter((r) => r.listed || r.held || r.action === "NO DATA");
-    const ord = S.ordersList.filter((o) => o.agent === a.id && o.session === ns && o.status !== "cancelled");
+    const ord = fillsOf((o) => o.agent === a.id && (o.fill_date || "") === todayIST()), canTrade = plan && marketOpenNow() && !ro;
     $("wlCalls").innerHTML = `<div class="card" style="padding:6px 8px"><div class="row" style="padding:8px 8px 4px"><h2>Calls</h2><span class="grow"></span><span class="xs muted">${w.rows.filter((r) => r.action === "BUY").length} buy · ${w.rows.filter((r) => r.action === "SELL").length} sell · ${w.rows.filter((r) => r.action === "HOLD").length} holding${learnedOver(a) ? " · learned settings" : ""}</span></div>
-      ${rows.length ? `<div class="tablewrap"><table class="wl-table"><thead><tr><th>Call</th><th>Name</th><th class="r">Last</th><th class="r">Day</th><th>Triggers</th>${plan ? `<th>Order for ${esc(fmtDate(ns))}</th>` : ""}</tr></thead><tbody>
+      ${rows.length ? `<div class="tablewrap"><table class="wl-table"><thead><tr><th>Call</th><th>Name</th><th class="r">Last</th><th class="r">Day</th><th>Triggers</th>${plan ? `<th>Trade now</th>` : ""}</tr></thead><tbody>
         ${rows.map((r) => `<tr><td><span class="act ${esc(r.action.replace(/ /g, "-"))}">${esc(r.action)}</span></td><td><button class="linkbtn" style="color:var(--ink);padding:0" type="button" data-go="sym-${esc(r.symbol)}"><span class="sym">${esc(r.symbol)}</span></button><span class="sub">${esc(r.held ? `${r.qty} @ ${px(r.avg)} · ${pct(r.pnl_pct)} · day ${r.days_held}` : nameOfSym(r.symbol))}</span></td>
           <td class="r">${px(r.price)}</td><td class="r ${cls(r.day_pct)}">${pct(r.day_pct, 2)}</td><td class="wrap">${(r.conditions || []).map(condChip).join("")}${r.action === "SELL" || r.action === "NO DATA" || r.slotOk === false ? `<span class="sub">${esc(r.note)}</span>` : ""}</td>${plan ? `<td>${orderCell(r)}</td>` : ""}</tr>`).join("")}</tbody></table></div>`
       : '<p class="muted" style="padding:8px">Nothing to call yet.</p>'}
-      ${ord.length ? `<p class="note" style="padding:6px 8px">${ord.length} order(s) are set for the ${esc(fmtDate(ns))} open — <button class="linkbtn" type="button" data-go="orders">see Orders</button>.</p>` : ""}</div>`;
+      <div class="row" style="padding:6px 8px"><span class="note">${w.live ? `${w.live} name(s) at live NSE prices` : "latest closes (no live prices right now)"}${ord.length ? ` · ${ord.length} trade(s) today — <button class="linkbtn" type="button" data-tabgo="trades">see them</button>` : ""}</span><span class="grow"></span>${canTrade && plan && Object.keys(plan.targets).some((k) => (plan.targets[k] || 0) !== (w.rows.find((r) => r.symbol === k)?.qty || 0)) ? `<button class="btn small" type="button" data-run-agents="${esc(a.id)}">Trade these now</button>` : ""}</div></div>`;
+    body.querySelectorAll("[data-tabgo]").forEach((b) => b.addEventListener("click", () => { S.room.tab = b.dataset.tabgo; renderRoomBody(); }));
     wireGo($("wlCalls"));
     if (ro) return;
     const submit = async (mode) => {
@@ -136,19 +132,19 @@
       st.classList.remove("err"); st.textContent = "Saving…";
       try {
         await saveList(a, known, mode); $("wlNames").value = "";
-        const w2 = await watchCalls(a, spec), r = await ordersNow(a, spec, w2.rows).catch((e) => ({ made: 0, why: e.message }));
-        const buys = w2.rows.filter((x) => x.action === "BUY").map((x) => x.symbol);
-        toast(`${known.length} name(s) live${buys.length ? ` · BUY ${buys.slice(0, 5).join(", ")}${buys.length > 5 ? "…" : ""}` : " · no triggers on the latest close"}${r.made ? ` · ${r.made} order(s) for ${fmtDate(r.session)}` : a.status === "paper" && buys.length ? ` · orders ${r.why}` : ""}${pr.matched.length ? ` · read ${pr.matched.slice(0, 4).map(([t, k]) => `${t} as ${k}`).join(", ")}` : ""}${unknown.length ? ` · not found: ${unknownText(pr)}` : ""}`);
+        const w2 = await watchCalls(a, spec), buys = w2.rows.filter((x) => x.action === "BUY").map((x) => x.symbol);
+        const r = buys.length || w2.rows.some((x) => x.action === "SELL") ? await tradeOnNames(a).catch((e) => ({ traded: false, why: e.message })) : { traded: false };
+        toast(`${known.length} name(s) live${buys.length ? ` · BUY ${buys.slice(0, 5).join(", ")}${buys.length > 5 ? "…" : ""}` : " · no triggers at these prices"}${r.traded ? " · trading now at live prices" : a.status === "paper" && buys.length && r.why ? ` · trades ${r.why}` : ""}${pr.matched.length ? ` · read ${pr.matched.slice(0, 4).map(([t, k]) => `${t} as ${k}`).join(", ")}` : ""}${unknown.length ? ` · not found: ${unknownText(pr)}` : ""}`);
         S.paperCache.clear(); renderRoomBody();
       } catch (e) { st.classList.add("err"); st.textContent = e.message || String(e); }
     };
     $("wlForm").addEventListener("submit", (e) => { e.preventDefault(); submit("replace"); });
     $("wlAdd").addEventListener("click", () => submit("add"));
     $("wlNames").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit("replace"); } });
-    body.querySelectorAll("[data-rmname]").forEach((b) => b.addEventListener("click", async () => { const left = (todays?.syms || []).filter((s) => s !== b.dataset.rmname); try { await saveList(a, left, "replace"); const w2 = await watchCalls(a, spec); await ordersNow(a, spec, w2.rows).catch(() => null); renderRoomBody(); } catch (e) { toast(e.message || String(e)); } }));
+    body.querySelectorAll("[data-rmname]").forEach((b) => b.addEventListener("click", async () => { const left = (todays?.syms || []).filter((s) => s !== b.dataset.rmname); try { await saveList(a, left, "replace"); renderRoomBody(); } catch (e) { toast(e.message || String(e)); } }));
     $("wlGo")?.addEventListener("click", async (e) => {
       e.target.disabled = true;
-      try { await patchAgent(a.id, { desk_id: $("wlDesk").value, alloc_pct: Math.max(1, Math.min(100, Number($("wlAlloc").value) || 100)) }); if (a.status !== "paper") await setStatus(a, "paper"); toast("On the desk. Orders start with tonight's run."); }
+      try { await patchAgent(a.id, { desk_id: $("wlDesk").value, alloc_pct: Math.max(1, Math.min(100, Number($("wlAlloc").value) || 100)) }); if (a.status !== "paper") await setStatus(a, "paper"); toast(marketOpenNow() ? "On the desk. It trades at live prices from the next run — or press Trade these now." : "On the desk. It trades at live prices when the market opens."); }
       catch (err) { e.target.disabled = false; toast(err.message || String(err)); }
     });
   }
@@ -177,7 +173,7 @@
       ${learnCard}
       <div class="grid2"><div class="card"><h2>By trigger</h2><div class="tablewrap"><table><thead><tr><th>Trigger</th><th class="r">Calls</th><th class="r">Won</th><th class="r">Avg</th></tr></thead><tbody>${st.by_condition.map((c) => `<tr><td>${esc(c.label)}</td><td class="r">${c.n}</td><td class="r">${pct(c.win_pct, 0, false)}</td><td class="r ${cls(c.avg_pct)}">${pct(c.avg_pct, 2)}</td></tr>`).join("")}</tbody></table></div></div>
         <div class="card"><h2>Moves it missed</h2>${st.missed_movers.length ? `<div class="tablewrap"><table><thead><tr><th>Name</th><th>List</th><th class="r">Next 5 days</th></tr></thead><tbody>${st.missed_movers.map((m) => `<tr><td>${esc(m.symbol)}</td><td class="small">${esc(fmtDate(m.date))}</td><td class="r pos">${pct(m.fwd_pct)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="small muted">None above +5% so far.</p>'}</div></div>
-      <div class="card"><div class="row"><h2>Every call</h2><span class="grow"></span><span class="xs muted">bought at the next open, sold by the exit rules, after ${spec.cost_pct}% costs a side</span></div>${recent.length ? `<div class="tablewrap tall"><table><thead><tr><th>Name</th><th>Called</th><th>Triggers</th><th class="r">In</th><th class="r">Out</th><th class="r">Return</th><th>Why out</th></tr></thead><tbody>${recent.map((t) => `<tr><td><b>${esc(t.symbol)}</b></td><td class="small">${esc(fmtDate(t.signal_date))}</td><td class="small">${esc((t.fired || []).map((id) => spec.conditions.find((c) => c.id === id)?.label || id).join(" + "))}</td><td class="r">${t.pending ? '<span class="xs muted">next open</span>' : px(t.entry)}</td><td class="r">${t.pending ? "" : px(t.exit)}</td><td class="r ${cls(t.ret_pct)}">${t.pending ? "" : pct(t.ret_pct, 2)}</td><td class="small">${esc(t.pending ? "pending" : t.reason)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="muted small">No calls yet.</p>'}</div>
+      <div class="card"><div class="row"><h2>Every call</h2><span class="grow"></span><span class="xs muted">replay: bought at the next open after each list, sold by the exit rules, after ${spec.cost_pct}% costs a side</span></div>${recent.length ? `<div class="tablewrap tall"><table><thead><tr><th>Name</th><th>Called</th><th>Triggers</th><th class="r">In</th><th class="r">Out</th><th class="r">Return</th><th>Why out</th></tr></thead><tbody>${recent.map((t) => `<tr><td><b>${esc(t.symbol)}</b></td><td class="small">${esc(fmtDate(t.signal_date))}</td><td class="small">${esc((t.fired || []).map((id) => spec.conditions.find((c) => c.id === id)?.label || id).join(" + "))}</td><td class="r">${t.pending ? '<span class="xs muted">next open</span>' : px(t.entry)}</td><td class="r">${t.pending ? "" : px(t.exit)}</td><td class="r ${cls(t.ret_pct)}">${t.pending ? "" : pct(t.ret_pct, 2)}</td><td class="small">${esc(t.pending ? "pending" : t.reason)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="muted small">No calls yet.</p>'}</div>
       <div class="card"><div class="row"><h2>Check on past data</h2><span class="grow"></span><select class="input" id="wlBackN" style="width:auto;min-height:32px;padding:3px 8px" aria-label="Period"><option value="21">1 month</option><option value="63" selected>3 months</option><option value="126">6 months</option></select><button class="btn ghost small" type="button" id="wlBack">Run</button></div><p class="small muted">Optional. Treats today's names as if you had sent them every day of the period.</p><div id="wlBackOut"></div></div>`;
     $("wlAuto")?.addEventListener("change", async (e) => { try { await patchAgent(a.id, { auto_learn: e.target.checked }); toast(e.target.checked ? "It will adjust its settings from its record each evening" : "Learning paused: it uses its saved settings"); } catch (err) { toast(err.message || String(err)); } });
     $("wlApply")?.addEventListener("click", async (e) => {
@@ -274,7 +270,7 @@
     try { calls = (await watchCalls(a, spec)).rows.filter((r) => r.listed || r.held).slice(0, 80).map((r) => ({ symbol: r.symbol, call: r.action, price: r.price, day_pct: r.day_pct, triggers: (r.conditions || []).map((c) => `${c.label}:${c.on ? "yes" : "no"}${c.value != null ? ` (${c.value}${c.unit || ""})` : ""}`).join(", "), held: r.held ? { qty: r.qty, avg: r.avg, pnl_pct: r.pnl_pct, days: r.days_held } : null })); } catch (e) { calls = [{ error: e.message }]; }
     try { const names = [...new Set(log.flatMap((x) => x.syms || []))], fr = await framesFor(spec, null, names); const L = E.watchLearn(spec, fr, log, { over: learnedOver(a) }); st = { ...L.stats, best: L.stats.best && { s: L.stats.best.symbol, r: L.stats.best.ret_pct }, worst: L.stats.worst && { s: L.stats.worst.symbol, r: L.stats.worst.ret_pct }, recent: L.trades.slice(-25).map((t) => `${t.symbol} ${t.signal_date} ${t.pending ? "pending" : `${t.ret_pct}% (${t.reason})`} [${t.fired.join("+")}]`) }; } catch (e) { st = { error: e.message }; }
     const hist = S.room.messages.filter((m) => m.role !== "system").slice(-30).map((m) => `${m.role === "user" ? "USER" : "YOU"}: ${m.text}${m.proposal ? ` [proposed: ${m.proposal.note}; ${m.proposal.status || "pending"}]` : ""}`).join("\n\n");
-    return `You are "${a.name}", a daily-list trading system inside TradeOS (Indian markets, paper trading). The team sends you names (stocks) — usually a list a day. On the latest close you call BUY when your triggers fire, the desk buys at the next open, and you SELL by your exit rules. You learn from the record of every list sent. You think like the best short-term equity trader and analyst in the world, but you carry out the user's instructions exactly, add nothing they didn't ask for, and judge by money made.
+    return `You are "${a.name}", a daily-list trading system inside TradeOS (Indian markets, paper trading). The team sends you names (stocks) — usually a list a day. On LIVE prices (today's live quote is your latest bar) you call BUY when your triggers fire and the desk buys at once at the live price; you SELL by your exit rules, also at live prices. You learn from the record of every list sent. You think like the best short-term equity trader and analyst in the world, but you carry out the user's instructions exactly, add nothing they didn't ask for, and judge by money made.
 
 ${ordersBlock(a)}
 
@@ -290,7 +286,7 @@ HOW YOU WORK
 
 SPEC (v${v.n}, ${a.status}${a.desk_id ? `, desk ${deskName(a.desk_id)} at ${a.alloc_pct || 0}%` : ", not on a desk"}): ${JSON.stringify(v.spec)}
 LEARNED SETTINGS IN USE: ${JSON.stringify(learnedOver(a))}${a.auto_learn ? " (auto-learning on)" : " (auto-learning off)"}
-LIVE NAMES: ${JSON.stringify(liveNames(a, spec))} · latest close ${S.lastDay} · next session ${nextSessionIso()}
+LIVE NAMES: ${JSON.stringify(liveNames(a, spec))} · prices ${liveLabel()} · market ${marketOpenNow() ? "open" : "closed"} · last daily bar ${S.lastDay}
 TODAY'S CALLS: ${JSON.stringify(calls)}
 RECORD ON THE LISTS SENT (${log.length} lists): ${JSON.stringify(st)}
 

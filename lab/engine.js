@@ -431,6 +431,60 @@
     }
     return out;
   }
+  // NSE live index names. index symbols: TradeOS keys (NIFTY, BANKNIFTY, NIFTY_IT, NIFTY_PRIVATE_BANK…) ↔ NSE live short names (NIFTY 50, NIFTY BANK, NIFTY IT, NIFTY PVT BANK…)
+  const NSE_IX_ALIAS = { NIFTY: "NIFTY50", BANKNIFTY: "NIFTYBANK", FINNIFTY: "NIFTYFINSERVICE", MIDCPNIFTY: "NIFTYMIDSELECT", NIFTYNXT50: "NIFTYNEXT50" };
+  const NSE_IX_NAME = { // NSE's short live names the abbreviation rules below don't reach (TradeOS key → NSE live name)
+    NIFTY_INDIA_FPI_150: "NIFTY FPI 150", NIFTY_MIDSMALLCAP_400: "NIFTY MIDSML 400", NIFTY500_MULTICAP_50_25_25: "NIFTY500 MULTICAP", NIFTY_LARGEMIDCAP_250: "NIFTY LARGEMID250",
+    NIFTY500_LARGEMIDSMALL_EQUAL_CAP_WEIGHTED: "NIFTY500 LMS EQL", NIFTY_MIDSMALLCAP400_50_50: "NIFTY MIDSMALL 50 50", NIFTY_FINANCIAL_SERVICES_25_50: "NIFTY FINSRV25 50",
+    NIFTY_MIDSMALL_HEALTHCARE: "NIFTY MIDSML HLTH", NIFTY_FINANCIAL_SERVICES_EX_BANK: "NIFTY FINSEREXBNK", NIFTY_MIDSMALL_FINANCIAL_SERVICES: "NIFTY MS FIN SERV",
+    NIFTY_MIDSMALL_IT_TELECOM: "NIFTY MS IT TELCM", NIFTY500_HEALTHCARE: "NIFTY500 HEALTH", NIFTY_GROWTH_SECTORS_15: "NIFTY GROWSECT 15", NIFTY50_TR_2X_LEVERAGE: "NIFTY50 TR 2X LEV",
+    NIFTY50_PR_2X_LEVERAGE: "NIFTY50 PR 2X LEV", NIFTY50_TR_1X_INVERSE: "NIFTY50 TR 1X INV", NIFTY50_PR_1X_INVERSE: "NIFTY50 PR 1X INV", NIFTY_ALPHA_LOW_VOLATILITY_30: "NIFTY ALPHALOWVOL",
+    NIFTY_MIDCAP150_QUALITY_50: "NIFTY M150 QLTY50", NIFTY_MIDCAP150_MOMENTUM_50: "NIFTYM150MOMNTM50", NIFTY_MIDSMALLCAP400_MOMENTUM_QUALITY_100: "NIFTYMS400 MQ 100",
+    NIFTY_SMALLCAP250_MOMENTUM_QUALITY_100: "NIFTYSML250MQ 100", NIFTY_TOP_10_EQUAL_WEIGHT: "NIFTY TOP 10 EW", NIFTY_TOP_15_EQUAL_WEIGHT: "NIFTY TOP 15 EW", NIFTY_TOP_20_EQUAL_WEIGHT: "NIFTY TOP 20 EW",
+    NIFTY_ALPHA_QUALITY_LOW_VOLATILITY_30: "NIFTY AQL 30", NIFTY_ALPHA_QUALITY_VALUE_LOW_VOLATILITY_30: "NIFTY AQLV 30", NIFTY_QUALITY_LOW_VOLATILITY_30: "NIFTY QLTY LV 30",
+    NIFTY_SMALLCAP250_QUALITY_50: "NIFTY SML250 Q50", NIFTY500_EQUAL_WEIGHT: "NIFTY500 EW", NIFTY500_MULTICAP_MOMENTUM_QUALITY_50: "NIFTY MULTI MQ 50", NIFTY500_QUALITY_50: "NIFTY500 QLTY50",
+    NIFTY500_MULTIFACTOR_MQVLV_50: "NIFTY500 MQVLV50", NIFTY500_FLEXICAP_QUALITY_30: "NIFTY500 FLEXICAP", NIFTY_TOTAL_MARKET_MOMENTUM_QUALITY_50: "NIFTY TMMQ 50",
+    NIFTY_INDIA_CONSUMPTION: "NIFTY CONSUMPTION", NIFTY_INFRASTRUCTURE: "NIFTY INFRA", NIFTY100_LIQUID_15: "NIFTY100 LIQ 15", NIFTY_MIDCAP_LIQUID_15: "NIFTY MID LIQ 15",
+    NIFTY100_ESG_SECTOR_LEADERS: "NIFTY100ESGSECLDR", NIFTY_INDIA_CORPORATE_GROUP_INDEX_TATA_GROUP_25_CAP: "NIFTY TATA 25 CAP", NIFTY500_MULTICAP_INDIA_MANUFACTURING_50_30_20: "NIFTY MULTI MFG",
+    NIFTY500_MULTICAP_INFRASTRUCTURE_50_30_20: "NIFTY MULTI INFRA", NIFTY_EV_NEW_AGE_AUTOMOTIVE: "NIFTY EV", NIFTY_INDIA_NEW_AGE_CONSUMPTION: "NIFTY NEW CONSUMP",
+    NIFTY_INDIA_SELECT_5_CORPORATE_GROUPS_MAATR: "NIFTY CORP MAATR", NIFTY100_ENHANCED_ESG: "NIFTY100 ENH ESG", NIFTY_MIDSMALL_INDIA_CONSUMPTION: "NIFTY MS IND CONS",
+    NIFTY_NON_CYCLICAL_CONSUMER: "NIFTY NONCYC CONS", NIFTY_TRANSPORTATION_LOGISTICS: "NIFTY TRANS LOGIS", NIFTY_INDIA_INTERNET: "NIFTY INTERNET", NIFTY_INDIA_INFRASTRUCTURE_LOGISTICS: "NIFTY INFRALOG",
+    NIFTY_INDIA_RAILWAYS_PSU: "NIFTY RAILWAYSPSU", NIFTY_CONGLOMERATE_50: "NIFTYCONGLOMERATE", NIFTY_8_13_YR_G_SEC: "NIFTY GS 8 13YR", NIFTY_10_YR_BENCHMARK_G_SEC: "NIFTY GS 10YR",
+    NIFTY_10_YR_BENCHMARK_G_SEC_CLEAN_PRICE: "NIFTY GS 10YR CLN", NIFTY_4_8_YR_G_SEC_INDEX: "NIFTY GS 4 8YR", NIFTY_11_15_YR_G_SEC_INDEX: "NIFTY GS 11 15YR",
+    NIFTY_15_YR_AND_ABOVE_G_SEC_INDEX: "NIFTY GS 15YRPLUS", NIFTY_COMPOSITE_G_SEC_INDEX: "NIFTY GS COMPSITE", NIFTY_BHARAT_BOND_INDEX_APRIL_2030: "BHARATBOND-APR30",
+    NIFTY_BHARAT_BOND_INDEX_APRIL_2031: "BHARATBOND-APR31", NIFTY_BHARAT_BOND_INDEX_APRIL_2032: "BHARATBOND-APR32", NIFTY_BHARAT_BOND_INDEX_APRIL_2033: "BHARATBOND-APR33" };
+  const NSE_ABBR = [[/FINANCIALSERVICES?/g, "FINSERVICE"], [/SMALLCAP/g, "SMLCAP"], [/CONSUMERDURABLES|CONSDURABLES/g, "CONSRDURBL"], [/OIL(AND)?GAS/g, "OILANDGAS"],
+    [/PRIVATEBANK/g, "PVTBANK"], [/SERVICESSECTOR|NIFTYSERVICES$/g, (m) => m === "NIFTYSERVICES" ? "NIFTYSERVSECTOR" : "SERVSECTOR"], [/MIDSMALLCAP/g, "MIDSML"], [/MIDCAPSELECT/g, "MIDSELECT"],
+    [/MOMENTUM/g, "MOMENTM"], [/QUALITY/g, "QUALTY"], [/LOWVOLATILITY/g, "LOWVOL"], [/EQUALWEIGHT/g, "EQLWGT"], [/DIVIDENDOPPORTUNITIES/g, "DIVOPPS"],
+    [/INDIADIGITAL/g, "INDDIGITAL"], [/INDIADEFENCE/g, "INDDEFENCE"], [/INDIATOURISM/g, "INDTOURISM"], [/CAPITALMARKETS?/g, "CAPITALMKT"], [/INDIAMANUFACTURING/g, "INDIAMFG"],
+    [/TOTALMARKET/g, "TOTALMKT"], [/COMMODITIES$/g, "COMMODITIES"], [/HEALTHCARE(INDEX)?$/g, "HEALTHCARE"], [/INDEX$/g, ""]];
+  const nseNorm = (s) => { let t = String(s || "").toUpperCase().replace(/&/g, "AND").replace(/[^A-Z0-9]+/g, ""); for (const [rx, to] of NSE_ABBR) t = t.replace(rx, to); return t; };
+  // the NSE live row for a TradeOS index symbol: byKey = {nseNorm(NSE live name): row}; meta = manifest symbols
+  function nseIndexRow(sym, byKey, meta) {
+    const m = (meta && meta[sym]) || {}, tries = [NSE_IX_NAME[sym] && nseNorm(NSE_IX_NAME[sym]), NSE_IX_ALIAS[sym], nseNorm(sym), m.alias_of && NSE_IX_NAME[m.alias_of] && nseNorm(NSE_IX_NAME[m.alias_of]), m.alias_of && (NSE_IX_ALIAS[m.alias_of] || nseNorm(m.alias_of)), m.name && nseNorm(m.name)].filter(Boolean);
+    for (const k of tries) if (byKey[k]) return byKey[k];
+    return null;
+  }
+  // Today's live quote as the latest bar, so rules decide on prices NOW (a copy: cached frames are never changed).
+  //   q: {ltp, open, high, low, volume?, value_cr?}; day: today's day number (E.dayOf). A frame that already has today's
+  //   bar (after the evening update) is returned as it is.
+  function withLiveBar(f, q, day) {
+    if (!f || !q || !(q.ltp > 0) || !f.d || !f.d.length || f.d[f.d.length - 1] >= day) return f;
+    const n = f.d.length, ext = (a, v) => { const b = new Float64Array(n + 1); b.set(a); b[n] = v; return b; };
+    const out = {};
+    for (const [k, v] of Object.entries(f)) out[k] = v instanceof Float64Array && v.length === n ? ext(v, v[n - 1]) : v;
+    const c = q.ltp, o = q.open > 0 ? q.open : c, h = Math.max(q.high > 0 ? q.high : c, c, o), l = Math.min(q.low > 0 ? q.low : c, c, o);
+    out.d = ext(f.d, day); out.c = ext(f.c, c);
+    if (f.light || f.o === f.c) { out.o = out.h = out.l = out.c; }
+    else { out.o = ext(f.o, o); out.h = ext(f.h, h); out.l = ext(f.l, l); }
+    out.v = ext(f.v || new Float64Array(n), q.volume != null ? q.volume : q.value_cr ? q.value_cr * 1e7 / c : 0);
+    out.live = true; return out;
+  }
+  function withLiveBars(frames, quoteOf, day) {
+    const out = {}; let n = 0;
+    for (const [s, f] of Object.entries(frames)) { const q = quoteOf(s), g = withLiveBar(f, q, day); if (g !== f) n++; out[s] = g; }
+    return { frames: out, live: n };
+  }
   function sliceFrame(df, fromDay, toDay) {
     let a = 0, b = df.d.length;
     if (fromDay != null) while (a < b && df.d[a] < fromDay) a++;
@@ -2043,10 +2097,11 @@
         conditions: s.conditions.map((c, k) => ({ id: c.id, label: c.label, on: !!S.cs[k][i], value: S.vs[k] ? r2(S.vs[k][i]) : null, unit: c.unit || null })), rank: S.rk ? r2(S.rk[i]) : null, listed: list.map(symKey).includes(sym) || (s.symbols || []).includes(sym) };
       if (h && h.qty) {
         const since = Math.max(0, barIndexOn(f, dayOf(h.since)));
-        const why = watchExit(s, f, S, i, h.avg, since);
+        // bought today at live prices: the exit rule and holding days wait for a later bar (stops and targets still count)
+        const why = f.live && since >= i ? (s.target_pct && f.c[i] >= h.avg * (1 + s.target_pct / 100) ? "target" : s.stop_pct && f.c[i] <= h.avg * (1 - s.stop_pct / 100) ? "stop" : null) : watchExit(s, f, S, i, h.avg, since);
         Object.assign(row, { held: true, qty: h.qty, avg: r2(h.avg), pnl_pct: r2((f.c[i] / h.avg - 1) * 100), days_held: i - since + 1 });
-        row.action = why ? "SELL" : "HOLD"; row.note = why ? `Sell at the next open (${why})` : "Holding";
-      } else if (row.listed && S.en[i]) { row.action = "BUY"; row.note = `Buy at the next open: ${row.conditions.filter((c) => c.on).map((c) => c.label).join(" + ")}`; }
+        row.action = why ? "SELL" : "HOLD"; row.note = why ? `Sell ${f.live ? "now" : "at the next open"} (${why})` : f.live && since >= i ? "Bought today — rule exits from the next session" : "Holding";
+      } else if (row.listed && S.en[i]) { row.action = "BUY"; row.note = `Buy ${f.live ? "now" : "at the next open"}: ${row.conditions.filter((c) => c.on).map((c) => c.label).join(" + ")}`; }
       else { row.action = "WAIT"; row.note = row.listed ? "No trigger on the latest close" : "Not on today's list"; }
       rows.push(row);
     }
@@ -2127,7 +2182,7 @@
     return { days: Float64Array.from(D), eq, trades: L.trades, metrics: { ...m, watch: L.stats }, watch: L };
   }
 
-  const api = { fillParams, watchLive, watchSignals, watchLearn, watchTune, watchExprs, setFundamentals, usesFundVars, FUNDVARS, fundQuarterly, fundSeries, setIntraday, intradayData, decodeIntra, INTRA_VARS, runIntraday, parse, evaluate, condition, validate, frame, framesFromPack, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, decodeOptions, setOptionSummary, initOptionSummaries, usesOptionVars, OPTVARS, OPT_BUY, OPT_SELL,
+  const api = { fillParams, watchLive, watchSignals, watchLearn, watchTune, watchExprs, setFundamentals, usesFundVars, FUNDVARS, fundQuarterly, fundSeries, setIntraday, intradayData, decodeIntra, INTRA_VARS, runIntraday, parse, evaluate, condition, validate, frame, framesFromPack, withLiveBar, withLiveBars, nseNorm, nseIndexRow, NSE_IX_NAME, run, normalize, symbolsNeeded, computeMetrics, isoOf, dayOf, RuleError, FUNCS, VARS, bsPrice, b76, impliedVol, setOptions, optionData, decodeOptions, setOptionSummary, initOptionSummaries, usesOptionVars, OPTVARS, OPT_BUY, OPT_SELL,
     signals, splitMetrics, riskStats, crises, monteCarlo, sensitivity, costShock, stressAll, scaleWindows, unparse, CRISES,
     setData, setPit, usesPit, pitAt, needsFull, refSymbols, periodKey, nextRebalanceDay, factorList, exprsOf, PRESETS, WEIGHTINGS, symKey };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.TradeEngine = api;

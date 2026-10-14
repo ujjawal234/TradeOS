@@ -1,15 +1,35 @@
 /* TradeOS order management on paper: the book → desks → agent sleeves → orders → fills.
    Agents generate target books; each agent with a desk and an allocation gets a sleeve of the desk's capital that tracks
    its target book. Orders are the differences, checked against the desk's limits and the book's kill switch, approved
-   automatically or by a person, and filled on paper at the next session's open (or its close when approved after the open).
+   automatically or by a person, and filled on paper NOW: at the live NSE price when they're decided (or approved), plus
+   slippage and itemised Indian charges. Manual trades from the app go through the same fill. Nothing reaches a broker.
    Works in the browser (window.TradeOMS) and in Node (module.exports). Pure functions: no storage, no network. */
 (function (root) {
   "use strict";
   const DEFAULT_LIMITS = { max_position_pct: 15, max_gross_pct: 100, max_dd_pct: 25, max_names: 60 };
-  const COST_PCT = 0.1, SLIP_PCT = 0.05;       // per side, % of traded value
+  const COST_PCT = 0.1, SLIP_PCT = 0.05;       // per side, % of traded value (COST_PCT: flat fee of fills before 14 Oct 2026)
+  // Charges per side, the published schedule of an Indian discount broker (2026), applied to every paper fill:
+  //   delivery = cash-market stocks held overnight; etf = index units (traded as an index ETF would be); intraday = same-day.
+  //   % of traded value except dp (₹ per stock per sell day, GST included). GST 18% on brokerage + exchange + SEBI fees.
+  const CHARGES = {
+    delivery: { label: "Equity delivery", brokerage_pct: 0, brokerage_max: 0, stt_buy: 0.1, stt_sell: 0.1, exch: 0.00297, sebi: 0.0001, stamp_buy: 0.015, dp_sell: 15.93 },
+    etf: { label: "Index units (as an ETF)", brokerage_pct: 0, brokerage_max: 0, stt_buy: 0, stt_sell: 0.001, exch: 0.00297, sebi: 0.0001, stamp_buy: 0.015, dp_sell: 15.93 },
+    intraday: { label: "Equity intraday", brokerage_pct: 0.03, brokerage_max: 20, stt_buy: 0, stt_sell: 0.025, exch: 0.00297, sebi: 0.0001, stamp_buy: 0.003, dp_sell: 0 },
+  };
+  const GST_PCT = 18;
+  const productOf = (meta, s) => meta && meta[s] && meta[s].kind && meta[s].kind !== "stock" ? "etf" : "delivery";
+  // itemised charges for one fill: buy = BUY or COVER, sell = SELL or SHORT
+  function charges(buy, value, product = "delivery") {
+    const C = CHARGES[product] || CHARGES.delivery, v = Math.abs(value), r = (x) => Math.round(x * 100) / 100;
+    const brokerage = r(Math.min(v * C.brokerage_pct / 100, C.brokerage_max || Infinity)), stt = r(v * (buy ? C.stt_buy : C.stt_sell) / 100);
+    const exchange = r(v * C.exch / 100), sebi = r(v * C.sebi / 100), stamp = buy ? r(v * C.stamp_buy / 100) : 0;
+    const gst = r((brokerage + exchange + sebi) * GST_PCT / 100), dp = buy ? 0 : C.dp_sell;
+    return { product, brokerage, stt, exchange, sebi, stamp, gst, dp, total: r(brokerage + stt + exchange + sebi + stamp + gst + dp) };
+  }
   const OMS_TYPES = new Set(["rule", "rotation", "watchlist"]); // options and intraday agents keep their own paper records
   const r2 = (x) => Math.round(x * 100) / 100;
   const limitsOf = (desk) => ({ ...DEFAULT_LIMITS, ...((desk && desk.limits) || {}) });
+  const isManual = (id) => typeof id === "string" && id.startsWith("manual_");
   const isWhole = (meta, s) => !meta || !meta[s] || meta[s].kind === "stock" || meta[s].kind == null;
   const roundQty = (q, whole) => whole ? (q < 0 ? -Math.floor(-q) : Math.floor(q)) : Math.round(q * 100) / 100;
 
@@ -41,11 +61,32 @@
         sl.closing = false;
       } else if (!sl.closing) { sl.closing = true; events.push({ kind: "sleeve_closing", agent: a.id }); }
     }
+    // manual sleeves (the team's own trades on a desk) run on the desk's capital not allocated to agents
     for (const [id, sl] of Object.entries(state.sleeves)) {
-      if (!agents.some((a) => a.id === id) && !sl.closing) { sl.closing = true; events.push({ kind: "sleeve_closing", agent: id }); }
+      if (!isManual(id)) continue;
+      const d = D[sl.desk];
+      if (!d) { if (!sl.closing) { sl.closing = true; events.push({ kind: "sleeve_closing", agent: id }); } continue; }
+      const cap = idleCapital(d, agents);
+      if (cap !== sl.capital) { sl.cash += cap - sl.capital; sl.peak = (sl.peak || sl.capital) + (cap - sl.capital); sl.capital = cap; }
+      sl.closing = false;
+    }
+    for (const [id, sl] of Object.entries(state.sleeves)) {
+      if (!isManual(id) && !agents.some((a) => a.id === id) && !sl.closing) { sl.closing = true; events.push({ kind: "sleeve_closing", agent: id }); }
       if (sl.closing && !Object.keys(sl.positions || {}).length) { events.push({ kind: "sleeve_closed", agent: id, cash: r2(sl.cash) }); delete state.sleeves[id]; }
     }
     return events;
+  }
+
+  // a desk's capital not allocated to (non-retired) agents: what its manual sleeve trades with
+  function idleCapital(d, agents) {
+    const used = agents.filter((a) => a.desk_id === d.id && a.status !== "retired").reduce((t, a) => t + (Number(a.alloc_pct) || 0), 0);
+    return Math.round((d.capital || 0) * Math.max(0, 100 - used) / 100);
+  }
+  // open (or find) the manual sleeve of a desk
+  function manualSleeve(state, desk, agents, date) {
+    const id = "manual_" + desk.id;
+    if (!state.sleeves[id]) { const cap = idleCapital(desk, agents); state.sleeves[id] = { desk: desk.id, capital: cap, cash: cap, positions: {}, peak: cap, realized: 0, opened: date, oms: false, manual: true, type: "manual", name: "Manual trades" }; }
+    return id;
   }
 
   // What an agent wants to hold (shares/units per symbol), from its latest backtest state.
@@ -86,7 +127,8 @@
   // Orders for the next session. inputs:
   //   state, book {kill_switch, max_dd_pct}, desks [{id, capital, status, approval, limits}], agents [{id, type, desk_id, alloc_pct, status}],
   //   plans {agentId: agentTargets(...)}, px(sym) -> last close, meta, date (signal date), nextSession, band_pct
-  function buildOrders({ state, book = {}, desks, agents, plans, px, meta, date, nextSession, band_pct = 2 }) {
+  //   stamp (optional): id prefix for orders decided now (e.g. "2026-10-14T1120"); session then = date (they fill now)
+  function buildOrders({ state, book = {}, desks, agents, plans, px, meta, date, nextSession, band_pct = 2, stamp = null }) {
     const D = Object.fromEntries(desks.map((d) => [d.id, d])), A = Object.fromEntries(agents.map((a) => [a.id, a]));
     const orders = [], events = [], deskUpdates = {};
     // desk equity, drawdown and status
@@ -109,7 +151,7 @@
     const raw = [];
     for (const [aid, sl] of Object.entries(state.sleeves)) {
       const a = A[aid], st = status[sl.desk] || "active", eq = sleeveEquity(sl, px), cur = sl.positions || {};
-      if (!sl.oms) continue;
+      if (!sl.oms && !(sl.manual && (sl.closing || st === "halted"))) continue; // manual trades are the team's, except when the desk is halted or closed
       let tg = null, why = "";
       if (sl.closing || st === "halted") { tg = {}; why = sl.closing ? "agent left the desk" : "desk halted"; for (const s of Object.keys(cur)) tg[s] = 0; }
       else if (st === "paused" || (a && a.status !== "paper")) continue;
@@ -151,14 +193,56 @@
       if (!o.dq && !o.blocked) continue;
       const d = D[o.desk], manual = (d && d.approval) === "manual";
       const side = o.dq > 0 ? (o.have < 0 ? "COVER" : "BUY") : (o.have > 0 ? "SELL" : "SHORT");
-      orders.push({ id: `${nextSession}_${o.agent}_${o.sym}`.replace(/[^A-Za-z0-9_\-.~:@+]/g, "-"), date, session: nextSession, desk: o.desk, agent: o.agent, sym: o.sym, side,
+      orders.push({ id: `${stamp || nextSession}_${o.agent}_${o.sym}`.replace(/[^A-Za-z0-9_\-.~:@+]/g, "-"), date, session: stamp ? date : nextSession, desk: o.desk, agent: o.agent, sym: o.sym, side,
         qty: Math.abs(o.dq), price: r2(o.price), value: Math.round(Math.abs(o.dq * o.price)), from_qty: o.have, to_qty: r2(o.have + o.dq), reason: o.why, checks: o.check || [],
         status: o.blocked ? "blocked" : manual && o.why !== "desk halted" && o.why !== "agent left the desk" ? "pending" : "approved", auto: !manual, created_at: new Date().toISOString() });
     }
     return { orders, events, deskUpdates, deskEq, bookEq, bookDD, kill };
   }
 
-  // Fill approved orders at the session's open (or its close when approved after the open, 09:15 IST).
+  // ONE paper fill, now: at the reference (live) price ± slippage, with itemised charges. Mutates the sleeve.
+  //   side BUY|SELL|SHORT|COVER, qty > 0. Returns the fill record (merge it into the order doc).
+  function applyFill(state, sleeveId, sym, side, qty, ref, { meta, at, product, slip_pct = SLIP_PCT, date } = {}) {
+    const sl = state.sleeves[sleeveId]; if (!sl) throw new Error("no such sleeve");
+    if (!(ref > 0) || !(qty > 0)) throw new Error("price and quantity must be positive");
+    const buy = side === "BUY" || side === "COVER", sign = buy ? 1 : -1, prod = product || productOf(meta, sym);
+    const fpx = r2(ref * (1 + sign * slip_pct / 100)), q = qty * sign, value = Math.abs(q * fpx), ch = charges(buy, value, prod);
+    const p = sl.positions[sym] || { qty: 0, avg: 0 };
+    let realized = 0;
+    if (p.qty !== 0 && Math.sign(q) !== Math.sign(p.qty)) { const closed = Math.min(Math.abs(q), Math.abs(p.qty)); realized = closed * (fpx - p.avg) * Math.sign(p.qty); }
+    const nq = r2(p.qty + q), day = date || (at ? String(at).slice(0, 10) : null);
+    if (Math.abs(nq) < 1e-9) delete sl.positions[sym];
+    else { const avg = Math.sign(nq) === Math.sign(p.qty) && Math.abs(nq) > Math.abs(p.qty) ? (p.avg * Math.abs(p.qty) + fpx * Math.abs(q)) / Math.abs(nq) : Math.sign(nq) !== Math.sign(p.qty) ? fpx : p.avg; sl.positions[sym] = { qty: nq, avg: r2(avg), last: ref, since: Math.sign(nq) !== Math.sign(p.qty) || !p.since ? day : p.since }; }
+    const cash = -(q * fpx) - ch.total;
+    sl.cash += cash; sl.realized = r2((sl.realized || 0) + realized - ch.total); state.realized_total = r2((state.realized_total || 0) + realized - ch.total); state.fills_total = (state.fills_total || 0) + 1;
+    state.charges_total = r2((state.charges_total || 0) + ch.total);
+    return { fill_price: fpx, ref_price: r2(ref), slippage: r2(Math.abs(fpx - ref) * qty), slip_pct, charges: ch, fee: ch.total, realized: r2(realized), net_realized: r2(realized - ch.total),
+      gross_value: r2(value), net_amount: r2(cash), fill_at: "now", fill_time: at || null, fill_date: day, pos_after: nq, avg_after: sl.positions[sym]?.avg ?? null };
+  }
+  // Fill approved orders NOW at live prices; pending orders from an earlier session (never approved) expire.
+  //   quote(sym) -> live price (or null if none); at = ISO time of the fill; today = the session date
+  function fillNow({ state, orders, quote, at, today, meta }) {
+    const fills = [], updates = [];
+    for (const o of orders) {
+      if (o.status === "pending") { if (today && o.session < today) updates.push({ id: o.id, status: "expired", note: "not approved during the session" }); continue; }
+      if (o.status !== "approved") continue;
+      if (today && o.session < today && o.fill_at !== "now") { updates.push({ id: o.id, status: "expired", note: "not filled during its session" }); continue; }
+      const sl = state.sleeves[o.agent]; if (!sl) { updates.push({ id: o.id, status: "cancelled", note: "sleeve closed" }); continue; }
+      const ref = quote(o.sym); if (!(ref > 0)) continue;
+      const f = applyFill(state, o.agent, o.sym, o.side, o.qty, ref, { meta, at, date: today });
+      fills.push({ ...o, ...f }); updates.push({ id: o.id, status: "filled", ...f });
+    }
+    return { fills, updates };
+  }
+
+  // A newer decision replaces older unfilled orders of the same agent and symbol (so approving an old one can't double up).
+  function supersede(openOrders, newOrders, at) {
+    const fresh = new Set(newOrders.map((o) => o.agent + "|" + o.sym)), ids = new Set(newOrders.map((o) => o.id));
+    return openOrders.filter((o) => (o.status === "pending" || o.status === "approved") && !ids.has(o.id) && fresh.has(o.agent + "|" + o.sym))
+      .map((o) => ({ id: o.id, status: "cancelled", note: `replaced by a newer decision${at ? ` at ${new Date(Date.parse(at) + 5.5 * 3600e3).toISOString().slice(11, 16)} IST` : ""}` }));
+  }
+
+  // (before 14 Oct 2026) Fill approved orders at the session's open (or its close when approved after the open, 09:15 IST).
   //   bar(sym, sessionIso) -> {date, open, close} for the first trading day on/after the session, or null if no data yet
   function fillOrders({ state, orders, bar, today }) {
     const fills = [], updates = [];
@@ -187,15 +271,15 @@
 
   // Mark the book to the latest closes; keeps peaks for drawdowns. Returns the day's snapshot row for the history.
   function markBook(state, px, date) {
-    const desks = {}, sleeves = {}; let total = 0, gross = 0;
+    const desks = {}, sleeves = {}, caps = {}; let total = 0, gross = 0;
     for (const [id, sl] of Object.entries(state.sleeves)) {
       for (const [s, p] of Object.entries(sl.positions || {})) { const x = px(s); if (x != null) p.last = x; }
-      const eq = sleeveEquity(sl, px); sl.peak = Math.max(sl.peak || 0, eq); sleeves[id] = Math.round(eq);
+      const eq = sleeveEquity(sl, px); sl.peak = Math.max(sl.peak || 0, eq); sleeves[id] = Math.round(eq); caps[id] = sl.capital;
       desks[sl.desk] = (desks[sl.desk] || 0) + eq; total += eq; gross += grossOf(sl, px);
     }
     for (const [d, v] of Object.entries(desks)) { state.desk_peaks[d] = Math.max(state.desk_peaks[d] || 0, v); desks[d] = Math.round(v); }
     state.book_peak = Math.max(state.book_peak || 0, total); state.asof = date;
-    return { date, equity: Math.round(total), gross: Math.round(gross), desks, sleeves };
+    return { date, equity: Math.round(total), gross: Math.round(gross), desks, sleeves, caps };
   }
 
   // Positions across the book with what they're worth now (for the Book view and the CIO)
@@ -207,6 +291,7 @@
     return out;
   }
 
-  const api = { DEFAULT_LIMITS, COST_PCT, SLIP_PCT, OMS_TYPES, limitsOf, emptyState, sleeveEquity, syncSleeves, agentTargets, buildOrders, fillOrders, markBook, bookPositions };
+  const api = { DEFAULT_LIMITS, COST_PCT, SLIP_PCT, CHARGES, GST_PCT, OMS_TYPES, limitsOf, emptyState, sleeveEquity, syncSleeves, agentTargets, buildOrders, fillOrders, applyFill, fillNow, supersede, charges, productOf,
+    idleCapital, manualSleeve, isManual, markBook, bookPositions };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.TradeOMS = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -329,6 +329,8 @@ table.mkt td:first-child { white-space: nowrap; max-width: 15em; overflow: hidde
 .side-tag { font-weight: 700; font-size: 0.7rem; letter-spacing: 0.03em; padding: 3px 7px; border-radius: 6px; }
 .side-tag.BUY, .side-tag.COVER { background: var(--up-soft); color: var(--up); } .side-tag.SELL, .side-tag.SHORT { background: var(--down-soft); color: var(--down); }
 .checks { font-size: var(--t-xs); color: var(--warn); }
+table.trades tr.trade-more td { background: var(--raised); white-space: normal; }
+@media (max-width: 760px) { table.orders tr.trade-more { padding: 4px 6px 12px; } table.orders tr.trade-more td { flex-basis: 100%; } }
 .bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; border-radius: 12px; background: var(--warn-soft); color: var(--warn); margin-bottom: 14px; font-size: var(--t-sm); }
 
 /* ---------- alerts */
@@ -552,6 +554,7 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
     <symbol id="i-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></symbol>
     <symbol id="i-more" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></symbol>
     <symbol id="i-agent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 7V4M9.5 12h.01M14.5 12h.01"/></symbol>
+    <symbol id="i-backtest" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></symbol>
     <symbol id="i-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3h7L21 8.5v7L15.5 21h-7L3 15.5v-7z"/><path d="M8 12h8"/></symbol>
   </defs>
 </svg>
@@ -569,6 +572,7 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
       <button class="navbtn" type="button" data-view="desks"><svg><use href="#i-desks"/></svg><span class="lbl">Desks &amp; agents</span><span class="badge" data-count="agents"></span></button>
       <span class="nav-label">Intelligence</span>
       <button class="navbtn" type="button" data-view="research"><svg><use href="#i-research"/></svg><span class="lbl">Research</span></button>
+      <button class="navbtn" type="button" data-view="backtests"><svg><use href="#i-backtest"/></svg><span class="lbl">Backtests</span></button>
       <button class="navbtn" type="button" data-view="alerts"><svg><use href="#i-alerts"/></svg><span class="lbl">Alerts</span><span class="badge alarm" data-count="alerts"></span></button>
       <button class="navbtn" type="button" data-view="system"><svg><use href="#i-system"/></svg><span class="lbl">System</span><span class="badge hot" data-count="system"></span></button>
     </nav>
@@ -598,6 +602,7 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
       <section id="view-desks" aria-label="Desks and agents" hidden></section>
       <section id="view-alerts" aria-label="Alerts" hidden></section>
       <section id="view-system" aria-label="System" hidden></section>
+      <section id="view-backtests" aria-label="Backtests" hidden></section>
 
       <section id="view-research" aria-label="Research" hidden>
         <div class="pagehead"><div><h1>Research</h1><p>Macro, sectors, companies and news: the same data the CIO reasons with.</p></div><div class="actions"><button class="btn cio" type="button" data-ask="Read the macro dashboard and sector view. What regime are we in, what changed this week, and where is the opportunity?"><svg><use href="#i-cio"/></svg>Ask the CIO for a view</button></div></div>
@@ -711,6 +716,12 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
     <div class="sheet-head"><h2 id="ordersSheetTitle">Standing instructions</h2><button class="iconbtn" type="button" data-close-sheet aria-label="Close"><svg><use href="#i-close"/></svg></button></div>
     <p class="note">The CIO and every agent follow these in every answer and every strategy, ahead of their own defaults. Say “always…” or “never…” to the CIO and it adds them here.</p>
     <div data-orders="main"></div>
+  </div>
+</div>
+<div class="sheet" id="tradeSheet" hidden>
+  <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="ttTitle">
+    <div class="sheet-head"><h2 id="ttTitle">Paper trade</h2><button class="iconbtn" type="button" data-close-sheet aria-label="Close"><svg><use href="#i-close"/></svg></button></div>
+    <div id="tradeBody" class="stack" style="gap:12px"></div>
   </div>
 </div>
 <div class="palette" id="palette" hidden>

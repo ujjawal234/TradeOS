@@ -67,4 +67,33 @@ ok(b3.orders.length && b3.orders.every((o) => o.to_qty === 0), "kill switch clos
 O.syncSleeves(st, desks, agents.map((a) => a.id === "a3" ? { ...a, alloc_pct: 20 } : a.id === "a4" ? { ...a, desk_id: null } : a), "2026-10-03");
 ok(st.sleeves.a3.capital === 100000, "allocation change resizes the sleeve");
 ok(!st.sleeves.a4, "a flat sleeve that left its desk closes");
+// ---- trading NOW (from 14 Oct 2026): itemised charges, fills at the live price, manual sleeves
+const cb = O.charges(true, 100000, "delivery"), cs = O.charges(false, 100000, "delivery");
+ok(cb.stt === 100 && cb.stamp === 15 && cb.exchange === 2.97 && cb.sebi === 0.1 && cb.gst === 0.55 && cb.dp === 0 && near(cb.total, 118.62), "delivery buy charges: STT, stamp, exchange, SEBI, GST");
+ok(cs.stt === 100 && cs.stamp === 0 && cs.dp === 15.93 && near(cs.total, 119.55), "delivery sell charges include DP, no stamp duty");
+const ce = O.charges(true, 100000, "etf"); ok(ce.stt === 0 && ce.stamp === 15, "index units: no STT on the buy");
+const ci = O.charges(false, 1000000, "intraday"); ok(ci.brokerage === 20 && ci.stt === 250, "intraday: brokerage capped at ₹20, STT on the sell");
+ok(O.productOf(meta, "NIFTY") === "etf" && O.productOf(meta, "AAA") === "delivery", "index symbols trade as ETF units");
+const s2 = O.emptyState(0, "2026-10-14"); O.syncSleeves(s2, desks, agents, "2026-10-14");
+const cash0 = s2.sleeves.a2.cash, f1 = O.applyFill(s2, "a2", "AAA", "BUY", 100, 100, { meta, at: "2026-10-14T05:00:00Z" });
+ok(near(f1.fill_price, 100.05) && near(f1.slippage, 5) && near(s2.sleeves.a2.cash, cash0 - 10005 - f1.charges.total) && near(f1.net_amount, -(10005 + f1.charges.total)), "buy now: live price + slippage, cash pays value and charges");
+ok(s2.sleeves.a2.positions.AAA.qty === 100 && s2.sleeves.a2.positions.AAA.since === "2026-10-14", "position opened today");
+const f2 = O.applyFill(s2, "a2", "AAA", "SELL", 40, 110, { meta, at: "2026-10-14T06:00:00Z" });
+ok(near(f2.realized, 40 * (109.95 - 100.05)) && f2.pos_after === 60 && near(f2.net_realized, f2.realized - f2.charges.total), "sell now: realised P&L at the fill price, net of charges");
+const ordersNow = [{ id: "x1", status: "approved", session: "2026-10-14", agent: "a1", sym: "BBB", side: "BUY", qty: 10 }, { id: "x2", status: "pending", session: "2026-10-13", agent: "a1", sym: "CCC", side: "BUY", qty: 5 },
+  { id: "x3", status: "approved", session: "2026-10-14", agent: "a1", sym: "ZZZ", side: "BUY", qty: 5 }];
+const fn = O.fillNow({ state: s2, orders: ordersNow, quote: (s) => ({ BBB: 210 })[s] ?? null, at: "2026-10-14T06:30:00Z", today: "2026-10-14", meta });
+ok(fn.fills.length === 1 && near(fn.fills[0].fill_price, 210.11) && fn.fills[0].fill_at === "now", "approved order fills now at the live quote");
+ok(fn.updates.find((u) => u.id === "x2")?.status === "expired" && !fn.updates.find((u) => u.id === "x3"), "unapproved order from an earlier session expires; no quote = wait");
+const b4 = O.buildOrders({ state: s2, desks, agents, plans: { a2: { targets: { BBB: 50 }, scope: new Set(["BBB"]), rebalance: false } }, px, meta, date: "2026-10-14", nextSession: "2026-10-15", stamp: "2026-10-14T1130" });
+ok(b4.orders.length && b4.orders[0].id.startsWith("2026-10-14T1130_") && b4.orders[0].session === "2026-10-14", "orders decided now are stamped with the time and fill today");
+const mid = O.manualSleeve(s2, desks[1], agents, "2026-10-14");
+ok(mid === "manual_d2" && s2.sleeves[mid].capital === 0 && s2.sleeves[mid].manual, "manual sleeve uses the desk's unallocated capital (none here)");
+O.syncSleeves(s2, desks, agents.map((a) => a.id === "a4" ? { ...a, alloc_pct: 20 } : a), "2026-10-14");
+ok(s2.sleeves[mid].capital === 150000 && s2.sleeves[mid].cash === 150000 && !s2.sleeves[mid].closing, "freeing allocation funds the manual sleeve");
+O.applyFill(s2, mid, "CCC", "BUY", 100, 50, { meta, at: "2026-10-14T07:00:00Z" });
+const b5 = O.buildOrders({ state: s2, book: { kill_switch: true }, desks, agents, plans: {}, px, meta, date: "2026-10-14", nextSession: "2026-10-15", stamp: "2026-10-14T1200" });
+ok(b5.orders.some((o) => o.agent === mid && o.side === "SELL" && o.to_qty === 0), "kill switch also closes manual trades");
+const b6 = O.buildOrders({ state: s2, desks, agents, plans: {}, px, meta, date: "2026-10-14", nextSession: "2026-10-15", stamp: "2026-10-14T1200" });
+ok(!b6.orders.some((o) => o.agent === mid), "agents' runs never touch manual trades");
 console.log(bad ? `${bad} failed` : "all good"); process.exit(bad ? 1 : 0);

@@ -151,6 +151,28 @@ class NseLive:
         groups = [[(i, L) for i, L in enumerate(letters) if i % len(self._pool) == k] for k in range(len(self._pool))]
         with ThreadPoolExecutor(max_workers=len(self._pool)) as ex:
             results = [r for batch in ex.map(lambda g: [fetch(x) for x in g], groups) for r in batch]
+        # second pass: a letter that failed is retried; a letter that hit the 500-row cap (e.g. "S", "I") is fetched again by
+        # two-letter prefixes, so no stock is silently missing from the snapshot
+        if everything:
+            redo = [L for L, d, _ in results if d is None]
+            capped = [L for L, d, _ in results if d is not None and len(d.get("stocks") or []) >= 500]
+            more = redo + [L + c for L in capped for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789&-"]
+            if more and time.monotonic() - start < budget * 1.5:
+                start2 = time.monotonic()
+
+                def fetch2(i_pref):
+                    i, pref = i_pref
+                    client = self._pool[i % len(self._pool)]
+                    if time.monotonic() - start2 > budget:
+                        return pref, None, -1.0
+                    try:
+                        return pref, client.call("cm_get_equity_stocks", {"limit": 500, "symbolFilter": pref}), 0.0
+                    except NseLiveError as e:
+                        log.warning("prefix %s: %s", pref, e)
+                        return pref, None, 0.0
+                groups2 = [[(i, P) for i, P in enumerate(more) if i % len(self._pool) == k] for k in range(len(self._pool))]
+                with ThreadPoolExecutor(max_workers=len(self._pool)) as ex:
+                    results += [r for batch in ex.map(lambda g: [fetch2(x) for x in g], groups2) for r in batch]
         for letter, d, secs in results:
             self.timings[letter] = round(secs, 2)
             if d is None:

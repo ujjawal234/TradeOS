@@ -5,14 +5,16 @@
     const open = weekday && mins >= 555 && mins < 930, pre = weekday && mins < 555;
     const date = t.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
     const nx = nextSessionIso(), nxs = new Date(nx + "T00:00:00Z").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-    return `${date} · ${open ? "market open" : pre ? "opens at 09:15" : "market closed"} · ${open ? `daily data to the close of ${fmtDate(S.lastDay)}${S.live ? ` · live prices ${liveTime(S.live)} IST` : ""}` : `next session ${nxs}`}`;
+    const a = liveAsOf();
+    return `${date} · ${open ? "market open" : pre ? "opens at 09:15" : "market closed"} · ${a ? `prices ${open ? "live" : "last traded"} ${a.time} IST (NSE)` : `prices at the close of ${fmtDate(S.lastDay)}${open && S.qMeta.err ? ` — live prices off: ${S.qMeta.err}` : ""}`}${open ? "" : ` · next session ${nxs}`}`;
   }
   const heatBg = (x, span = 3) => { if (x == null || !isFinite(x)) return "var(--sunken)"; const k = Math.min(1, Math.abs(x) / span) * 55 + 6; return `color-mix(in srgb, var(${x >= 0 ? "--up" : "--down"}) ${k.toFixed(0)}%, var(--surface))`; };
   function movers(list, n = 6) {
-    const rows = list.map((s) => ({ s, d: dayChg(s), m: retN(s, 21), c: lastPx(s) })).filter((r) => r.d != null && isFinite(r.d));
-    const hi = []; for (const s of list) { const f = S.light[s]; if (!f || f.c.length < 260) continue; const L = f.c.length; let mx = -Infinity; for (let i = L - 252; i < L; i++) if (f.c[i] > mx) mx = f.c[i]; if (f.c[L - 1] >= mx * 0.995) hi.push({ s, d: dayChg(s), m: retN(s, 21), c: f.c[L - 1] }); }
-    const lo = []; for (const s of list) { const f = S.light[s]; if (!f || f.c.length < 260) continue; const L = f.c.length; let mn = Infinity; for (let i = L - 252; i < L; i++) if (f.c[i] < mn) mn = f.c[i]; if (f.c[L - 1] <= mn * 1.005) lo.push({ s, d: dayChg(s), m: retN(s, 21), c: f.c[L - 1] }); }
-    return { up: rows.slice().sort((a, b) => b.d - a.d).slice(0, n), down: rows.slice().sort((a, b) => a.d - b.d).slice(0, n), hi: hi.sort((a, b) => (b.m ?? 0) - (a.m ?? 0)), lo: lo.sort((a, b) => (a.m ?? 0) - (b.m ?? 0)),
+    const live = anyLive(), pool = live ? list.filter((s) => quoteNow(s)) : list; // live: never mix today's moves with yesterday's
+    const rows = pool.map((s) => ({ s, d: dayChg(s), m: retN(s, 21), c: lastPx(s) })).filter((r) => r.d != null && isFinite(r.d));
+    const hi = []; for (const s of pool) { const f = S.light[s]; if (!f || f.c.length < 260) continue; const L = f.c.length; let mx = -Infinity; for (let i = L - 252; i < L; i++) if (f.c[i] > mx) mx = f.c[i]; if (f.c[L - 1] >= mx * 0.995) hi.push({ s, d: dayChg(s), m: retN(s, 21), c: f.c[L - 1] }); }
+    const lo = []; for (const s of pool) { const f = S.light[s]; if (!f || f.c.length < 260) continue; const L = f.c.length; let mn = Infinity; for (let i = L - 252; i < L; i++) if (f.c[i] < mn) mn = f.c[i]; if (f.c[L - 1] <= mn * 1.005) lo.push({ s, d: dayChg(s), m: retN(s, 21), c: f.c[L - 1] }); }
+    return { live, n: rows.length, up: rows.slice().sort((a, b) => b.d - a.d).slice(0, n), down: rows.slice().sort((a, b) => a.d - b.d).slice(0, n), hi: hi.sort((a, b) => (b.m ?? 0) - (a.m ?? 0)), lo: lo.sort((a, b) => (a.m ?? 0) - (b.m ?? 0)),
       m1: rows.filter((r) => r.m != null).sort((a, b) => b.m - a.m).slice(0, n) };
   }
   const mrow = (r, extra) => `<li data-go="sym-${esc(r.s)}"><span style="min-width:0"><b>${esc(r.s)}</b> <span class="n">${esc(nameOfSym(r.s))}</span></span><span class="x muted">${px(r.c)}</span><span class="x ${cls(extra ?? r.d)}">${pct(extra ?? r.d, extra != null ? 1 : 2)}</span></li>`;
@@ -21,16 +23,15 @@
   async function renderHome() {
     const box = $("view-home"); if (!S.man) return;
     const b = bookSummary(), desks = [...S.desks.values()], cfg = S.bookCfg || {};
-    const pending = S.ordersList.filter((o) => o.status === "pending"), nx = S.bookState?.next_session || nextSessionIso();
-    const queued = S.ordersList.filter((o) => o.session >= nx && o.status === "approved");
+    const pending = S.ordersList.filter((o) => o.status === "pending"), tt = tradesToday(), open = marketOpenNow();
     const paperAgents = [...S.agents.values()].filter((a) => a.status === "paper"), loose = paperAgents.filter((a) => !a.desk_id || !S.desks.has(a.desk_id));
     const crit = S.alertEvents.filter((e) => e.severity === "critical" && e.date >= E.isoOf(E.dayOf(S.lastDay) - 3));
     const needs = [];
-    if (cfg.kill_switch) needs.push(["crit", "i-stop", "Kill switch is on", "Every position closes at the next open", "book"]);
+    if (cfg.kill_switch) needs.push(["crit", "i-stop", "Kill switch is on", "Every position is closed at live prices on the next run", "book"]);
     for (const d of desks.filter((x) => x.status === "halted")) needs.push(["crit", "i-desks", `${d.name} is halted`, d.halted_reason || "Set it active to resume", "desks"]);
-    if (pending.length) needs.push(["warn", "i-orders", `${pending.length} order${pending.length > 1 ? "s" : ""} need your approval`, `for ${fmtDate(pending[0].session)} · ${inrShort(pending.reduce((t, o) => t + (o.value || 0), 0))}`, "orders"]);
+    if (pending.length) needs.push(["warn", "i-orders", `${pending.length} order${pending.length > 1 ? "s" : ""} need your approval`, `${inrShort(pending.reduce((t, o) => t + (o.value || 0), 0))} · ${open ? "approving fills now at live prices" : "fills at live prices when the market opens"}`, "orders"]);
     for (const e of crit.slice(0, 3)) needs.push(["crit", "i-alerts", e.title, e.detail || fmtDate(e.date), "alerts"]);
-    if (loose.length && desks.length) needs.push(["cio", "i-agent", `${loose.length} paper agent${loose.length > 1 ? "s are" : " is"} not on a desk`, "Their signals don't reach the book until they get a desk and an allocation", "desks"]);
+    if (loose.length && desks.length) needs.push(["cio", "i-agent", `${loose.length} paper agent${loose.length > 1 ? "s are" : " is"} not on a desk`, "They don't trade until they get a desk and an allocation", "desks"]);
     for (const ag of [...S.agents.values()].filter((x) => x.type === "watchlist" && x.status === "paper")) { const t = (ag.inbox_log || []).slice(-1)[0]; if (!t || t.date < todayIST()) needs.push(["cio", "i-agent", `Send today's names to ${ag.name}`, t ? `last list ${fmtDate(t.date)} · ${t.syms.length} names` : "no list sent yet", `agent-${ag.id}`]); }
     if (!desks.length) needs.push(["cio", "i-desks", "Set up the fund", "Create desks with capital and limits, then allocate agents", "desks"]);
     const stale = (Date.now() - Date.parse(S.lastDay + "T10:00:00Z")) / 864e5 > 4; if (stale) needs.push(["warn", "i-markets", `Market data stops at ${fmtDate(S.lastDay)}`, "The evening data refresh may not have run", "research"]);
@@ -44,7 +45,7 @@
       <div class="hero" style="margin-bottom:18px">
         <div class="card bookhero">${b ? `<div class="row"><span class="eyebrow">The book</span><span class="grow"></span><button class="linkbtn" type="button" data-go="book">Open the book</button></div>
             <div class="big">${inrShort(b.equity)}</div>
-            <div class="delta"><span>Today <b class="${cls(b.day)}">${pct(b.day, 2)}</b></span><span>Since start <b class="${cls(b.since)}">${pct(b.since)}</b></span><span>From peak <b class="${b.dd < -0.05 ? "neg" : ""}">${pct(b.dd)}</b></span><span>Invested <b>${pct(b.gross / (b.equity || 1) * 100, 0, false)}</b></span></div>
+            <div class="delta"><span>Today <b class="${cls(b.dayAbs)}">${b.dayAbs != null ? inrShort(b.dayAbs) : "–"} (${pct(b.day, 2)})</b></span><span class="muted">${esc(liveLabel())}</span><span>On capital <b class="${cls(b.since)}">${pct(b.since)}</b></span><span>From peak <b class="${b.dd < -0.05 ? "neg" : ""}">${pct(b.dd)}</b></span><span>Invested <b>${pct(b.gross / (b.equity || 1) * 100, 0, false)}</b></span></div>
             <div class="chart" id="homeChart"></div>
             <div class="ladder">${desks.map((d) => { const f = deskFigs(b, d.id); return `<span class="pill ${esc(d.status || "active")}">${esc(d.name)} ${inrShort(f.equity || d.capital)}</span>`; }).join("")}</div>`
           : `<span class="eyebrow">The book</span><div class="big" style="font-size:2.2rem">Paper capital, ready to deploy</div>
@@ -58,9 +59,9 @@
       </div>
       <div class="split" style="margin-bottom:18px">
         <div class="card"><div class="card-head"><h2>Needs you</h2></div><div class="needs">${needs.length ? needs.map(([k, ic, t, d, to]) => `<div class="need ${k}"><span class="ic"><svg><use href="#${ic}"/></svg></span><div style="min-width:0"><b>${esc(t)}</b><div class="d">${esc(d)}</div></div><button class="btn ghost small" type="button" data-go="${to}">Open</button></div>`).join("") : '<p class="muted small">Nothing needs a decision.</p>'}</div></div>
-        <div class="card"><div class="card-head"><h2>Next open</h2><span class="small muted">${esc(fmtDate(nx))}</span></div>
-          ${queued.length ? `<div class="stack" style="gap:8px">${[...new Set(queued.map((o) => o.desk))].map((d) => { const qs = queued.filter((o) => o.desk === d); return `<div class="row" style="justify-content:space-between"><span><b>${esc(deskName(d))}</b> <span class="muted small">${qs.length} order${qs.length > 1 ? "s" : ""}</span></span><span class="small">buy ${inrShort(qs.filter((o) => /BUY|COVER/.test(o.side)).reduce((t, o) => t + o.value, 0))} · sell ${inrShort(qs.filter((o) => /SELL|SHORT/.test(o.side)).reduce((t, o) => t + o.value, 0))}</span></div>`; }).join("")}<button class="linkbtn" type="button" data-go="orders">See every order</button></div>`
-            : `<p class="muted small">${S.sigN ? `${S.sigN} signal${S.sigN > 1 ? "s" : ""} from paper agents for the next open.${desks.length ? "" : " They reach the book once the agents are on desks."}` : "No orders queued for the next session."}</p>`}
+        <div class="card"><div class="card-head"><h2>Today's trades</h2><span class="small muted">${open ? "market open" : "market closed"}</span><span class="grow"></span>${fundRO() ? "" : `<button class="btn small" type="button" data-run-agents="" ${open ? "" : "disabled"}>Run agents now</button>`}</div>
+          ${tt.length ? `<ul class="mlist">${tt.slice(0, 6).map((o) => `<li data-go="sym-${esc(o.sym)}"><span style="min-width:0"><span class="side-tag ${esc(o.side)}">${esc(o.side)}</span> <b>${esc(o.sym)}</b> <span class="n">${Number(o.qty).toLocaleString("en-IN")} @ ${px(o.fill_price)} · ${esc(O.isManual(o.agent) ? "manual" : agentName(o.agent))}</span></span><span class="x muted">${esc(istClock(o.fill_time))}</span><span class="x muted">₹${Math.round(o.fee || 0)}</span></li>`).join("")}</ul><div class="row" style="margin-top:6px"><span class="small muted">${tt.length} trade(s) · charges ${inr(tt.reduce((t, o) => t + (o.fee || 0), 0))}</span><span class="grow"></span><button class="linkbtn" type="button" data-go="orders">Every trade</button></div>`
+            : `<p class="muted small">${open ? "No trades yet today. Agents decide on live prices every hour from 09:20; run them now, or buy and sell from any stock page." : "No trades today. Agents trade on live prices during the session (09:15–15:30 IST)."}</p>`}
           <div class="ladder" style="margin-top:12px"><span><b>${paperAgents.length}</b> agents paper trading</span><span class="faint">·</span><span><b>${desks.length}</b> desks</span><span class="faint">·</span><button class="linkbtn" type="button" data-go="desks">Manage</button></div></div>
       </div>
       <div class="card-head" style="margin-bottom:10px"><h2>Markets</h2><button class="linkbtn" type="button" data-go="markets">Open markets</button></div>
@@ -69,8 +70,8 @@
         <div class="heat">${sectors.map((x) => `<button type="button" data-go="sym-${esc(x.s)}" style="background:${heatBg(x[hm], hm === "d" ? 2.5 : hm === "w" ? 5 : 10)}"><span>${esc(x.n)}</span><b>${pct(x[hm], hm === "d" ? 2 : 1)}</b></button>`).join("")}</div></div>
       <div class="card-head" style="margin-bottom:10px"><h2>What's interesting</h2><button class="btn cio small" type="button" data-ask="Scan the market for what's unusual right now — breakouts, new highs, results surprises, option IV spikes, sector rotation, filings — and tell me which are worth acting on and how." data-send="1">Ask the CIO to dig in</button></div>
       <div class="lists" id="homeLists">
-        <div class="card"><h3 style="margin-bottom:6px">Up most today</h3><ul class="mlist">${mv.up.map((r) => mrow(r)).join("")}</ul></div>
-        <div class="card"><h3 style="margin-bottom:6px">Down most today</h3><ul class="mlist">${mv.down.map((r) => mrow(r)).join("")}</ul></div>
+        <div class="card"><h3 style="margin-bottom:6px">Up most today${mv.live ? ` <span class="xs muted">live · ${mv.n} stocks</span>` : ""}</h3><ul class="mlist">${mv.up.map((r) => mrow(r)).join("")}</ul></div>
+        <div class="card"><h3 style="margin-bottom:6px">Down most today${mv.live ? ` <span class="xs muted">live · ${mv.n} stocks</span>` : ""}</h3><ul class="mlist">${mv.down.map((r) => mrow(r)).join("")}</ul></div>
         <div class="card"><h3 style="margin-bottom:6px">At 52-week highs <span class="badge">${mv.hi.length}</span></h3><ul class="mlist">${mv.hi.slice(0, 6).map((r) => mrow(r, r.m)).join("") || '<li class="muted small" style="cursor:default">None today.</li>'}</ul>${mv.hi.length ? '<p class="xs muted" style="margin-top:6px">Sorted by 1-month return.</p>' : ""}</div>
         <div class="card"><h3 style="margin-bottom:6px">At 52-week lows <span class="badge">${mv.lo.length}</span></h3><ul class="mlist">${mv.lo.slice(0, 6).map((r) => mrow(r, r.m)).join("") || '<li class="muted small" style="cursor:default">None today.</li>'}</ul></div>
         <div class="card" id="homeResults"><h3 style="margin-bottom:6px">Results this week</h3><p class="muted small">Loading…</p></div>
@@ -79,7 +80,7 @@
     wireGo(box);
     box.querySelector("#heatSeg")?.addEventListener("click", (e) => { const t = e.target.closest("[data-h]"); if (t) { S.homeHeat = t.dataset.h; renderHome(); } });
     if (b && H.length >= 2) chart($("homeChart"), Float64Array.from(H.map((r) => E.dayOf(r.date))), [{ short: "Book", color: "var(--series-a)", values: Float64Array.from(H.map((r) => r.equity)), width: 2 }], { height: 120, aria: "Book equity", fmt: inrShort, fmtTip: inr });
-    else if ($("homeChart")) $("homeChart").innerHTML = '<p class="xs muted">The equity curve builds up after each evening run.</p>';
+    else if ($("homeChart")) $("homeChart").innerHTML = '<p class="xs muted">The equity curve adds a point at every close.</p>';
     // research-driven lists
     const res = await loadResearch().catch(() => ({})); if (S.view !== "home") return;
     const n500 = new Set(uni), lim = E.isoOf(E.dayOf(S.lastDay) + 8);
@@ -110,7 +111,7 @@
     const mv = movers((S.man.universes.nifty500 || []).filter((s) => S.man.symbols[s]?.kind === "stock"), 8);
     const itab = (list, withPe) => `<div class="tablewrap"><table class="mkt"><thead><tr><th></th><th class="r">Last</th><th class="r">Today</th><th class="r">1m</th><th class="r">1y</th>${withPe ? '<th class="r">P/E</th>' : ""}</tr></thead><tbody>${list.map((s) => { const f = S.full[s] || S.light[s]; const pe = f?.pe ? f.pe[f.pe.length - 1] : null;
       return `<tr class="click" data-go="sym-${esc(s)}"><td><span class="sym" title="${esc(nameOfSym(s))}">${esc(String(TICK_NAME[s] || nameOfSym(s)).replace(/\s*\([^)]*\)\s*$/, ""))}</span></td><td class="r">${px(lastPx(s))}</td><td class="r ${cls(dayChg(s))}">${pct(dayChg(s), 2)}</td><td class="r ${cls(retN(s, 21))}">${pct(retN(s, 21))}</td><td class="r ${cls(retN(s, 252))}">${pct(retN(s, 252))}</td>${withPe ? `<td class="r">${pe ? n2(pe) : "–"}</td>` : ""}</tr>`; }).join("")}</tbody></table></div>`;
-    box.innerHTML = pageHead("Markets", `Close of ${fmtDate(S.lastDay)}. NSE prices for ${Object.values(S.man.symbols).filter((v) => v.kind === "stock").length} stocks and every NSE index, plus world markets, rates, currencies and commodities.`,
+    box.innerHTML = pageHead("Markets", `Prices ${esc(liveLabel())}${anyLive() ? " (NSE)" : ""}. NSE prices for ${Object.values(S.man.symbols).filter((v) => v.kind === "stock").length} stocks and every NSE index, plus world markets, rates, currencies and commodities.`,
       `<button class="btn cio" type="button" data-ask="What's the market telling us right now? Read breadth, sectors, flows, volatility and global cues, and connect it to what we should do." data-send="1"><svg><use href="#i-cio"/></svg>Ask the CIO</button>`)
       + `<div class="card" style="margin-bottom:18px"><div class="card-head"><h2>Watchlist</h2>${S.watch ? "" : '<span class="xs muted">Suggested — add or remove a name to make it yours</span>'}<form class="watch-add" id="watchForm"><input class="input" id="watchIn" list="watchSyms" placeholder="Add a symbol" autocomplete="off" style="width:200px" aria-label="Add a symbol to the watchlist"><datalist id="watchSyms">${Object.entries(S.man.symbols).filter(([, v]) => !v.alias_of).map(([s, v]) => `<option value="${esc(s)}">${esc(v.name || "")}</option>`).join("")}</datalist><button class="btn small" type="submit">Add</button></form></div>
         <div class="tablewrap"><table><thead><tr><th>Symbol</th><th class="r">Last</th><th class="r">Today</th><th class="r">1w</th><th class="r">1m</th><th class="r">1y</th><th class="r">vs 200d</th><th class="r">RSI</th><th>3 months</th><th></th></tr></thead><tbody>${wl.map(row).join("")}</tbody></table></div></div>
@@ -139,7 +140,7 @@
     const f = S.full[sym] || S.light[sym]; f.sym = sym;
     const hasIntra = !!S.man.intraday?.symbols?.[sym] && (S.man.intraday.sessions || []).length > 0;
     if (!hasIntra && INTRA_RANGES.has(S.symRange)) S.symRange = "1Y";
-    const L = f.c.length, c = f.c[L - 1], prev = f.c[L - 2], ch = (c / prev - 1) * 100;
+    const L = f.c.length, c = quoteNow(sym)?.ltp ?? f.c[L - 1], prev = f.c[L - 2];
     const yr = Array.from(f.c.slice(Math.max(0, L - 252))), hi = Math.max(...yr), lo = Math.min(...yr);
     const ev = (x) => { try { const v = E.evaluate(E.parse(x), f, { frames: S.light }); return typeof v === "number" ? v : v[v.length - 1]; } catch (e) { return null; } };
     const watched = watchList().includes(sym);
@@ -152,16 +153,16 @@
       sym !== "NIFTY" ? ["Beta to Nifty (1y)", n2(ev('beta(ret(close,1), ref("NIFTY", ret(close,1)), 252)'))] : null, f.pe ? ["P/E · P/B · yield", `${n2(f.pe[L - 1])} · ${n2(f.pb?.[L - 1])} · ${n2(f.dy?.[L - 1])}%`] : null].filter(Boolean);
     box.innerHTML = `<div class="crumbs"><button type="button" data-go="markets">Markets</button><span aria-hidden="true">/</span><span>${esc(m.industry && m.industry !== "Index" ? m.industry : m.group || m.kind)}</span></div>
       <div class="symhead"><div><h1>${esc(m.name || sym)}</h1><p class="small muted" style="margin-top:4px">${esc(sym)}${m.ex === "BSE" ? ` · BSE${m.bse ? " " + esc(m.bse) : ""}` : m.kind === "stock" && m.series && m.series !== "EQ" ? ` · NSE ${esc(m.series)}` : ""}${m.fno ? ` · F&amp;O lot ${m.lot}` : ""}${m.n50 ? " · Nifty 50" : m.n200 ? " · Nifty 200" : m.n500 ? " · Nifty 500" : ""}</p></div>
-        <div><div class="px">${px(c)}</div><div class="chg ${cls(ch)}">${pct(ch, 2)} <span class="small muted" style="font-weight:500">${fmtDate(E.isoOf(f.d[L - 1]))}</span></div><div class="xs" id="symLive" style="margin-top:4px"></div></div>
+        <div id="symPx">${symHeadHtml(sym, f)}</div>
         <div class="range52"><span>${S.man.keep_days ? "Range, last 6 months" : "52-week range"}</span><div class="bar"><i style="left:${((c - lo) / ((hi - lo) || 1) * 100).toFixed(1)}%"></i></div><div class="row" style="justify-content:space-between"><span>${px(lo)}</span><span>${px(hi)}</span></div></div>
         <span class="grow"></span>
-        <div class="row"><button class="btn ghost" type="button" id="symWatch">${watched ? "Watching" : "Watch"}</button><button class="btn ghost" type="button" id="symAlert">Set alert</button><button class="btn cio" type="button" data-ask="${esc(isStock ? `Give me your full view on ${sym} (${m.name}): business, results trend, valuation vs history and peers, technicals, options positioning, catalysts and risks, and exactly how you'd trade it now — entry, size, stop, or an option structure — with a backtest of the idea.` : `Give me your view on ${m.name || sym}: trend, what's driving it, how it connects to our book and sectors, and how you'd trade it.`)}"><svg><use href="#i-cio"/></svg>Ask the CIO</button></div></div>
+        <div class="row">${["stock", "index"].includes(m.kind) && m.ex !== "BSE" && !fundRO() ? `<button class="btn up" type="button" data-trade-sym="${esc(sym)}" data-side="BUY">Buy</button>${inBook.some((p) => p.qty > 0) ? `<button class="btn danger" type="button" data-trade-sym="${esc(sym)}" data-side="SELL"${inBook.length === 1 ? ` data-sleeve="${esc(inBook[0].agent)}"` : ""}>Sell</button>` : ""}` : ""}<button class="btn ghost" type="button" id="symWatch">${watched ? "Watching" : "Watch"}</button><button class="btn ghost" type="button" id="symAlert">Set alert</button><button class="btn cio" type="button" data-ask="${esc(isStock ? `Give me your full view on ${sym} (${m.name}): business, results trend, valuation vs history and peers, technicals, options positioning, catalysts and risks, and exactly how you'd trade it now — entry, size, stop, or an option structure — with a backtest of the idea.` : `Give me your view on ${m.name || sym}: trend, what's driving it, how it connects to our book and sectors, and how you'd trade it.`)}"><svg><use href="#i-cio"/></svg>Ask the CIO</button></div></div>
       <div class="split" style="margin-bottom:18px">
         <div class="card"><div class="chart-head"><div class="seg seg-scroll" role="group" aria-label="Range" id="symRange">${Object.keys(RANGES).filter((k) => hasIntra || !INTRA_RANGES.has(k)).map((k) => `<button type="button" data-r="${k}" aria-pressed="${S.symRange === k}" title="${k === "1D" ? "One session, 1-minute bars" : k === "1W" ? "Last 5 sessions, 5-minute bars" : "Daily bars"}">${k}</button>`).join("")}</div><span class="grow"></span><span id="symDayNav" class="row" style="gap:6px"></span><label class="xs muted row" style="gap:6px" id="symSmaWrap"><input type="checkbox" id="symSma" ${S.symSma ? "checked" : ""}> 50 &amp; 200-day averages</label></div><div class="chart" id="symChart"></div></div>
         <div class="card"><h2 style="margin-bottom:10px">Key figures</h2><dl class="kv">${stats.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl></div>
       </div>
-      ${inBook.length || ords.length || myAlerts.length ? `<div class="card" style="margin-bottom:18px"><h2 style="margin-bottom:10px">In the fund</h2>${inBook.length ? `<p class="small">Held: ${inBook.map((p) => `<b>${p.qty.toLocaleString("en-IN")}</b> by ${esc(agentName(p.agent))} (${esc(deskName(p.desk))}) at ${px(p.avg)}, <span class="${cls(p.pnl)}">${inr(p.pnl)}</span>`).join("; ")}</p>` : ""}
-        ${ords.length ? `<p class="small" style="margin-top:6px">Orders: ${ords.map((o) => `<span class="side-tag ${esc(o.side)}">${esc(o.side)}</span> ${o.qty} for ${fmtDate(o.session)} <span class="pill ${esc(o.status)}">${esc(ORDER_STATES[o.status] || o.status)}</span>`).join(" · ")}</p>` : ""}
+      ${inBook.length || ords.length || myAlerts.length ? `<div class="card" style="margin-bottom:18px"><h2 style="margin-bottom:10px">In the fund</h2>${inBook.length ? `<p class="small">Held: ${inBook.map((p) => `<b>${p.qty.toLocaleString("en-IN")}</b> by ${esc(O.isManual(p.agent) ? "manual trades" : agentName(p.agent))} (${esc(deskName(p.desk))}) at ${px(p.avg)}, <span class="${cls(p.pnl)}">${inr(p.pnl)}</span>`).join("; ")}</p>` : ""}
+        ${ords.length ? `<p class="small" style="margin-top:6px">Trades &amp; orders: ${ords.map((o) => `<span class="side-tag ${esc(o.side)}">${esc(o.side)}</span> ${o.qty}${o.status === "filled" ? ` @ ${px(o.fill_price)} ${esc(tradeTime(o))}` : ` <span class="pill ${esc(o.status)}">${esc(ORDER_STATES[o.status] || o.status)}</span>`}`).join(" · ")}</p>` : ""}
         ${myAlerts.length ? `<p class="small" style="margin-top:6px">Alerts: ${myAlerts.map((a) => esc(alertSummary(a))).join("; ")}</p>` : ""}</div>` : ""}
       <div id="symMore" class="stack">${hasFund ? '<p class="muted small">Loading results, valuation, peers and news…</p>' : ""}</div>`;
     wireGo(box);
@@ -347,73 +348,12 @@
     });
   }
 
-  // ---- LIVE PRICES during the session. The intraday runner (GitHub Actions) snapshots every NSE stock (NSE live data,
-  // 1–3 min behind) and the main indices (Yahoo) every 5 minutes into live/quotes.json on the `live-quotes` branch.
-  // The page reads it two ways and keeps the newer: the team's GitHub connector (fresh to ~5 min, asks once for consent)
-  // and the database doc live/quotes (copied there during the session by the "TradeOS live prices" scheduled task).
-  const LIVE_SRC = { server: "github", tool: "get_file_contents", input: { owner: "ujjawal234", repo: "TradeOS", path: "quotes.json", ref: "refs/heads/live-quotes" } };
-  S.live = null; let liveAt = 0, livePr = null;
-  const istToday = () => istNow().toISOString().slice(0, 10);
-  function liveParse(x) {
-    if (!x) return null;
-    if (typeof x === "string") { const i = x.indexOf('{"asof"'); if (i < 0) return null; try { return liveParse(JSON.parse(x.slice(i, x.lastIndexOf("}") + 1))); } catch (e) { return null; } }
-    if (x.asof && x.quotes && typeof x.quotes === "object") return x;
-    if (Array.isArray(x)) { for (const y of x) { const r = liveParse(y); if (r) return r; } return null; }
-    if (typeof x === "object") { for (const k of ["resource", "text", "content", "contents", "payload", "structuredContent", "data"]) if (x[k] != null) { const r = liveParse(x[k]); if (r) return r; } }
-    return null;
+  // ---- the stock page's headline price follows the live quote (app_live.js); the as-of line the CIO quotes
+  function liveStamp() { const a = liveAsOf(); return a ? `As of ${a.time} IST ${a.date === todayIST() ? "today" : fmtDate(a.date)} (${marketOpenNow() ? "live" : "last traded"}, NSE) · last daily bar ${fmtDate(S.lastDay)}` : `As of the close of ${fmtDate(S.lastDay)} (no live prices) · last daily bar ${fmtDate(S.lastDay)}`; }
+  function symHeadHtml(sym, f) {
+    const L = f.c.length, q = quoteNow(sym), c = q ? q.ltp : f.c[L - 1], prev = q ? (q.prev || f.c[L - 1]) : f.c[L - 2], ch = (c / prev - 1) * 100;
+    return `<div class="px">${px(c)}</div><div class="chg ${cls(ch)}">${pct(ch, 2)} <span class="small muted" style="font-weight:500">${q ? `${marketOpenNow() ? "live" : "last traded"} ${esc(q.time.slice(0, 5))} IST${q.date !== todayIST() ? " " + fmtDate(q.date) : ""}` : `close ${fmtDate(E.isoOf(f.d[L - 1]))}`}</span></div>${q && q.open ? `<div class="xs muted" style="margin-top:4px">open ${px(q.open)} · high ${px(q.high)} · low ${px(q.low)}${q.value_cr ? ` · traded ₹${Math.round(q.value_cr).toLocaleString("en-IN")} cr` : ""}</div>` : ""}`;
   }
-  async function liveFromGithub() {
-    if (!S.mcp) return null;
-    try { const r = await S.mcp.callTool(LIVE_SRC.server, LIVE_SRC.tool, LIVE_SRC.input); const doc = liveParse(r?.payload) || liveParse(r); if (doc) doc.via = "GitHub"; return doc; } catch (e) { return null; }
-  }
-  async function liveFromDb() { try { const s = await S.db.doc("live/quotes").get(); if (!s.exists) return null; const d = liveParse(s.data()); if (d) d.via = "database"; return d; } catch (e) { return null; } }
-  // the latest snapshot (cached 2 minutes); null when there is none for today
-  function loadLive(force) {
-    if (!force && livePr && Date.now() - liveAt < 120e3) return livePr;
-    liveAt = Date.now();
-    livePr = (async () => {
-      const db = await liveFromDb(), fresh = db && db.date === istToday() && Date.now() - Date.parse(db.asof) < 7 * 60e3;
-      const gh = fresh ? null : await liveFromGithub();
-      const best = [db, gh].filter(Boolean).sort((a, b) => Date.parse(b.asof) - Date.parse(a.asof))[0] || null;
-      S.live = best && best.date === istToday() ? best : null;
-      return S.live;
-    })().catch(() => (S.live = null));
-    return livePr;
-  }
-  const liveOn = () => { const t = istNow(), wd = t.getUTCDay(), m = t.getUTCHours() * 60 + t.getUTCMinutes(); return wd >= 1 && wd <= 5 && m >= 550 && m <= 1200; }; // 09:10–20:00 IST
-  const liveTime = (L) => L ? new Date(Date.parse(L.asof) + 5.5 * 3600e3).toISOString().slice(11, 16) : null;
-  function liveQuote(sym, L = S.live) {
-    if (!L) return null; const k = E.symKey(sym), r = L.quotes?.[k] || L.indices?.[k]; if (!r) return null;
-    const [ltp, open, high, low, prev, value_cr, ts] = r;
-    return { sym: k, ltp, open, high, low, prev_close: prev, value_cr, ts, chg_pct: prev ? +((ltp / prev - 1) * 100).toFixed(2) : null, from_open_pct: open ? +((ltp / open - 1) * 100).toFixed(2) : null };
-  }
-  function liveStamp(L = S.live) {
-    const last = fmtDate(S.lastDay);
-    if (!L) return `As of the close of ${last} (no live prices for today yet) · last daily bar ${last}`;
-    const age = Math.round((Date.now() - Date.parse(L.asof)) / 60e3);
-    return `As of ${liveTime(L)} IST today (live, NSE, ${age} min ago) · last daily bar ${last}`;
-  }
-  // Direct from NSE's cm-market connector (seconds behind) when the 5-minute snapshot is missing, stale or lacks the symbol.
-  // → {sym: {sym, ltp, open, high, low, prev_close, value_cr, ts, chg_pct, from_open_pct, at}} for today's quotes only
-  async function liveFromNse(syms) {
-    const out = {}; if (!syms.length || typeof nseQuotes !== "function") return out;
-    try {
-      const r = await nseQuotes(syms), today = istToday();
-      for (const [s, q] of Object.entries(r.quotes || {})) {
-        if (q._date !== today || q.price == null) continue;
-        const at = (q.as_of || "").slice(11, 16);
-        out[s] = { sym: s, ltp: q.price, open: q.open, high: q.high, low: q.low, prev_close: q.prev_close, value_cr: q.value_cr ?? null, ts: at || null,
-          chg_pct: q.change_pct ?? (q.prev_close ? +((q.price / q.prev_close - 1) * 100).toFixed(2) : null), from_open_pct: q.open ? +((q.price / q.open - 1) * 100).toFixed(2) : null, at, via: "NSE cm-market" };
-      }
-    } catch (e) { /* connector missing or blocked: the snapshot (if any) stands */ }
-    return out;
-  }
-  async function showSymLive(sym) {
-    if (!liveOn()) return; const el = $("symLive"); if (!el) return;
-    const L = await loadLive(); if (S.symView !== sym || !$("symLive")) return;
-    let q = liveQuote(sym, L), at = L && liveTime(L);
-    const stale = !L || Date.now() - Date.parse(L.asof) > 7 * 60e3;
-    if (!q || stale) { const n = (await liveFromNse([E.symKey(sym)]))[E.symKey(sym)]; if (S.symView !== sym || !$("symLive")) return; if (n) { q = n; at = n.at; } }
-    if (!q) { if (L) $("symLive").innerHTML = `<span class="muted">No live price for ${esc(sym)} in the ${esc(liveTime(L))} IST snapshot.</span>`; return; }
-    $("symLive").innerHTML = `<span class="pill" style="font-weight:600">Live</span> <b>${px(q.ltp)}</b> <span class="${cls(q.chg_pct)}">${pct(q.chg_pct, 2)}</span> <span class="muted">vs prev close · ${q.from_open_pct != null ? `${pct(q.from_open_pct, 2)} from the open · ` : ""}as of ${esc(at || "")} IST${q.via ? "" : q.ts ? ` (last trade ${esc(q.ts)})` : ""}</span>`;
-  }
+  function updateSymLive() { const sym = S.symView, el = $("symPx"), f = sym && (S.full[sym] || S.light[sym]); if (el && f) el.innerHTML = symHeadHtml(sym, f); }
+  async function showSymLive(sym) { if (!["stock", "index"].includes(S.man.symbols[sym]?.kind)) return; await quotesFor([sym]).catch(() => null); if (S.symView === sym) updateSymLive(); }
+

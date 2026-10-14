@@ -14,7 +14,8 @@ from its database, which the "TradeOS live prices" scheduled task refreshes duri
 
 quotes.json: {"asof": "YYYY-MM-DDTHH:MM:SS+05:30" (when this snapshot was taken), "nse_updated": NSE's crawl time,
               "date": session date, "source", "fields": ["ltp","open","high","low","prev_close","value_cr","ts"],
-              "quotes": {SYM: [ltp, open, high, low, prev_close, value_cr, "HH:MM"]}, "indices": {SYM: [...same...]}}
+              "quotes": {SYM: [ltp, open, high, low, prev_close, value_cr, "HH:MM"]}, "indices": {SYM: [...same...]},
+              "nse_indices": {NSE live index name: [...same...]} (every NSE index, from NSE's cm_get_live_indices)}
 Paper trading and research only.
 """
 from __future__ import annotations
@@ -75,6 +76,24 @@ def index_quotes() -> dict:
     return out
 
 
+def nse_index_quotes(live: NseLive) -> dict:
+    """{NSE live index name: [last, open, high, low, prev_close, None, "HH:MM"]} for every NSE index (~140), from NSE's
+    own live data (cm_get_live_indices). Consumers map the names to TradeOS symbols (lab/engine.js nseIndexKey)."""
+    try:
+        d = live.call("cm_get_live_indices", {"group": "", "nameFilter": ""})
+    except Exception as e:  # noqa: BLE001
+        print(f"live feed: NSE indices failed: {e}", flush=True)
+        return {}
+    out = {}
+    for rows in (d.get("indices") or {}).values():
+        for r in rows or []:
+            if r.get("last") is None:
+                continue
+            tv = str(r.get("timeVal") or d.get("nseTimestamp") or "")
+            out[r["indexName"]] = [r.get("last"), r.get("open"), r.get("high"), r.get("low"), r.get("previousClose"), None, tv[12:17] if len(tv) >= 17 else tv]
+    return out
+
+
 class MarketFeed:
     def __init__(self, root: Path, every_min: float = 5, push: bool = True):
         self.root, self.every, self.push = root.resolve(), every_min * 60, push
@@ -110,7 +129,8 @@ class MarketFeed:
                "source": "NSE live data (1-3 min behind; informational) + Yahoo Finance for indices", "fields": FIELDS,
                "quotes": {s: [x.ltp, x.open or None, x.high or None, x.low or None, x.prev_close or None, round(x.value_cr, 2) if x.value_cr else None, _hhmm(x.ts)]
                           for s, x in sorted(q.items())},
-               "indices": index_quotes()}
+               "indices": index_quotes(),
+               "nse_indices": nse_index_quotes(self.live)}
         (self.dir / "quotes.json").write_text(json.dumps(doc, separators=(",", ":")))
         hist = self.dir / f"history_{doc['date']}.csv.gz"
         rows = io.StringIO()
@@ -121,7 +141,7 @@ class MarketFeed:
         with gzip.open(hist, "at") as f:  # gzip members append; readers see one file
             f.write(rows.getvalue())
         self.count += 1
-        print(f"live feed: {len(doc['quotes'])} stocks, {len(doc['indices'])} indices at {now:%H:%M} (NSE {upd})", flush=True)
+        print(f"live feed: {len(doc['quotes'])} stocks, {len(doc['indices'])} + {len(doc['nse_indices'])} NSE indices at {now:%H:%M} (NSE {upd})", flush=True)
         if self.push:
             self.publish(doc["date"])
         return doc

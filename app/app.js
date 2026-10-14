@@ -335,7 +335,7 @@
     }
     if (status === "retired" && agent.paper) { patch.paper_runs = [...(agent.paper_runs || []), { ...agent.paper, until: S.lastDay }]; patch.paper = null; }
     await patchAgent(agent.id, patch);
-    const words = { paper: `Paper trading started on v${agent.version}. It trades from the next session after ${fmtDate(S.lastDay)}; the version is frozen for this record.`,
+    const words = { paper: `Paper trading started on v${agent.version}. On a desk with an allocation it trades at live prices from the next run (hourly in the session, or Run agents now); the version is frozen for this record.`,
       paused: "Paper trading paused. No new signals until resumed.", retired: "Agent retired. Its versions and records are kept.", testing: "Moved back to testing." };
     await addAgentMsg(agent.id, { role: "system", text: words[status] || `Status set to ${status}.` });
   }
@@ -529,7 +529,7 @@ Equal-weight baskets of Nifty 200 members by industry (closes only): ${secs}.
 Named groups usable as "symbols" entries or "universe": ${groups}.
 ${m.pit ? `SURVIVORSHIP-FREE universes (use these whenever the user wants no survivorship bias, point-in-time or realistic results): ${Object.entries(m.pit.universes).map(([k, v]) => `${k} = the ${v.size} most-traded NSE stocks at each March/September review since ${v.first} (${v.ever} different stocks over time)`).join("; ")}. Membership uses only what was known on each review date and includes stocks later delisted, merged or dropped (${m.pit.no_longer_trading} of them no longer trade); prices are NSE bhavcopy adjusted for splits/bonuses (price only). Use them as "universe" in rotation, or in "symbols" for rule strategies (entries only while a stock is a member). Data to ${m.pit.asof}.` : ""}
 ${intradayBrief(m)}
-LIVE PRICES (today, during the session): live_prices gives any NSE stock's last price, change, move since the open, day high/low and traded value (the 5-minute snapshot of every NSE stock, topped up straight from NSE's cm-market connector when the snapshot is late or lacks a name) and NIFTY/BANKNIFTY/FINNIFTY/SENSEX/INDIAVIX; use its "stamp" for the as-of line. Daily bars (every other tool) end at the last close (${S.lastDay}). For anything about today, now or the open, call live_prices first.
+LIVE PRICES AND TRADING NOW: the app runs on live NSE prices (live_prices / live_quotes: any NSE stock or index, seconds to minutes behind). Daily bars (every other tool) end at the last close (${S.lastDay}). For anything about today, now or the open, call live_prices first. Paper trades fill at the live price the moment they're decided (agents every hour in the session or on "Run agents now"; the team's buys and sells; approvals) — never "at the next open". Use the "trade" and "run_agents" actions to act now.
 ${m.options ? optionsBrief(m.options) : "OPTION PRICES: not loaded in this build — option strategies use the Black-Scholes model on India VIX (index options only)."}
 Market-cap weights: ${nSh ? `share counts available for ${nSh} stocks (Yahoo; free float = today's ratio)` : "no share-count data loaded yet — mcap weights fall back to equal"}.
 ${researchBrief(m)}
@@ -590,7 +590,7 @@ MARKET BREADTH (point-in-time top 500 NSE stocks, daily; use via ref): ${b}` : "
    Intraday rule variables (only in this type): vwap (session VWAP; time-weighted for indices), day_open, prev_close, day_high, day_low (so far), or_high, or_low (opening range, NaN until it completes), minutes (minutes since 09:15 at the bar's end), day_ret (% vs prev_close). Indicators see only the same session's bars (sma(close,20) on 5-minute bars needs 20 bars of today), exactly as the live paper runner does. ref("SYMBOL", expr) and vix give the daily value as of YESTERDAY's close (no look-ahead). e.g. ORB: entry "close > or_high and close > vwap and volume > 1.5 * sma(volume, 3)", exit "close < vwap", stop 0.7, target 1.4.
    Test window for intraday: use {"start":null,"split":null} (or a split date inside the bar range); never the daily defaults like split 2021.
    An intraday agent put on paper trading is also traded live by the paper runner on NSE's live data every session (results appear on its page after the close).
-5) "watchlist": a DAILY-LIST system — the team sends names (a list a day, pasted or typed), named triggers on the latest close call BUY, the desk buys at the next open, exits by holding days / target / stop / an exit rule, and the system learns better thresholds from the record of every list sent. Use it whenever the user will hand over names (their own picks, a scanner, a research desk) and wants the system to act on them — short-term plays, breakouts, "price pops or build-up → buy". No history is needed to run it; never backtest it unless asked.
+5) "watchlist": a DAILY-LIST system — the team sends names (a list a day, pasted or typed), named triggers on live prices call BUY, the desk buys at once at the live price, exits by holding days / target / stop / an exit rule, and the system learns better thresholds from the record of every list sent. Use it whenever the user will hand over names (their own picks, a scanner, a research desk) and wants the system to act on them — short-term plays, breakouts, "price pops or build-up → buy". No history is needed to run it; never backtest it unless asked.
    ${WATCH_SCHEMA}
    Triggers are plain rule-language conditions with {setting} placeholders; put every number the user may tune in "params" (label, unit, min/max/step) — those numbers become knobs on its page and are what it learns. Short-term defaults: day gain roc(close,1), volume vs yesterday volume/prev(volume), futures OI build-up roc(fut_oi,1) with price up; avoid multi-week lookbacks unless asked.
 PAGES: every agent gets a page shaped by its type (daily lists: names box, calls with trigger chips, positions, record & learning, settings knobs; options: option chain; others: today's signals and rules). Add "view":["fundamentals","options","chart"] to a spec to give its page those panels when the system needs them.
@@ -666,20 +666,13 @@ TEST WINDOW (only when a backtest is asked for): {"start":"YYYY-MM-DD","end":nul
         inputSchema: { type: "object", properties: { spec: { type: "object" }, test: { type: "object", properties: { start: { type: "string" }, end: { type: "string" }, split: { type: "string" } } } }, required: ["spec"] },
         execute: async (input) => { const spec = E.normalize(input.spec, S.man.universes), test = { start: "2012-01-01", ...(input.test || {}) };
           progress(`Backtesting ${TYPE_LABEL[spec.type].toLowerCase()} on ${universeLabel(spec)}…`); const res = await runSpec(spec, test); return compactRes(res, test); } },
-      { name: "live_prices", description: "Today's live prices during the session (NSE live data for every NSE stock, 1–3 min behind, snapshotted every 5 minutes; NIFTY, BANKNIFTY, FINNIFTY, SENSEX, INDIAVIX from Yahoo): last price, change vs previous close, move since the open, day high/low, traded value so far (₹ cr) and the snapshot time. Use it for any question about today / now / the open; the other tools only have daily bars to the last close.",
+      { name: "live_prices", description: "Today's live NSE prices (seconds to a few minutes behind) for any stocks and indices: last price, change vs the previous close, day open/high/low, traded value and the quote time. The page already shows these live; use it for any question about now / today / the open. Daily-bar tools end at the last close.",
         inputSchema: { type: "object", properties: { symbols: { type: "array", items: { type: "string" } } }, required: ["symbols"] },
-        execute: async (input) => { progress("Reading live prices…"); const L = await loadLive(true);
-          const syms = (input.symbols || []).slice(0, 300).map((x) => E.symKey(String(x).replace(/\.NS$/i, "")));
-          // the 5-minute snapshot first; NSE's cm-market connector directly for what it lacks (or all of it when the snapshot is missing/stale)
-          const stale = !L || Date.now() - Date.parse(L.asof) > 7 * 60e3, quotes = {};
-          for (const s of syms) { const q = !stale && liveQuote(s, L); if (q) quotes[s] = { ...q, at: liveTime(L), via: "snapshot" }; }
-          const nse = await liveFromNse(syms.filter((s) => !quotes[s]).slice(0, 40)); Object.assign(quotes, nse);
-          if (stale && L) for (const s of syms) { const q = !quotes[s] && liveQuote(s, L); if (q) quotes[s] = { ...q, at: liveTime(L), via: "snapshot" }; }
-          if (!Object.keys(quotes).length) return { live: false, stamp: liveStamp(L), note: L ? "No live quote for these symbols today (BSE-only, not traded yet, or not an NSE symbol)." : "No live prices for today yet (before 09:15 IST, a holiday, or the feeds are down). Use the last close and say so." };
-          const nAt = Object.values(nse).map((q) => q.at).filter(Boolean).sort().pop();
-          const stamp = nAt && (!L || stale) ? `As of ${nAt} IST today (live, NSE) · last daily bar ${fmtDate(S.lastDay)}` : liveStamp(L);
-          return { live: true, stamp, asof_ist: nAt && (!L || stale) ? nAt : liveTime(L), via: [!stale && L && "5-min snapshot", Object.keys(nse).length && "NSE cm-market (direct)"].filter(Boolean).join(" + "), last_daily_bar: S.lastDay,
-            quotes: Object.fromEntries(syms.map((s) => [s, quotes[s] || "no live quote (BSE-only stock, not traded yet, or not an NSE symbol)"])) }; } },
+        execute: async (input) => { progress("Reading live prices…"); const syms = (input.symbols || []).slice(0, 120).map((x) => E.symKey(String(x).replace(/\.NS$/i, ""))).filter((s) => S.man.symbols[s]);
+          const r = await quotesFor(syms), quotes = {};
+          for (const s of syms) { const q = quoteNow(s); quotes[s] = q ? { ltp: q.ltp, prev_close: q.prev, chg_pct: q.prev ? +((q.ltp / q.prev - 1) * 100).toFixed(2) : q.chg_pct ?? null, open: q.open, high: q.high, low: q.low, from_open_pct: q.open ? +((q.ltp / q.open - 1) * 100).toFixed(2) : null, value_cr: q.value_cr ?? null, at: `${q.date} ${q.time} IST`, via: q.src }
+            : S.man.symbols[s]?.ex === "BSE" ? "no NSE live price (BSE-only stock)" : "no live quote newer than the last close"; }
+          return { live: r.ok.length > 0, stamp: liveStamp(), market_open: marketOpenNow(), last_daily_bar: S.lastDay, ...(r.error ? { note: r.error } : {}), quotes }; } },
       { name: "market_snapshot", description: "Latest price, 1w–1y returns, distance from 50/200-day averages and 52-week range, RSI(14) and volatility for any list of symbols (stocks, indices, global assets, sector baskets).",
         inputSchema: { type: "object", properties: { symbols: { type: "array", items: { type: "string" } } }, required: ["symbols"] },
         execute: async (input) => { progress("Reading market data…"); return (input.symbols || []).slice(0, 500).map((s) => snapshot(String(s).toUpperCase().replace(/\.NS$/, ""))); } },
@@ -998,9 +991,9 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
   }
 
   const STARTERS = [
-    ["Daily list desk", "Set up a daily-list desk for me: I send stock names every day; buy at the next open when the price pops or volume / OI builds up, sell after a couple of sessions, and learn better thresholds from my record. No backtest — put it straight on paper."],
+    ["Daily list desk", "Set up a daily-list desk for me: I send stock names every day; buy at live prices when the price pops or volume / OI builds up, sell after a couple of sessions, and learn better thresholds from my record. No backtest — put it straight on paper."],
     ["Set up my fund", "Set up the fund for me: propose desks with mandates, capital and risk limits for ₹1 crore of paper capital, and assign the agents we already have to the right desks with allocations."],
-    ["Morning brief", "Give me today's brief: the regime, what moved and why, what our book and desks are exposed to, the orders queued for the next open, and the 3 most interesting opportunities."],
+    ["Morning brief", "Give me today's brief: the regime, what moved and why, what our book and desks are exposed to, today's trades and what's awaiting approval, and the 3 most interesting opportunities."],
     ["What's interesting?", "Scan the market for what's unusual right now — breakouts, volume surges, results surprises, option IV spikes, sector rotation — and tell me which are worth acting on."],
   ];
   function renderMain() {
@@ -1095,7 +1088,7 @@ USER NOW: ${userText || (answers ? "(answered the questions)" : "(no text — se
         : [res.metrics.cycles != null ? "Cycles" : "Trades", String(h.trades ?? "–"), h.win != null ? `${pct(h.win, 0, false)} winners` : ""]];
     if (test?.split) tiles.push(["Train → test CAGR", `${pct(h.train_cagr, 1)} → ${pct(h.test_cagr, 1)}`, `${bl} test ${pct(h.test_nifty_cagr)}`]);
     return `<div class="mini-kpis">${tiles.map(([k, v, b]) => `<div class="mini"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${b}</span></div>`).join("")}</div>
-      <p class="note" style="margin-top:6px">${fmtDate(h.start)} – ${fmtDate(h.end)} · costs included · ${res.signals.filter((s) => isAction(s)).length} action signal(s) for next open${test?.split && h.flags?.length ? ` · train vs test: ${esc(h.flags.join("; ").toLowerCase())}` : ""}</p>`;
+      <p class="note" style="margin-top:6px">${fmtDate(h.start)} – ${fmtDate(h.end)} · costs included · ${res.signals.filter((s) => isAction(s)).length} action signal(s) at these prices${test?.split && h.flags?.length ? ` · train vs test: ${esc(h.flags.join("; ").toLowerCase())}` : ""}</p>`;
   }
   function testFromInputs(pid, p) {
     const g = (k) => { const el = $(`${k}_${pid}`); return el && el.value ? el.value : null; };
