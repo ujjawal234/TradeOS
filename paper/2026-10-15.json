@@ -1,0 +1,1409 @@
+{
+ "date": "2026-10-15",
+ "generated": "2026-10-15T15:44:47.378Z",
+ "agents_run": 16,
+ "actions": 3,
+ "data_check": {
+  "ok": true,
+  "agents_skipped": 0,
+  "late_symbols": [
+   "NIFTY_CAPITAL_GOODS",
+   "NIFTY_POWER",
+   "NIFTY_TELECOMMUNICATIONS"
+  ],
+  "late_count": 3
+ },
+ "push_text": "TradeOS 2026-10-15: NIFTY Weekly Long Straddle on VIX>20: HOLD SHORT NIFTY 2026-10-19 22850 CE, HOLD SHORT NIFTY 2026-10-19 22850 PE; Short-Term Breakout Buyer (daily list): BUY ETERNAL",
+ "telegram_text": "TradeOS signals for the session after 2026-10-15 (paper trading, not advice)\nEMA 9/21 trend above VWAP (3-min) (v1) -3.4% vs Nifty +2.0%: no action\nOpening-range breakout long (5-min) (v1) -4.0% vs Nifty +2.0%: no action\nOpening-range breakdown short (5-min) (v1) +1.7% vs Nifty +2.0%: no action\nNifty/Midcap150/Smallcap250 6m Momentum Rotation (v1) – vs Nifty –: no action\nNifty 50/200 DMA Golden Cross (v2) 0.0% vs Nifty +1.7%: no action\nNifty 200DMA Trend Filter (v1) 0.0% vs Nifty +1.7%: no action\nSector Index Top-2 3M Momentum Rotation (v2) +3.5% vs Nifty +1.7%: no action (no 2026-10-15 data for NIFTY_CAPITAL_GOODS, NIFTY_POWER, NIFTY_TELECOMMUNICATIONS)\nNifty 50 Top-10 Monthly Momentum (v1) 0.0% vs Nifty +1.7%: no action\nNIFTY Weekly Long Straddle on VIX>20 (v5) +17.0% vs Nifty +1.7%: HOLD SHORT NIFTY 2026-10-19 22850 CE @172.45, HOLD SHORT NIFTY 2026-10-19 22850 PE @77.65\nNIFTY Expiry-Day Short Strangle 1% OTM (v2) -0.4% vs Nifty +2.0%: no action\nNIFTY Long Condor, no VIX filter, 2 days before expiry (v1) 0.0% vs Nifty +1.7%: no action\nFirst-Bar Strength Long, 1-min, exit 9:20 (Nifty 50) (v1) +0.8% vs Nifty +2.1%: no action\nShort-Term Breakout Buyer (daily list) (v4): BUY ETERNAL @323\nIntraday Breakout Buyer (5-min) (v1) +0.5% vs Nifty +2.8%: no action\nIntraday Breakout Buyer (5-min) (v2) +0.7% vs Nifty +2.8%: no action\nX Ideas (daily list) (v1): no action",
+ "results": [
+  {
+   "id": "aintematrend1",
+   "name": "EMA 9/21 trend above VWAP (3-min)",
+   "version": 1,
+   "since": "2026-10-05",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 9,
+    "return_pct": -3.42,
+    "nifty_pct": 1.96,
+    "max_drawdown_pct": -3.42,
+    "equity": 965778,
+    "start_equity": 1000000
+   },
+   "signals": [
+    {
+     "symbol": "AXISBANK",
+     "action": "TRADED",
+     "price": 1284.64,
+     "date": "2026-10-15",
+     "entry": 1287.86,
+     "time": "11:36–12:30",
+     "reason": "exit rule",
+     "pnl": -1020.48,
+     "note": "Long 11:36 @1287.86 → 12:30 @1284.64 (exit rule), P&L ₹-1,020",
+     "pnl_pct": -0.25
+    },
+    {
+     "symbol": "COALINDIA",
+     "action": "TRADED",
+     "price": 419.42,
+     "date": "2026-10-15",
+     "entry": 419.13,
+     "time": "12:09–14:12",
+     "reason": "exit rule",
+     "pnl": 24.18,
+     "note": "Long 12:09 @419.13 → 14:12 @419.42 (exit rule), P&L ₹24",
+     "pnl_pct": 0.07
+    },
+    {
+     "symbol": "ETERNAL",
+     "action": "TRADED",
+     "price": 319.46,
+     "date": "2026-10-15",
+     "entry": 317.61,
+     "time": "12:36–14:06",
+     "reason": "trailing stop",
+     "pnl": 1715.57,
+     "note": "Long 12:36 @317.61 → 14:06 @319.46 (trailing stop), P&L ₹1,716",
+     "pnl_pct": 0.58
+    },
+    {
+     "symbol": "GRASIM",
+     "action": "TRADED",
+     "price": 2893.72,
+     "date": "2026-10-15",
+     "entry": 2906.28,
+     "time": "14:12–14:42",
+     "reason": "exit rule",
+     "pnl": -1615.9,
+     "note": "Long 14:12 @2906.28 → 14:42 @2893.72 (exit rule), P&L ₹-1,616",
+     "pnl_pct": -0.43
+    },
+    {
+     "symbol": "HDFCLIFE",
+     "action": "TRADED",
+     "price": 551.69,
+     "date": "2026-10-15",
+     "entry": 553.46,
+     "time": "14:12–14:24",
+     "reason": "exit rule",
+     "pnl": -1253.13,
+     "note": "Long 14:12 @553.46 → 14:24 @551.69 (exit rule), P&L ₹-1,253",
+     "pnl_pct": -0.32
+    },
+    {
+     "symbol": "TECHM",
+     "action": "TRADED",
+     "price": 1632.32,
+     "date": "2026-10-15",
+     "entry": 1627.23,
+     "time": "11:12–14:12",
+     "reason": "trailing stop",
+     "pnl": 831.28,
+     "note": "Long 11:12 @1627.23 → 14:12 @1632.32 (trailing stop), P&L ₹831",
+     "pnl_pct": 0.31
+    },
+    {
+     "symbol": "ULTRACEMCO",
+     "action": "TRADED",
+     "price": 10794.84,
+     "date": "2026-10-15",
+     "entry": 10822.16,
+     "time": "10:30–10:33",
+     "reason": "exit rule",
+     "pnl": -1014.26,
+     "note": "Long 10:30 @10822.16 → 10:33 @10794.84 (exit rule), P&L ₹-1,014",
+     "pnl_pct": -0.25
+    },
+    {
+     "symbol": "ULTRACEMCO",
+     "action": "TRADED",
+     "price": 10796.84,
+     "date": "2026-10-15",
+     "entry": 10818.16,
+     "time": "11:33–12:06",
+     "reason": "exit rule",
+     "pnl": -834.23,
+     "note": "Long 11:33 @10818.16 → 12:06 @10796.84 (exit rule), P&L ₹-834",
+     "pnl_pct": -0.2
+    },
+    {
+     "symbol": "WIPRO",
+     "action": "TRADED",
+     "price": 173.55,
+     "date": "2026-10-15",
+     "entry": 173.63,
+     "time": "14:12–14:42",
+     "reason": "exit rule",
+     "pnl": -367.82,
+     "note": "Long 14:12 @173.63 → 14:42 @173.55 (exit rule), P&L ₹-368",
+     "pnl_pct": -0.05
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "aintorblong01",
+   "name": "Opening-range breakout long (5-min)",
+   "version": 1,
+   "since": "2026-10-05",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 9,
+    "return_pct": -4,
+    "nifty_pct": 1.96,
+    "max_drawdown_pct": -4.47,
+    "equity": 960034,
+    "start_equity": 1000000
+   },
+   "signals": [
+    {
+     "symbol": "APOLLOHOSP",
+     "action": "TRADED",
+     "price": 7903.92,
+     "date": "2026-10-15",
+     "entry": 7958.09,
+     "time": "09:55–12:15",
+     "reason": "exit rule",
+     "pnl": -1826.86,
+     "note": "Long 09:55 @7958.09 → 12:15 @7903.92 (exit rule), P&L ₹-1,827",
+     "pnl_pct": -0.68
+    },
+    {
+     "symbol": "BAJAJFINSV",
+     "action": "TRADED",
+     "price": 1722.96,
+     "date": "2026-10-15",
+     "entry": 1727.35,
+     "time": "11:00–11:20",
+     "reason": "exit rule",
+     "pnl": -781.22,
+     "note": "Long 11:00 @1727.35 → 11:20 @1722.96 (exit rule), P&L ₹-781",
+     "pnl_pct": -0.25
+    },
+    {
+     "symbol": "BHARTIARTL",
+     "action": "TRADED",
+     "price": 1853.73,
+     "date": "2026-10-15",
+     "entry": 1845.57,
+     "time": "09:50–14:40",
+     "reason": "exit rule",
+     "pnl": 951.8,
+     "note": "Long 09:50 @1845.57 → 14:40 @1853.73 (exit rule), P&L ₹952",
+     "pnl_pct": 0.44
+    },
+    {
+     "symbol": "DRREDDY",
+     "action": "TRADED",
+     "price": 1224.95,
+     "date": "2026-10-15",
+     "entry": 1226.45,
+     "time": "09:45–11:35",
+     "reason": "exit rule",
+     "pnl": -451.82,
+     "note": "Long 09:45 @1226.45 → 11:35 @1224.95 (exit rule), P&L ₹-452",
+     "pnl_pct": -0.12
+    },
+    {
+     "symbol": "EICHERMOT",
+     "action": "TRADED",
+     "price": 7230.05,
+     "date": "2026-10-15",
+     "entry": 7220.44,
+     "time": "12:15–15:15",
+     "reason": "square-off",
+     "pnl": 179.34,
+     "note": "Long 12:15 @7220.44 → 15:15 @7230.05 (square-off), P&L ₹179",
+     "pnl_pct": 0.13
+    },
+    {
+     "symbol": "GRASIM",
+     "action": "TRADED",
+     "price": 2889.22,
+     "date": "2026-10-15",
+     "entry": 2902.18,
+     "time": "11:35–12:05",
+     "reason": "exit rule",
+     "pnl": -1263.83,
+     "note": "Long 11:35 @2902.18 → 12:05 @2889.22 (exit rule), P&L ₹-1,264",
+     "pnl_pct": -0.45
+    },
+    {
+     "symbol": "HDFCLIFE",
+     "action": "TRADED",
+     "price": 550.89,
+     "date": "2026-10-15",
+     "entry": 551.46,
+     "time": "11:20–14:35",
+     "reason": "exit rule",
+     "pnl": -408.23,
+     "note": "Long 11:20 @551.46 → 14:35 @550.89 (exit rule), P&L ₹-408",
+     "pnl_pct": -0.1
+    },
+    {
+     "symbol": "ITC",
+     "action": "TRADED",
+     "price": 263.65,
+     "date": "2026-10-15",
+     "entry": 264.75,
+     "time": "09:50–11:00",
+     "reason": "exit rule",
+     "pnl": -1193.4,
+     "note": "Long 09:50 @264.75 → 11:00 @263.65 (exit rule), P&L ₹-1,193",
+     "pnl_pct": -0.42
+    },
+    {
+     "symbol": "POWERGRID",
+     "action": "TRADED",
+     "price": 249.05,
+     "date": "2026-10-15",
+     "entry": 249.55,
+     "time": "12:05–14:50",
+     "reason": "exit rule",
+     "pnl": -649.95,
+     "note": "Long 12:05 @249.55 → 14:50 @249.05 (exit rule), P&L ₹-650",
+     "pnl_pct": -0.2
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "aintorbshort1",
+   "name": "Opening-range breakdown short (5-min)",
+   "version": 1,
+   "since": "2026-10-05",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 9,
+    "return_pct": 1.74,
+    "nifty_pct": 1.96,
+    "max_drawdown_pct": -0.59,
+    "equity": 1017403,
+    "start_equity": 1000000
+   },
+   "signals": [
+    {
+     "symbol": "NESTLEIND",
+     "action": "TRADED",
+     "price": 1350.94,
+     "date": "2026-10-15",
+     "entry": 1370.13,
+     "time": "11:10–12:30",
+     "reason": "target",
+     "pnl": 3342.51,
+     "note": "Short 11:10 @1370.13 → 12:30 @1350.94 (target), P&L ₹3,343",
+     "pnl_pct": 1.4
+    },
+    {
+     "symbol": "TRENT",
+     "action": "TRADED",
+     "price": 2941.49,
+     "date": "2026-10-15",
+     "entry": 2934.91,
+     "time": "11:20–14:10",
+     "reason": "exit rule",
+     "pnl": -708.75,
+     "note": "Short 11:20 @2934.91 → 14:10 @2941.49 (exit rule), P&L ₹-709",
+     "pnl_pct": -0.22
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "amuo0owhkblx1r",
+   "name": "Nifty/Midcap150/Smallcap250 6m Momentum Rotation",
+   "version": 1,
+   "since": "2026-09-30",
+   "paper": {
+    "days": 0,
+    "nifty_pct": null,
+    "equity": null,
+    "start_equity": null
+   },
+   "signals": [
+    {
+     "symbol": "-",
+     "action": "CASH",
+     "date": "2026-10-15",
+     "note": "Nothing qualifies"
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "amuo0s6z9vqkeb",
+   "name": "Nifty 50/200 DMA Golden Cross",
+   "version": 2,
+   "since": "2026-10-07",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 7,
+    "return_pct": 0,
+    "nifty_pct": 1.74,
+    "max_drawdown_pct": 0,
+    "equity": 2500000,
+    "start_equity": 2500000
+   },
+   "signals": [
+    {
+     "symbol": "ADANIENT",
+     "action": "WAIT",
+     "price": 2700,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "ADANIPORTS",
+     "action": "WAIT",
+     "price": 1743.2,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "APOLLOHOSP",
+     "action": "WAIT",
+     "price": 7889.5,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "ASIANPAINT",
+     "action": "WAIT",
+     "price": 2350,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "AXISBANK",
+     "action": "WAIT",
+     "price": 1288,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "BAJAJ-AUTO",
+     "action": "WAIT",
+     "price": 10385,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "BAJAJFINSV",
+     "action": "WAIT",
+     "price": 1732,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "BAJFINANCE",
+     "action": "WAIT",
+     "price": 965.25,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "BEL",
+     "action": "WAIT",
+     "price": 380.4,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "BHARTIARTL",
+     "action": "WAIT",
+     "price": 1854,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "BSE",
+     "action": "WAIT",
+     "price": 3428,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "CIPLA",
+     "action": "WAIT",
+     "price": 1328,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "COALINDIA",
+     "action": "WAIT",
+     "price": 418,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "DRREDDY",
+     "action": "WAIT",
+     "price": 1218.8,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "EICHERMOT",
+     "action": "WAIT",
+     "price": 7225,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "ETERNAL",
+     "action": "WAIT",
+     "price": 323,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "GRASIM",
+     "action": "WAIT",
+     "price": 2885.9,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "HCLTECH",
+     "action": "WAIT",
+     "price": 1360,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "HDFCBANK",
+     "action": "WAIT",
+     "price": 726.85,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "HDFCLIFE",
+     "action": "WAIT",
+     "price": 550.55,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "HINDALCO",
+     "action": "WAIT",
+     "price": 893.85,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "HINDUNILVR",
+     "action": "WAIT",
+     "price": 1897.1,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "ICICIBANK",
+     "action": "WAIT",
+     "price": 1389.4,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "INDIGO",
+     "action": "WAIT",
+     "price": 4778.3,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "INFY",
+     "action": "WAIT",
+     "price": 1110,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "ITC",
+     "action": "WAIT",
+     "price": 263.9,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "JIOFIN",
+     "action": "WAIT",
+     "price": 219.01,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "JSWSTEEL",
+     "action": "WAIT",
+     "price": 1200.4,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "KOTAKBANK",
+     "action": "WAIT",
+     "price": 447.95,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "LT",
+     "action": "WAIT",
+     "price": 3632,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "M&M",
+     "action": "WAIT",
+     "price": 2861.7,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "MARUTI",
+     "action": "WAIT",
+     "price": 11445,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "MAXHEALTH",
+     "action": "WAIT",
+     "price": 858,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "NESTLEIND",
+     "action": "WAIT",
+     "price": 1275.8,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "NTPC",
+     "action": "WAIT",
+     "price": 314.65,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "ONGC",
+     "action": "WAIT",
+     "price": 224.64,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "POWERGRID",
+     "action": "WAIT",
+     "price": 249.85,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "RELIANCE",
+     "action": "WAIT",
+     "price": 1215,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "SBILIFE",
+     "action": "WAIT",
+     "price": 1661.8,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "SBIN",
+     "action": "WAIT",
+     "price": 960,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "SHRIRAMFIN",
+     "action": "WAIT",
+     "price": 943.8,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "SUNPHARMA",
+     "action": "WAIT",
+     "price": 1764,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "TATACONSUM",
+     "action": "WAIT",
+     "price": 991.45,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "TATASTEEL",
+     "action": "WAIT",
+     "price": 176.4,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "TCS",
+     "action": "WAIT",
+     "price": 2350,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "TECHM",
+     "action": "WAIT",
+     "price": 1650,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "TITAN",
+     "action": "WAIT",
+     "price": 4455.8,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "TMPV",
+     "action": "WAIT",
+     "price": 287.05,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "TRENT",
+     "action": "WAIT",
+     "price": 2949.7,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "ULTRACEMCO",
+     "action": "WAIT",
+     "price": 10862,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    },
+    {
+     "symbol": "WIPRO",
+     "action": "WAIT",
+     "price": 174.05,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "amuo0vx4t14z10",
+   "name": "Nifty 200DMA Trend Filter",
+   "version": 1,
+   "since": "2026-10-07",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 7,
+    "return_pct": 0,
+    "nifty_pct": 1.74,
+    "max_drawdown_pct": 0,
+    "equity": 2500000,
+    "start_equity": 2500000
+   },
+   "signals": [
+    {
+     "symbol": "NIFTY",
+     "action": "WAIT",
+     "price": 22997.35,
+     "date": "2026-10-15",
+     "note": "No position, entry rule not met",
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "pnl_pct": null
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "amuo0xbn72wpyb",
+   "name": "Sector Index Top-2 3M Momentum Rotation",
+   "version": 2,
+   "since": "2026-09-30",
+   "stale": {
+    "blocked": false,
+    "symbols": [
+     "NIFTY_CAPITAL_GOODS",
+     "NIFTY_POWER",
+     "NIFTY_TELECOMMUNICATIONS"
+    ],
+    "count": 3,
+    "of": 22
+   },
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 11,
+    "return_pct": 3.49,
+    "nifty_pct": 1.67,
+    "max_drawdown_pct": -2.1,
+    "equity": 2584244,
+    "start_equity": 2497015
+   },
+   "signals": [
+    {
+     "symbol": "NIFTY_TELECOMMUNICATIONS",
+     "action": "BUY",
+     "price": 3759.51,
+     "date": "2026-10-15",
+     "note": "Entered the top 3 (rank 3) — buy at next rebalance (2026-11-02)",
+     "weight_pct": 33.33,
+     "due": false
+    },
+    {
+     "symbol": "NIFTY_PHARMA",
+     "action": "SELL",
+     "price": 25817.8,
+     "date": "2026-10-15",
+     "note": "Dropped out of the top 3 (rank 4) — sell at next rebalance (2026-11-02)",
+     "weight_pct": 31.33,
+     "target_weight_pct": 0,
+     "due": false
+    },
+    {
+     "symbol": "NIFTY_IT",
+     "action": "HOLD",
+     "price": 30719.8,
+     "date": "2026-10-15",
+     "note": "Still in the top ranks",
+     "weight_pct": 35.58,
+     "target_weight_pct": 33.33
+    },
+    {
+     "symbol": "NIFTY_MEDIA",
+     "action": "HOLD",
+     "price": 1617.2,
+     "date": "2026-10-15",
+     "note": "Still in the top ranks",
+     "weight_pct": 33.44,
+     "target_weight_pct": 33.33
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "amuo14m5nbk9tc",
+   "name": "Nifty 50 Top-10 Monthly Momentum",
+   "version": 1,
+   "since": "2026-09-30",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 11,
+    "return_pct": 0,
+    "nifty_pct": 1.67,
+    "max_drawdown_pct": 0,
+    "equity": 2500000,
+    "start_equity": 2500000
+   },
+   "signals": [
+    {
+     "symbol": "ADANIENT",
+     "action": "BUY",
+     "price": 2700,
+     "date": "2026-10-15",
+     "note": "Entered the top 10 (rank 2) — buy at next rebalance (2026-11-02)",
+     "weight_pct": 10,
+     "due": false
+    },
+    {
+     "symbol": "ADANIPORTS",
+     "action": "BUY",
+     "price": 1743.2,
+     "date": "2026-10-15",
+     "note": "Entered the top 10 (rank 4) — buy at next rebalance (2026-11-02)",
+     "weight_pct": 10,
+     "due": false
+    },
+    {
+     "symbol": "BAJAJ-AUTO",
+     "action": "BUY",
+     "price": 10385,
+     "date": "2026-10-15",
+     "note": "Entered the top 10 (rank 7) — buy at next rebalance (2026-11-02)",
+     "weight_pct": 10,
+     "due": false
+    },
+    {
+     "symbol": "BAJFINANCE",
+     "action": "BUY",
+     "price": 965.25,
+     "date": "2026-10-15",
+     "note": "Entered the top 10 (rank 8) — buy at next rebalance (2026-11-02)",
+     "weight_pct": 10,
+     "due": false
+    },
+    {
+     "symbol": "CIPLA",
+     "action": "BUY",
+     "price": 1328,
+     "date": "2026-10-15",
+     "note": "Entered the top 10 (rank 6) — buy at next rebalance (2026-11-02)",
+     "weight_pct": 10,
+     "due": false
+    },
+    {
+     "symbol": "ETERNAL",
+     "action": "BUY",
+     "price": 323,
+     "date": "2026-10-15",
+     "note": "Entered the top 10 (rank 1) — buy at next rebalance (2026-11-02)",
+     "weight_pct": 10,
+     "due": false
+    },
+    {
+     "symbol": "GRASIM",
+     "action": "BUY",
+     "price": 2885.9,
+     "date": "2026-10-15",
+     "note": "Entered the top 10 (rank 9) — buy at next rebalance (2026-11-02)",
+     "weight_pct": 10,
+     "due": false
+    },
+    {
+     "symbol": "KOTAKBANK",
+     "action": "BUY",
+     "price": 447.95,
+     "date": "2026-10-15",
+     "note": "Entered the top 10 (rank 3) — buy at next rebalance (2026-11-02)",
+     "weight_pct": 10,
+     "due": false
+    },
+    {
+     "symbol": "SUNPHARMA",
+     "action": "BUY",
+     "price": 1764,
+     "date": "2026-10-15",
+     "note": "Entered the top 10 (rank 10) — buy at next rebalance (2026-11-02)",
+     "weight_pct": 10,
+     "due": false
+    },
+    {
+     "symbol": "TECHM",
+     "action": "BUY",
+     "price": 1650,
+     "date": "2026-10-15",
+     "note": "Entered the top 10 (rank 5) — buy at next rebalance (2026-11-02)",
+     "weight_pct": 10,
+     "due": false
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "amuoamub5cupq0",
+   "name": "NIFTY Weekly Long Straddle on VIX>20",
+   "version": 5,
+   "since": "2026-09-30",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 11,
+    "return_pct": 17.03,
+    "nifty_pct": 1.67,
+    "max_drawdown_pct": -8.16,
+    "equity": 1170092,
+    "start_equity": 999821
+   },
+   "signals": [
+    {
+     "symbol": "NIFTY 2026-10-19 22850 CE",
+     "action": "HOLD SHORT",
+     "price": 172.45,
+     "date": "2026-10-15",
+     "entry": 126.45,
+     "note": "CE 22850 expiring 2026-10-19; market price 172.45 vs sold at 126.45"
+    },
+    {
+     "symbol": "NIFTY 2026-10-19 22850 PE",
+     "action": "HOLD SHORT",
+     "price": 77.65,
+     "date": "2026-10-15",
+     "entry": 163.8,
+     "note": "PE 22850 expiring 2026-10-19; market price 77.65 vs sold at 163.8"
+    }
+   ],
+   "actions": [
+    {
+     "symbol": "NIFTY 2026-10-19 22850 CE",
+     "action": "HOLD SHORT",
+     "price": 172.45,
+     "date": "2026-10-15",
+     "entry": 126.45,
+     "note": "CE 22850 expiring 2026-10-19; market price 172.45 vs sold at 126.45"
+    },
+    {
+     "symbol": "NIFTY 2026-10-19 22850 PE",
+     "action": "HOLD SHORT",
+     "price": 77.65,
+     "date": "2026-10-15",
+     "entry": 163.8,
+     "note": "PE 22850 expiring 2026-10-19; market price 77.65 vs sold at 163.8"
+    }
+   ]
+  },
+  {
+   "id": "amuwg9qplzzxm6",
+   "name": "NIFTY Expiry-Day Short Strangle 1% OTM",
+   "version": 2,
+   "since": "2026-10-05",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 9,
+    "return_pct": -0.37,
+    "nifty_pct": 1.96,
+    "max_drawdown_pct": -0.37,
+    "equity": 2490640,
+    "start_equity": 2500000
+   },
+   "signals": [
+    {
+     "symbol": "NIFTY",
+     "action": "WAIT",
+     "price": 22997.35,
+     "date": "2026-10-15",
+     "note": "Exited early; next entry after 2026-10-13"
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "amuzdz36pffm8e",
+   "name": "NIFTY Long Condor, no VIX filter, 2 days before expiry",
+   "version": 1,
+   "since": "2026-10-07",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 7,
+    "return_pct": 0,
+    "nifty_pct": 1.74,
+    "max_drawdown_pct": 0,
+    "equity": 2500000,
+    "start_equity": 2500000
+   },
+   "signals": [
+    {
+     "symbol": "NIFTY",
+     "action": "WAIT",
+     "price": 22997.35,
+     "date": "2026-10-15",
+     "note": "Entry rule not met (dte == 2)"
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "amv26tvmw80lkt",
+   "name": "First-Bar Strength Long, 1-min, exit 9:20 (Nifty 50)",
+   "version": 1,
+   "since": "2026-10-09",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 5,
+    "return_pct": 0.78,
+    "nifty_pct": 2.12,
+    "max_drawdown_pct": 0,
+    "equity": 2519537,
+    "start_equity": 2500000
+   },
+   "signals": [
+    {
+     "symbol": "ASIANPAINT",
+     "action": "TRADED",
+     "price": 2364.23,
+     "date": "2026-10-15",
+     "entry": 2362.37,
+     "time": "09:16–09:20",
+     "reason": "square-off",
+     "pnl": 92.14,
+     "note": "Long 09:16 @2362.37 → 09:20 @2364.23 (square-off), P&L ₹92",
+     "pnl_pct": 0.08
+    },
+    {
+     "symbol": "AXISBANK",
+     "action": "TRADED",
+     "price": 1272.25,
+     "date": "2026-10-15",
+     "entry": 1270.25,
+     "time": "09:16–09:20",
+     "reason": "square-off",
+     "pnl": 482.9,
+     "note": "Long 09:16 @1270.25 → 09:20 @1272.25 (square-off), P&L ₹483",
+     "pnl_pct": 0.16
+    },
+    {
+     "symbol": "BAJAJ-AUTO",
+     "action": "TRADED",
+     "price": 10283.94,
+     "date": "2026-10-15",
+     "entry": 10265.05,
+     "time": "09:16–09:20",
+     "reason": "square-off",
+     "pnl": 610.82,
+     "note": "Long 09:16 @10265.05 → 09:20 @10283.94 (square-off), P&L ₹611",
+     "pnl_pct": 0.18
+    },
+    {
+     "symbol": "BAJAJFINSV",
+     "action": "TRADED",
+     "price": 1719.16,
+     "date": "2026-10-15",
+     "entry": 1718.04,
+     "time": "09:16–09:20",
+     "reason": "square-off",
+     "pnl": 23.69,
+     "note": "Long 09:16 @1718.04 → 09:20 @1719.16 (square-off), P&L ₹24",
+     "pnl_pct": 0.06
+    },
+    {
+     "symbol": "BHARTIARTL",
+     "action": "TRADED",
+     "price": 1809.54,
+     "date": "2026-10-15",
+     "entry": 1801.16,
+     "time": "09:16–09:20",
+     "reason": "square-off",
+     "pnl": 2020.62,
+     "note": "Long 09:16 @1801.16 → 09:20 @1809.54 (square-off), P&L ₹2,021",
+     "pnl_pct": 0.47
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "amv3nhr2xuxmwp",
+   "name": "Short-Term Breakout Buyer (daily list)",
+   "version": 4,
+   "since": "2026-10-09",
+   "list": [],
+   "signals": [
+    {
+     "symbol": "ETERNAL",
+     "action": "BUY",
+     "price": 323,
+     "note": "Buy at the next open: Price pop"
+    }
+   ],
+   "actions": [
+    {
+     "symbol": "ETERNAL",
+     "action": "BUY",
+     "price": 323,
+     "note": "Buy at the next open: Price pop"
+    }
+   ]
+  },
+  {
+   "id": "amv6bzrax3dpdn",
+   "name": "Intraday Breakout Buyer (5-min)",
+   "version": 1,
+   "since": "2026-10-12",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 4,
+    "return_pct": 0.45,
+    "nifty_pct": 2.83,
+    "max_drawdown_pct": -0.13,
+    "equity": 2511301,
+    "start_equity": 2500000
+   },
+   "signals": [
+    {
+     "symbol": "DELTACORP",
+     "action": "TRADED",
+     "price": 80.79,
+     "date": "2026-10-15",
+     "entry": 81.35,
+     "time": "09:50–10:05",
+     "reason": "exit rule",
+     "pnl": -1847.09,
+     "note": "Long 09:50 @81.35 → 10:05 @80.79 (exit rule), P&L ₹-1,847",
+     "pnl_pct": -0.68
+    },
+    {
+     "symbol": "ETERNAL",
+     "action": "TRADED",
+     "price": 315.79,
+     "date": "2026-10-15",
+     "entry": 317.36,
+     "time": "10:10–10:45",
+     "reason": "exit rule",
+     "pnl": -1390.29,
+     "note": "Long 10:10 @317.36 → 10:45 @315.79 (exit rule), P&L ₹-1,390",
+     "pnl_pct": -0.5
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "amv6c0fvlb31vd",
+   "name": "Intraday Breakout Buyer (5-min)",
+   "version": 2,
+   "since": "2026-10-12",
+   "paper": {
+    "asof": "2026-10-15",
+    "days": 4,
+    "return_pct": 0.7,
+    "nifty_pct": 2.83,
+    "max_drawdown_pct": 0,
+    "equity": 2517588,
+    "start_equity": 2500000
+   },
+   "signals": [
+    {
+     "symbol": "-",
+     "action": "WAIT",
+     "date": "2026-10-15",
+     "note": "No entry signal in the last session (2026-10-15). Intraday positions open and close within the day."
+    }
+   ],
+   "actions": []
+  },
+  {
+   "id": "axideas0001",
+   "name": "X Ideas (daily list)",
+   "version": 1,
+   "since": "2026-10-12",
+   "list": [
+    "MAWANASUG",
+    "TARIL"
+   ],
+   "signals": [
+    {
+     "symbol": "MAWANASUG",
+     "action": "WAIT",
+     "price": 172.57,
+     "note": "No trigger on the latest close"
+    },
+    {
+     "symbol": "TARIL",
+     "action": "WAIT",
+     "price": 333.45,
+     "note": "No trigger on the latest close"
+    }
+   ],
+   "actions": []
+  }
+ ]
+}

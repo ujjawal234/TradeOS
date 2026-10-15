@@ -1,0 +1,24 @@
+{
+ "mode": "mark",
+ "date": "2026-10-15",
+ "at": "after the close",
+ "prices": "close of 2026-10-15",
+ "equity": 10016466,
+ "gross": 1825365,
+ "desks": {
+  "dmv26g56l28uwu": 6004884,
+  "dmv26g5jc5xjtx": 2111696,
+  "dmv26ub8g23kcv": 1899886
+ },
+ "minute_bars": 0,
+ "trades": 0,
+ "traded_value": 0,
+ "charges": 0,
+ "orders_new": 0,
+ "orders_pending_approval": 0,
+ "orders_blocked": 0,
+ "alerts_fired": 0,
+ "critical": [],
+ "sleeves": 9,
+ "log": []
+}
