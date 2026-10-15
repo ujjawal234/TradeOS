@@ -1,0 +1,462 @@
+{
+ "date": "2026-10-15",
+ "done": false,
+ "agents": {
+  "app_aintematrend1": {
+   "positions": {
+    "COALINDIA": {
+     "sym": "COALINDIA",
+     "qty": 786,
+     "entry": 419.68,
+     "t_entry": "2026-10-15 12:09:00",
+     "stop": 417.78,
+     "target": null,
+     "best": 420.3,
+     "hi_seen": 420.3,
+     "lo_seen": 415.05
+    },
+    "GRASIM": {
+     "sym": "GRASIM",
+     "qty": 113,
+     "entry": 2905.58,
+     "t_entry": "2026-10-15 14:15:00",
+     "stop": 2891.05,
+     "target": null,
+     "best": 2908.0,
+     "hi_seen": 2908.0,
+     "lo_seen": 2865.0
+    }
+   },
+   "trades": [
+    {
+     "sym": "ULTRACEMCO",
+     "side": "long",
+     "qty": 30,
+     "entry": 10819.16,
+     "t_entry": "2026-10-15 10:30:00",
+     "exit": 10796.84,
+     "t_exit": "2026-10-15 10:42:00",
+     "reason": "exit rule",
+     "pnl": -864.14,
+     "pnl_pct": -0.206
+    },
+    {
+     "sym": "WIPRO",
+     "side": "long",
+     "qty": 1895,
+     "entry": 174.06,
+     "t_entry": "2026-10-15 11:36:00",
+     "exit": 173.37,
+     "t_exit": "2026-10-15 12:09:00",
+     "reason": "exit rule",
+     "pnl": -1513.93,
+     "pnl_pct": -0.399
+    },
+    {
+     "sym": "ULTRACEMCO",
+     "side": "long",
+     "qty": 30,
+     "entry": 10823.16,
+     "t_entry": "2026-10-15 11:42:00",
+     "exit": 10796.84,
+     "t_exit": "2026-10-15 12:09:00",
+     "reason": "exit rule",
+     "pnl": -984.17,
+     "pnl_pct": -0.243
+    },
+    {
+     "sym": "ADANIPORTS",
+     "side": "long",
+     "qty": 187,
+     "entry": 1755.65,
+     "t_entry": "2026-10-15 12:12:00",
+     "exit": 1750.98,
+     "t_exit": "2026-10-15 13:09:27",
+     "reason": "stop",
+     "pnl": -1070.06,
+     "pnl_pct": -0.266
+    },
+    {
+     "sym": "HINDUNILVR",
+     "side": "long",
+     "qty": 172,
+     "entry": 1909.18,
+     "t_entry": "2026-10-15 13:09:00",
+     "exit": 1904.52,
+     "t_exit": "2026-10-15 13:57:00",
+     "reason": "exit rule",
+     "pnl": -998.48,
+     "pnl_pct": -0.244
+    },
+    {
+     "sym": "ETERNAL",
+     "side": "long",
+     "qty": 1040,
+     "entry": 317.01,
+     "t_entry": "2026-10-15 11:36:00",
+     "exit": 319.46,
+     "t_exit": "2026-10-15 14:05:27",
+     "reason": "stop",
+     "pnl": 2345.36,
+     "pnl_pct": 0.772
+    },
+    {
+     "sym": "WIPRO",
+     "side": "long",
+     "qty": 1900,
+     "entry": 173.63,
+     "t_entry": "2026-10-15 14:15:00",
+     "exit": 173.7,
+     "t_exit": "2026-10-15 14:27:00",
+     "reason": "exit rule",
+     "pnl": -73.99,
+     "pnl_pct": 0.038
+    }
+   ],
+   "realized": -3356.8767374703316,
+   "entries": {
+    "ULTRACEMCO": 2,
+    "WIPRO": 2,
+    "ETERNAL": 1,
+    "COALINDIA": 1,
+    "ADANIPORTS": 1,
+    "HINDUNILVR": 1,
+    "GRASIM": 1
+   },
+   "last_bar": "2026-10-15 14:30:00",
+   "squared_off": false
+  },
+  "app_aintorblong01": {
+   "positions": {
+    "HDFCBANK": {
+     "sym": "HDFCBANK",
+     "qty": 347,
+     "entry": 718.49,
+     "t_entry": "2026-10-15 09:35:00",
+     "stop": 713.46,
+     "target": 728.55,
+     "best": 718.49367,
+     "hi_seen": 728.0,
+     "lo_seen": 710.7
+    },
+    "ADANIENT": {
+     "sym": "ADANIENT",
+     "qty": 92,
+     "entry": 2699.24,
+     "t_entry": "2026-10-15 11:35:00",
+     "stop": 2680.35,
+     "target": 2737.03,
+     "best": 2699.23974,
+     "hi_seen": 2717.5,
+     "lo_seen": 2670.0
+    },
+    "ADANIPORTS": {
+     "sym": "ADANIPORTS",
+     "qty": 142,
+     "entry": 1749.05,
+     "t_entry": "2026-10-15 11:35:00",
+     "stop": 1736.81,
+     "target": 1773.54,
+     "best": 1749.04974,
+     "hi_seen": 1761.9,
+     "lo_seen": 1725.5
+    }
+   },
+   "trades": [
+    {
+     "sym": "BAJAJFINSV",
+     "side": "long",
+     "qty": 145,
+     "entry": 1715.64,
+     "t_entry": "2026-10-15 09:35:00",
+     "exit": 1710.26,
+     "t_exit": "2026-10-15 09:40:00",
+     "reason": "exit rule",
+     "pnl": -929.43,
+     "pnl_pct": -0.314
+    },
+    {
+     "sym": "RELIANCE",
+     "side": "long",
+     "qty": 211,
+     "entry": 1181.24,
+     "t_entry": "2026-10-15 09:35:00",
+     "exit": 1180.26,
+     "t_exit": "2026-10-15 09:45:00",
+     "reason": "exit rule",
+     "pnl": -355.44,
+     "pnl_pct": -0.083
+    },
+    {
+     "sym": "MAXHEALTH",
+     "side": "long",
+     "qty": 289,
+     "entry": 864.92,
+     "t_entry": "2026-10-15 09:40:00",
+     "exit": 864.63,
+     "t_exit": "2026-10-15 11:30:00",
+     "reason": "exit rule",
+     "pnl": -234.62,
+     "pnl_pct": -0.034
+    },
+    {
+     "sym": "BSE",
+     "side": "long",
+     "qty": 74,
+     "entry": 3343.47,
+     "t_entry": "2026-10-15 09:35:00",
+     "exit": 3348.33,
+     "t_exit": "2026-10-15 11:35:00",
+     "reason": "exit rule",
+     "pnl": 211.1,
+     "pnl_pct": 0.145
+    },
+    {
+     "sym": "DRREDDY",
+     "side": "long",
+     "qty": 203,
+     "entry": 1227.45,
+     "t_entry": "2026-10-15 09:45:00",
+     "exit": 1223.26,
+     "t_exit": "2026-10-15 11:35:00",
+     "reason": "exit rule",
+     "pnl": -1000.77,
+     "pnl_pct": -0.342
+    },
+    {
+     "sym": "APOLLOHOSP",
+     "side": "long",
+     "qty": 31,
+     "entry": 7907.08,
+     "t_entry": "2026-10-15 11:35:00",
+     "exit": 7902.92,
+     "t_exit": "2026-10-15 13:50:00",
+     "reason": "exit rule",
+     "pnl": -276.02,
+     "pnl_pct": -0.053
+    }
+   ],
+   "realized": -2808.99110754604,
+   "entries": {
+    "BSE": 1,
+    "RELIANCE": 1,
+    "BAJAJFINSV": 1,
+    "HDFCBANK": 1,
+    "MAXHEALTH": 1,
+    "DRREDDY": 1,
+    "ADANIENT": 1,
+    "ADANIPORTS": 1,
+    "APOLLOHOSP": 1
+   },
+   "last_bar": "2026-10-15 14:25:00",
+   "squared_off": false
+  },
+  "app_aintorbshort1": {
+   "positions": {
+    "NESTLEIND": {
+     "sym": "NESTLEIND",
+     "qty": -190,
+     "entry": 1311.74,
+     "t_entry": "2026-10-15 13:10:00",
+     "stop": 1320.92,
+     "target": 1293.37,
+     "best": 1311.7376,
+     "hi_seen": 1385.9,
+     "lo_seen": 1260.5
+    }
+   },
+   "trades": [
+    {
+     "sym": "ASIANPAINT",
+     "side": "short",
+     "qty": 106,
+     "entry": 2355.13,
+     "t_entry": "2026-10-15 09:45:00",
+     "exit": 2365.77,
+     "t_exit": "2026-10-15 09:55:00",
+     "reason": "exit rule",
+     "pnl": -1278.29,
+     "pnl_pct": -0.452
+    },
+    {
+     "sym": "NTPC",
+     "side": "short",
+     "qty": 801,
+     "entry": 312.09,
+     "t_entry": "2026-10-15 09:45:00",
+     "exit": 313.61,
+     "t_exit": "2026-10-15 09:55:00",
+     "reason": "exit rule",
+     "pnl": -1370.05,
+     "pnl_pct": -0.488
+    },
+    {
+     "sym": "BAJAJFINSV",
+     "side": "short",
+     "qty": 146,
+     "entry": 1710.06,
+     "t_entry": "2026-10-15 09:45:00",
+     "exit": 1720.14,
+     "t_exit": "2026-10-15 10:00:00",
+     "reason": "exit rule",
+     "pnl": -1622.5,
+     "pnl_pct": -0.59
+    },
+    {
+     "sym": "ULTRACEMCO",
+     "side": "short",
+     "qty": 23,
+     "entry": 10778.84,
+     "t_entry": "2026-10-15 10:20:00",
+     "exit": 10819.16,
+     "t_exit": "2026-10-15 10:30:00",
+     "reason": "exit rule",
+     "pnl": -1076.46,
+     "pnl_pct": -0.374
+    },
+    {
+     "sym": "SBILIFE",
+     "side": "short",
+     "qty": 150,
+     "entry": 1660.67,
+     "t_entry": "2026-10-15 11:20:00",
+     "exit": 1672.62,
+     "t_exit": "2026-10-15 11:43:27",
+     "reason": "stop",
+     "pnl": -1943.17,
+     "pnl_pct": -0.72
+    },
+    {
+     "sym": "HINDUNILVR",
+     "side": "short",
+     "qty": 131,
+     "entry": 1906.12,
+     "t_entry": "2026-10-15 09:35:00",
+     "exit": 1905.18,
+     "t_exit": "2026-10-15 12:05:00",
+     "reason": "exit rule",
+     "pnl": -26.77,
+     "pnl_pct": 0.049
+    },
+    {
+     "sym": "TATACONSUM",
+     "side": "short",
+     "qty": 250,
+     "entry": 999.2,
+     "t_entry": "2026-10-15 10:40:00",
+     "exit": 985.21,
+     "t_exit": "2026-10-15 12:33:27",
+     "reason": "target",
+     "pnl": 3348.67,
+     "pnl_pct": 1.4
+    },
+    {
+     "sym": "TRENT",
+     "side": "short",
+     "qty": 85,
+     "entry": 2935.01,
+     "t_entry": "2026-10-15 11:20:00",
+     "exit": 2941.59,
+     "t_exit": "2026-10-15 14:15:00",
+     "reason": "exit rule",
+     "pnl": -709.0,
+     "pnl_pct": -0.224
+    }
+   ],
+   "realized": -4752.337798987958,
+   "entries": {
+    "HINDUNILVR": 1,
+    "ASIANPAINT": 1,
+    "BAJAJFINSV": 1,
+    "NTPC": 1,
+    "ULTRACEMCO": 1,
+    "TATACONSUM": 1,
+    "SBILIFE": 1,
+    "TRENT": 1,
+    "NESTLEIND": 1
+   },
+   "last_bar": "2026-10-15 14:25:00",
+   "squared_off": false
+  },
+  "app_amv26tvmw80lkt": {
+   "positions": {},
+   "trades": [],
+   "realized": 0.0,
+   "entries": {},
+   "last_bar": "2026-10-15 09:19:00",
+   "squared_off": true
+  },
+  "app_amv6bzrax3dpdn": {
+   "positions": {},
+   "trades": [
+    {
+     "sym": "DELTACORP",
+     "side": "long",
+     "qty": 3099,
+     "entry": 80.67,
+     "t_entry": "2026-10-15 09:40:00",
+     "exit": 80.7,
+     "t_exit": "2026-10-15 09:45:00",
+     "reason": "exit rule",
+     "pnl": -45.11,
+     "pnl_pct": 0.042
+    },
+    {
+     "sym": "CPPLUS",
+     "side": "long",
+     "qty": 57,
+     "entry": 4316.16,
+     "t_entry": "2026-10-15 09:45:00",
+     "exit": 4263.85,
+     "t_exit": "2026-10-15 10:40:00",
+     "reason": "exit rule",
+     "pnl": -3128.56,
+     "pnl_pct": -1.212
+    },
+    {
+     "sym": "ETERNAL",
+     "side": "long",
+     "qty": 790,
+     "entry": 316.41,
+     "t_entry": "2026-10-15 10:05:00",
+     "exit": 315.89,
+     "t_exit": "2026-10-15 10:45:00",
+     "reason": "exit rule",
+     "pnl": -563.17,
+     "pnl_pct": -0.165
+    }
+   ],
+   "realized": -3736.8369039962326,
+   "entries": {
+    "DELTACORP": 1,
+    "CPPLUS": 1,
+    "ETERNAL": 1
+   },
+   "last_bar": "2026-10-15 14:25:00",
+   "squared_off": false
+  },
+  "app_amv6c0fvlb31vd": {
+   "positions": {},
+   "trades": [
+    {
+     "sym": "CPPLUS",
+     "side": "long",
+     "qty": 57,
+     "entry": 4316.16,
+     "t_entry": "2026-10-15 09:45:00",
+     "exit": 4263.85,
+     "t_exit": "2026-10-15 10:40:00",
+     "reason": "exit rule",
+     "pnl": -3128.56,
+     "pnl_pct": -1.212
+    }
+   ],
+   "realized": -3128.5557530519886,
+   "entries": {
+    "CPPLUS": 1
+   },
+   "last_bar": "2026-10-15 14:25:00",
+   "squared_off": false
+  }
+ }
+}
