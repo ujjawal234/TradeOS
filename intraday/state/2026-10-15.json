@@ -1,32 +1,9 @@
 {
  "date": "2026-10-15",
- "done": false,
+ "done": true,
  "agents": {
   "app_aintematrend1": {
-   "positions": {
-    "COALINDIA": {
-     "sym": "COALINDIA",
-     "qty": 786,
-     "entry": 419.68,
-     "t_entry": "2026-10-15 12:09:00",
-     "stop": 417.78,
-     "target": null,
-     "best": 420.3,
-     "hi_seen": 420.3,
-     "lo_seen": 415.05
-    },
-    "GRASIM": {
-     "sym": "GRASIM",
-     "qty": 113,
-     "entry": 2905.58,
-     "t_entry": "2026-10-15 14:15:00",
-     "stop": 2891.05,
-     "target": null,
-     "best": 2908.0,
-     "hi_seen": 2908.0,
-     "lo_seen": 2865.0
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "ULTRACEMCO",
@@ -111,9 +88,33 @@
      "reason": "exit rule",
      "pnl": -73.99,
      "pnl_pct": 0.038
+    },
+    {
+     "sym": "GRASIM",
+     "side": "long",
+     "qty": 113,
+     "entry": 2905.58,
+     "t_entry": "2026-10-15 14:15:00",
+     "exit": 2893.72,
+     "t_exit": "2026-10-15 14:42:00",
+     "reason": "exit rule",
+     "pnl": -1536.65,
+     "pnl_pct": -0.408
+    },
+    {
+     "sym": "COALINDIA",
+     "side": "long",
+     "qty": 786,
+     "entry": 419.68,
+     "t_entry": "2026-10-15 12:09:00",
+     "exit": 419.07,
+     "t_exit": "2026-10-15 14:45:00",
+     "reason": "exit rule",
+     "pnl": -680.25,
+     "pnl_pct": -0.146
     }
    ],
-   "realized": -3356.8767374703316,
+   "realized": -5376.311247002317,
    "entries": {
     "ULTRACEMCO": 2,
     "WIPRO": 2,
@@ -123,45 +124,11 @@
     "HINDUNILVR": 1,
     "GRASIM": 1
    },
-   "last_bar": "2026-10-15 14:30:00",
-   "squared_off": false
+   "last_bar": "2026-10-15 15:12:00",
+   "squared_off": true
   },
   "app_aintorblong01": {
-   "positions": {
-    "HDFCBANK": {
-     "sym": "HDFCBANK",
-     "qty": 347,
-     "entry": 718.49,
-     "t_entry": "2026-10-15 09:35:00",
-     "stop": 713.46,
-     "target": 728.55,
-     "best": 718.49367,
-     "hi_seen": 728.0,
-     "lo_seen": 710.7
-    },
-    "ADANIENT": {
-     "sym": "ADANIENT",
-     "qty": 92,
-     "entry": 2699.24,
-     "t_entry": "2026-10-15 11:35:00",
-     "stop": 2680.35,
-     "target": 2737.03,
-     "best": 2699.23974,
-     "hi_seen": 2717.5,
-     "lo_seen": 2670.0
-    },
-    "ADANIPORTS": {
-     "sym": "ADANIPORTS",
-     "qty": 142,
-     "entry": 1749.05,
-     "t_entry": "2026-10-15 11:35:00",
-     "stop": 1736.81,
-     "target": 1773.54,
-     "best": 1749.04974,
-     "hi_seen": 1761.9,
-     "lo_seen": 1725.5
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "BAJAJFINSV",
@@ -234,9 +201,45 @@
      "reason": "exit rule",
      "pnl": -276.02,
      "pnl_pct": -0.053
+    },
+    {
+     "sym": "ADANIENT",
+     "side": "long",
+     "qty": 92,
+     "entry": 2699.24,
+     "t_entry": "2026-10-15 11:35:00",
+     "exit": 2695.36,
+     "t_exit": "2026-10-15 14:45:00",
+     "reason": "exit rule",
+     "pnl": -505.78,
+     "pnl_pct": -0.144
+    },
+    {
+     "sym": "HDFCBANK",
+     "side": "long",
+     "qty": 347,
+     "entry": 718.49,
+     "t_entry": "2026-10-15 09:35:00",
+     "exit": 724.06,
+     "t_exit": "2026-10-15 15:17:27",
+     "reason": "square-off",
+     "pnl": 1780.94,
+     "pnl_pct": 0.775
+    },
+    {
+     "sym": "ADANIPORTS",
+     "side": "long",
+     "qty": 142,
+     "entry": 1749.05,
+     "t_entry": "2026-10-15 11:35:00",
+     "exit": 1746.25,
+     "t_exit": "2026-10-15 15:17:27",
+     "reason": "square-off",
+     "pnl": -546.4,
+     "pnl_pct": -0.16
     }
    ],
-   "realized": -2808.99110754604,
+   "realized": -1856.424967301964,
    "entries": {
     "BSE": 1,
     "RELIANCE": 1,
@@ -248,23 +251,11 @@
     "ADANIPORTS": 1,
     "APOLLOHOSP": 1
    },
-   "last_bar": "2026-10-15 14:25:00",
-   "squared_off": false
+   "last_bar": "2026-10-15 15:10:00",
+   "squared_off": true
   },
   "app_aintorbshort1": {
-   "positions": {
-    "NESTLEIND": {
-     "sym": "NESTLEIND",
-     "qty": -190,
-     "entry": 1311.74,
-     "t_entry": "2026-10-15 13:10:00",
-     "stop": 1320.92,
-     "target": 1293.37,
-     "best": 1311.7376,
-     "hi_seen": 1385.9,
-     "lo_seen": 1260.5
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "ASIANPAINT",
@@ -361,9 +352,21 @@
      "reason": "exit rule",
      "pnl": -709.0,
      "pnl_pct": -0.224
+    },
+    {
+     "sym": "NESTLEIND",
+     "side": "short",
+     "qty": 190,
+     "entry": 1311.74,
+     "t_entry": "2026-10-15 13:10:00",
+     "exit": 1293.37,
+     "t_exit": "2026-10-15 14:40:27",
+     "reason": "target",
+     "pnl": 3341.81,
+     "pnl_pct": 1.4
     }
    ],
-   "realized": -4752.337798987958,
+   "realized": -1335.759888987936,
    "entries": {
     "HINDUNILVR": 1,
     "ASIANPAINT": 1,
@@ -375,8 +378,8 @@
     "TRENT": 1,
     "NESTLEIND": 1
    },
-   "last_bar": "2026-10-15 14:25:00",
-   "squared_off": false
+   "last_bar": "2026-10-15 15:10:00",
+   "squared_off": true
   },
   "app_amv26tvmw80lkt": {
    "positions": {},
@@ -432,7 +435,7 @@
     "CPPLUS": 1,
     "ETERNAL": 1
    },
-   "last_bar": "2026-10-15 14:25:00",
+   "last_bar": "2026-10-15 15:10:00",
    "squared_off": false
   },
   "app_amv6c0fvlb31vd": {
@@ -455,7 +458,7 @@
    "entries": {
     "CPPLUS": 1
    },
-   "last_bar": "2026-10-15 14:25:00",
+   "last_bar": "2026-10-15 15:10:00",
    "squared_off": false
   }
  }
