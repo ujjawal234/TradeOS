@@ -739,10 +739,10 @@ TEST WINDOW (only when a backtest is asked for): {"start":"YYYY-MM-DD","end":nul
   async function callClaude(prompt, images, onProgress, signal) {
     if (!S.sample) throw { code: "unavailable_here" };
     const opts = { modelTier: "default", signal };
-    if (S.tools) opts.tools = makeTools(onProgress); else opts.cache = false;
+    if (S.tools) opts.tools = capTools(makeTools(onProgress)); else opts.cache = false;
     if (images.length) opts.images = images;
     // a dropped connection or a busy moment is retried (twice, with a short wait) before the user sees an error
-    const FINAL = new Set(["cancelled", "unavailable_here", "not_granted", "sampling_disabled", "refused", "session_expired", "prompt_too_large", "image_rejected", "images_unavailable", "invalid_json"]);
+    const FINAL = new Set(["cancelled", "unavailable_here", "not_granted", "sampling_disabled", "refused", "session_expired", "prompt_too_large", "image_rejected", "images_unavailable", "invalid_json", "invalid_request"]);
     let e = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       if (attempt) { onProgress && onProgress(`Connection hiccup, trying again (${attempt + 1} of 3)…`); await new Promise((r) => setTimeout(r, attempt * 2500)); if (signal?.aborted) throw { code: "cancelled" }; }
@@ -757,6 +757,15 @@ TEST WINDOW (only when a backtest is asked for): {"start":"YYYY-MM-DD","end":nul
       if (prose) return { reply: prose, _unstructured: true };
       throw e;
     }
+  }
+  // Claude takes at most S.maxTools tools per call (16 today): the least needed go first when there are more
+  // (list_agents: the agents are already in the prompt; rank: screen/compute do it; web_fetch: web_search usually answers)
+  const TOOL_DROP_ORDER = ["list_agents", "rank", "web_fetch", "nse_indices", "market_snapshot", "request_data", "sector_view"];
+  function capTools(tools) {
+    const max = S.maxTools || 16; if (tools.length <= max) return tools;
+    let out = tools.slice();
+    for (const n of TOOL_DROP_ORDER) { if (out.length <= max) break; out = out.filter((t) => t.name !== n); }
+    return out.slice(0, max);
   }
   function claudeError(e) {
     const m = { unavailable_here: "Claude isn't available in this view, so the agents can't talk. Open the page in claude.ai while signed in.",

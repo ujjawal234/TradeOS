@@ -605,7 +605,7 @@ USER NOW: ${text}${attachmentText(atts)}`;
     S.mcp = mcp;
     S.db = db || MemDB(); S.memMain = MemDB().collection("main");
     S.user = user; S.sample = sample;
-    if (sample) { try { const lim = await sample.limits(); S.tools = !!lim.tools; S.images = lim.images || null; } catch (e) { /* no limits */ } }
+    if (sample) { try { const lim = await sample.limits(); S.tools = !!lim.tools; const mt = Number(lim.maxTools ?? lim.max_tools ?? lim.tools?.max); if (mt > 0) S.maxTools = mt; S.images = lim.images || null; } catch (e) { /* no limits */ } }
     if (user) { S.me = await user.me(); S.uid = S.me.id; const w = await user.can("data.write"); S.readOnly = w === false;
       $("whoami").innerHTML = `<img alt="" src="${esc(S.me.avatarUrl)}"><span>${esc(S.me.name || "you")}</span>`; }
     if (!db) toast("Shared storage isn't available in this view — changes won't be saved.");
