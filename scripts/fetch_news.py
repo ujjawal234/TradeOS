@@ -29,6 +29,13 @@ FEEDS = {
     "Mint Economy": "https://www.livemint.com/rss/economy",
     "Mint Companies": "https://www.livemint.com/rss/companies",
     "RBI": "https://www.rbi.org.in/pressreleases_rss.xml",
+    # for the Edge Feed: startups and funding, IPOs, tech, global economy (a feed that fails is reported and skipped)
+    "ET Tech": "https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms",
+    "ET IPOs": "https://economictimes.indiatimes.com/markets/ipos/fpos/rssfeeds/14655708.cms",
+    "Inc42": "https://inc42.com/feed/",
+    "Entrackr": "https://entrackr.com/feed",
+    "CNBC Economy": "https://www.cnbc.com/id/20910258/device/rss/rss.html",
+    "CNBC World": "https://www.cnbc.com/id/100727362/device/rss/rss.html",
 }
 NSE = "https://www.nseindia.com/api"
 REF = {"Referer": "https://www.nseindia.com/"}

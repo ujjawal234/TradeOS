@@ -1,4 +1,5 @@
 // Research digest for the daily note: macro prints, market regime, sectors, stock screens, results calendar, filings, headlines.
+// The data covers ~6 months (the team's data policy), so trend tests use the 100-day average and the 6-month high.
 //   node scripts/research_digest.mjs <app_build_dir> <out.json>
 // The daily job's Claude reads this and writes the team's research note (stored in the app's database, "research/latest").
 import fs from "node:fs"; import path from "node:path"; import zlib from "node:zlib"; import { createRequire } from "node:module";
@@ -29,7 +30,7 @@ out.macro = Object.fromEntries(Object.entries(res.macro || {}).map(([k, m]) => [
 const mk = {};
 for (const s of ["NIFTY", "NIFTY_MIDCAP_150", "NIFTY_SMALLCAP_250", "BANKNIFTY"]) {
   const f = man.symbols[s] ? full(s) : null; if (!f) continue;
-  mk[s] = { close: lastOf(f.c), ret_1m: ret(f, 21), ret_3m: ret(f, 63), ret_12m: ret(f, 252), vs_200dma_pct: r1(ev("(close/sma(close,200)-1)*100", f)), pe: f.pe ? lastOf(f.pe) : null, pe_10y_pct: f.pe ? pctRank(f.pe, f.d, f.d[f.d.length - 1] - 3652) : null };
+  mk[s] = { close: lastOf(f.c), ret_1m: ret(f, 21), ret_3m: ret(f, 63), ret_12m: ret(f, 252), vs_100dma_pct: r1(ev("(close/sma(close,100)-1)*100", f)), pe: f.pe ? lastOf(f.pe) : null, pe_10y_pct: f.pe ? pctRank(f.pe, f.d, f.d[f.d.length - 1] - 3652) : null };
 }
 if (mk.NIFTY?.pe && out.macro.IN_10Y) mk.NIFTY.equity_risk_premium_pp = r1(100 / mk.NIFTY.pe - out.macro.IN_10Y.latest);
 const vix = light.INDIAVIX; if (vix) mk.INDIAVIX = { level: lastOf(vix.c), pct_1y: pctRank(vix.c, vix.d, vix.d[vix.d.length - 1] - 365) };
@@ -43,19 +44,19 @@ out.market = mk;
 const rows = [];
 for (const [s, m] of Object.entries(man.symbols)) {
   if (m.kind !== "stock" || !m.n500 || !C[s]) continue;
-  const f = light[s]; if (!f || f.c.length < 260) continue; f.sym = s;
+  const f = light[s]; if (!f || f.c.length < 60) continue; f.sym = s;
   const Q = E.fundQuarterly(s); if (!Q) continue;
   const i = Q.q.length - 1, pe = evS("pe", f), peNow = lastOf(pe);
   rows.push({ s, ind: m.industry, pe: r1(peNow), pe5med: pe ? (() => { const xs = []; const from = f.d[f.d.length - 1] - 1826; for (let k = 0; k < pe.length; k++) if (f.d[k] >= from && pe[k] === pe[k]) xs.push(pe[k]); xs.sort((a, b) => a - b); return xs.length ? r1(xs[xs.length >> 1]) : null; })() : null,
     mcap: r1(ev("mcap", f)), pg: r1(Q.profit_growth_ttm[i]), sg: r1(Q.sales_growth_ttm[i]), pgq: r1(Q.profit_growth[i]), sgq: r1(Q.sales_growth[i]), opm: r1(Q.opm[i]), filed: E.isoOf(Q.k[i] - 1),
-    r1m: ret(f, 21), r3m: ret(f, 63), r6m: ret(f, 126), r12m: ret(f, 252), a200: ev("close > sma(close,200)", f) === 1, hi52: r1(ev("(close/highest(close,252)-1)*100", f)), prom_chg: r1(ev("promoter_chg", f)) });
+    r1m: ret(f, 21), r3m: ret(f, 63), r6m: ret(f, 126), r12m: ret(f, 252), a200: ev("close > sma(close,100)", f) === 1, hi52: r1(ev("(close/highest(close,120)-1)*100", f)), prom_chg: r1(ev("promoter_chg", f)) });
 }
 const med = (xs) => { xs = xs.filter((x) => x != null).sort((a, b) => a - b); return xs.length ? xs[xs.length >> 1] : null; };
 const byInd = {}; for (const r of rows) (byInd[r.ind] ||= []).push(r);
 out.sectors = Object.entries(byInd).filter(([, v]) => v.length >= 3).map(([ind, v]) => ({ industry: ind, n: v.length, median_pe: med(v.map((r) => r.pe)), median_profit_growth_ttm: med(v.map((r) => r.pg)), median_sales_growth_ttm: med(v.map((r) => r.sg)),
-  median_ret_3m: med(v.map((r) => r.r3m)), median_ret_12m: med(v.map((r) => r.r12m)), pct_above_200dma: Math.round(v.filter((r) => r.a200).length / v.length * 100) })).sort((a, b) => (b.median_ret_3m ?? -99) - (a.median_ret_3m ?? -99));
+  median_ret_3m: med(v.map((r) => r.r3m)), median_ret_12m: med(v.map((r) => r.r12m)), pct_above_100dma: Math.round(v.filter((r) => r.a200).length / v.length * 100) })).sort((a, b) => (b.median_ret_3m ?? -99) - (a.median_ret_3m ?? -99));
 const indPe = Object.fromEntries(out.sectors.map((x) => [x.industry, x.median_pe]));
-const pick = (xs, key, n = 12) => xs.sort((a, b) => b[key] - a[key]).slice(0, n).map((r) => ({ symbol: r.s, industry: r.ind, pe: r.pe, pe_5y_median: r.pe5med, industry_pe: indPe[r.ind], profit_growth_ttm: r.pg, sales_growth_ttm: r.sg, last_q_profit_yoy: r.pgq, ret_3m: r.r3m, ret_12m: r.r12m, from_52w_high: r.hi52, mcap_cr: r.mcap, last_result_filed: r.filed }));
+const pick = (xs, key, n = 12) => xs.sort((a, b) => b[key] - a[key]).slice(0, n).map((r) => ({ symbol: r.s, industry: r.ind, pe: r.pe, pe_5y_median: r.pe5med, industry_pe: indPe[r.ind], profit_growth_ttm: r.pg, sales_growth_ttm: r.sg, last_q_profit_yoy: r.pgq, ret_3m: r.r3m, ret_12m: r.r12m, from_6m_high: r.hi52, mcap_cr: r.mcap, last_result_filed: r.filed }));
 out.screens = {
   growth_at_reasonable_price: pick(rows.filter((r) => r.pg > 20 && r.sg > 10 && r.pe > 0 && r.pe < 1.2 * (indPe[r.ind] || 99) && r.a200).map((r) => ({ ...r, k: r.pg / r.pe })), "k"),
   earnings_momentum_recent_results: pick(rows.filter((r) => r.pgq > 25 && r.sgq > 10 && r.filed >= E.isoOf(E.dayOf(lastDay) - 21)), "pgq"),

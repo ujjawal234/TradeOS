@@ -523,6 +523,33 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
 .newslist li { border-bottom: 1px solid var(--line); padding-bottom: 9px; overflow-wrap: anywhere; }
 .newslist a { color: var(--ink); text-decoration: none; } .newslist a:hover { text-decoration: underline; }
 .researchnote { border-color: var(--cio-line); background: var(--cio-soft); }
+/* ---------- Edge Feed */
+.ef-filters { display: grid; gap: 10px; margin-top: 12px; }
+.ef-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.ef-chip { border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 4px 12px; font-size: var(--t-xs); font-weight: 600; cursor: pointer; }
+.ef-chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.input.small { min-height: 32px; padding: 4px 8px; font-size: var(--t-xs); width: auto; max-width: 100%; }
+.ef-sec { display: grid; gap: 10px; min-width: 0; }
+.ef-h { font-size: var(--t-md, 1.05rem); display: flex; gap: 8px; align-items: baseline; }
+.ef-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr)); gap: 14px; align-items: start; }
+.ef-card { display: grid; gap: 8px; overflow-wrap: anywhere; }
+.ef-card p, .ef-brief p { margin: 0; }
+.ef-head { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.ef-head h3 { font-size: var(--t-base, 1rem); margin: 0; min-width: 0; flex: 1 1 200px; }
+.ef-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.ef-ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: var(--t-sm); }
+.ef-chain { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: var(--t-sm); }
+.ef-kv { margin: 0; font-size: var(--t-sm); }
+.ef-pxrow { display: flex; gap: 6px; flex-wrap: wrap; }
+.ef-px { border: 1px solid var(--line); background: var(--sunken); border-radius: 8px; padding: 3px 8px; font-size: var(--t-xs); cursor: pointer; color: var(--ink); text-align: left; }
+.ef-src { margin: 0; color: var(--ink-2); overflow-wrap: anywhere; }
+.ef-src a { color: var(--accent); }
+.ef-acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--line); padding-top: 8px; }
+.ef-ask { display: flex; gap: 6px; flex: 1 1 240px; min-width: 0; }
+.ef-ask .input { min-height: 30px; font-size: var(--t-xs); flex: 1; min-width: 0; padding: 4px 8px; }
+.ef-note { gap: 6px; } .ef-note .input { min-height: 30px; font-size: var(--t-xs); min-width: 0; }
+.ef-drill { border-top: 1px dashed var(--line); padding-top: 8px; display: grid; gap: 6px; }
+.ef-brief { border-color: var(--cio-line); background: var(--cio-soft); }
 
 /* ---------- select & ask */
 #selPop { position: absolute; z-index: 75; display: flex; gap: 4px; align-items: center; background: var(--ink); color: var(--ground); padding: 4px; border-radius: 10px; box-shadow: var(--shadow-lg); max-width: calc(100vw - 16px); flex-wrap: wrap; }
@@ -607,7 +634,8 @@ blockquote.snip .src { display: block; color: var(--muted); margin-bottom: 2px; 
       <section id="view-research" aria-label="Research" hidden>
         <div class="pagehead"><div><h1>Research</h1><p>Macro, sectors, companies and news: the same data the CIO reasons with.</p></div><div class="actions"><button class="btn cio" type="button" data-ask="Read the macro dashboard and sector view. What regime are we in, what changed this week, and where is the opportunity?"><svg><use href="#i-cio"/></svg>Ask the CIO for a view</button></div></div>
         <div class="tabs" role="tablist" id="researchTabs">
-          <button role="tab" type="button" data-rtab="macro" aria-selected="true">Macro &amp; markets</button>
+          <button role="tab" type="button" data-rtab="edge" aria-selected="true">Edge Feed</button>
+          <button role="tab" type="button" data-rtab="macro" aria-selected="false">Macro &amp; markets</button>
           <button role="tab" type="button" data-rtab="sectors" aria-selected="false">Sectors</button>
           <button role="tab" type="button" data-rtab="company" aria-selected="false">Companies</button>
           <button role="tab" type="button" data-rtab="news" aria-selected="false">News &amp; filings</button>
