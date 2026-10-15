@@ -43,14 +43,13 @@ def _hhmm(ts: str) -> str:
     return ts[11:16] if len(ts) >= 16 else ts[:5]
 
 
-def index_quotes() -> dict:
-    """{SYM: [ltp, open, high, low, prev_close, None, "HH:MM"]} from Yahoo 1-minute bars (empty if unavailable)."""
+def _yahoo_today() -> dict:
+    """{SYM: (today's 1-minute bars as a DataFrame indexed by IST time, previous close or None)} from Yahoo (empty if unavailable)"""
     try:
         import pandas as pd
         import yfinance as yf
     except ImportError:
         return {}
-    out = {}
     try:
         df = yf.download(list(INDEX_TICKERS.values()), period="5d", interval="1m", group_by="ticker", auto_adjust=False,
                          prepost=False, threads=True, progress=False)
@@ -58,6 +57,7 @@ def index_quotes() -> dict:
         return {}
     if df is None or df.empty:
         return {}
+    out = {}
     for sym, t in INDEX_TICKERS.items():
         try:
             g = df[t].rename(columns=str.lower)[["open", "high", "low", "close"]].dropna(subset=["close"])
@@ -68,11 +68,35 @@ def index_quotes() -> dict:
         idx = g.index.tz_convert(IST) if g.index.tz is not None else g.index.tz_localize("UTC").tz_convert(IST)
         g.index = idx
         days = sorted(set(idx.date))
-        today = g[idx.date == days[-1]]
         prev = g[idx.date == days[-2]]["close"].iloc[-1] if len(days) > 1 else None
+        out[sym] = (g[idx.date == days[-1]], float(prev) if prev is not None and pd.notna(prev) else None)
+    return out
+
+
+def index_quotes(yd: dict | None = None) -> dict:
+    """{SYM: [ltp, open, high, low, prev_close, None, "HH:MM"]} from Yahoo 1-minute bars (empty if unavailable)."""
+    yd = _yahoo_today() if yd is None else yd
+    out = {}
+    for sym, (today, prev) in yd.items():
         out[sym] = [round(float(today["close"].iloc[-1]), 2), round(float(today["open"].iloc[0]), 2), round(float(today["high"].max()), 2),
-                    round(float(today["low"].min()), 2), round(float(prev), 2) if prev is not None and pd.notna(prev) else None, None,
+                    round(float(today["low"].min()), 2), round(prev, 2) if prev is not None else None, None,
                     today.index[-1].strftime("%H:%M")]
+    return out
+
+
+def index_bars(yd: dict, date: str) -> dict:
+    """{SYM: [[m, o, h, l, c, None], ...]} today's 1-minute index bars from Yahoo (m = minutes after 09:15)"""
+    out = {}
+    for sym, (today, _prev) in yd.items():
+        rows = []
+        for t, r in today.iterrows():
+            if t.date().isoformat() != date:
+                continue
+            m = t.hour * 60 + t.minute - 555
+            if 0 <= m < 375:
+                rows.append([m, round(float(r["open"]), 2), round(float(r["high"]), 2), round(float(r["low"]), 2), round(float(r["close"]), 2), None])
+        if rows:
+            out[sym] = rows
     return out
 
 
@@ -95,8 +119,9 @@ def nse_index_quotes(live: NseLive) -> dict:
 
 
 class MarketFeed:
-    def __init__(self, root: Path, every_min: float = 5, push: bool = True):
+    def __init__(self, root: Path, every_min: float = 5, push: bool = True, bars=None):
         self.root, self.every, self.push = root.resolve(), every_min * 60, push
+        self.bars = bars  # minute_bars.MinuteBars kept by the runner (published with each snapshot as bars_1m.json.gz)
         self.dir = self.root / "live"
         self.dir.mkdir(parents=True, exist_ok=True)
         self.live = NseLive()
@@ -129,7 +154,7 @@ class MarketFeed:
                "source": "NSE live data (1-3 min behind; informational) + Yahoo Finance for indices", "fields": FIELDS,
                "quotes": {s: [x.ltp, x.open or None, x.high or None, x.low or None, x.prev_close or None, round(x.value_cr, 2) if x.value_cr else None, _hhmm(x.ts)]
                           for s, x in sorted(q.items())},
-               "indices": index_quotes(),
+               "indices": index_quotes(yd := _yahoo_today()),
                "nse_indices": nse_index_quotes(self.live)}
         (self.dir / "quotes.json").write_text(json.dumps(doc, separators=(",", ":")))
         hist = self.dir / f"history_{doc['date']}.csv.gz"
@@ -141,6 +166,12 @@ class MarketFeed:
         with gzip.open(hist, "at") as f:  # gzip members append; readers see one file
             f.write(rows.getvalue())
         self.count += 1
+        if self.bars is not None:
+            try:
+                self.bars.extra = index_bars(yd, doc["date"])
+                self.bars.save(self.dir / "bars_1m.json.gz", doc["asof"])
+            except Exception as e:  # noqa: BLE001
+                print(f"live feed: minute bars not saved: {e}", flush=True)
         print(f"live feed: {len(doc['quotes'])} stocks, {len(doc['indices'])} + {len(doc['nse_indices'])} NSE indices at {now:%H:%M} (NSE {upd})", flush=True)
         if self.push:
             self.publish(doc["date"])
@@ -154,6 +185,11 @@ class MarketFeed:
             if data:
                 (self.dir / f"history_{date}.csv.gz").write_bytes(data)
                 print(f"live feed: resumed today's history ({len(data) / 1e6:.1f} MB)", flush=True)
+            if self.bars is not None:
+                b = subprocess.run(["git", "-C", str(self.root), "show", "FETCH_HEAD:bars_1m.json.gz"], capture_output=True, timeout=60).stdout
+                if b:
+                    (self.dir / "bars_1m.json.gz").write_bytes(b)
+                    print(f"live feed: resumed today's minute bars: {self.bars.load(self.dir / 'bars_1m.json.gz')}", flush=True)
         except (subprocess.SubprocessError, OSError):
             pass
 
@@ -162,7 +198,7 @@ class MarketFeed:
         g = ["git", "-C", str(self.root)]
         try:
             entries = []
-            for name in ("quotes.json", f"history_{date}.csv.gz"):
+            for name in ("quotes.json", f"history_{date}.csv.gz", "bars_1m.json.gz"):
                 f = self.dir / name
                 if f.exists():
                     sha = subprocess.run(g + ["hash-object", "-w", str(f)], check=True, capture_output=True, text=True, timeout=60).stdout.strip()

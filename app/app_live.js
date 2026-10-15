@@ -11,7 +11,37 @@
   const marketOpenNow = () => tradingDay() && mktMins() >= 555 && mktMins() < 930;   // 09:15–15:30 IST
   const istClock = (iso) => iso ? new Date(Date.parse(iso) + 5.5 * 3600e3).toISOString().slice(11, 16) : "";
   function quoteNow(s) { const q = S.q && S.q.get(s); return q && q.date && q.date > (S.lastDay || "") ? q : null; }
-  function putQuote(s, q) { if (!s || !q || !(q.ltp > 0) || !q.date) return; const o = S.q.get(s); if (o && o.stamp > q.stamp) return; S.q.set(s, q); }
+  function putQuote(s, q) { if (!s || !q || !(q.ltp > 0) || !q.date) return; const o = S.q.get(s); if (o && o.stamp > q.stamp) return; S.q.set(s, q); rec1m(s, q); }
+  // ---- today's 1-minute bars: every live price the page reads goes into a bar for its NSE time (minute after 09:15);
+  // the db doc live_1m/<SYM> (written by the hourly market-hours run from the intraday runner's minute bars) fills the
+  // day from 09:15, so the 1D chart shows today as it happens. Same rules as tradeos/live/minute_bars.py.
+  S.t1m = new Map(); S.seed1m = new Map();
+  const liveDocId = (sym) => String(sym).replace(/[^A-Za-z0-9_\-.:@+]/g, (c) => "~" + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0"));
+  function rec1m(s, q) {
+    if (q.date !== todayIST()) return;
+    const t = String(q.time || ""), mm = +t.slice(0, 2) * 60 + +t.slice(3, 5) - 555; if (!(mm >= 0 && mm < 375)) return;
+    let r = S.t1m.get(s); if (!r || r.date !== q.date) S.t1m.set(s, (r = { date: q.date, bars: new Map(), prev: null }));
+    const ltp = q.ltp, hi = q.high || 0, lo = q.low || 0, vol = q.volume || 0, p = r.prev;
+    let b = r.bars.get(mm); if (!b) r.bars.set(mm, (b = [ltp, ltp, ltp, ltp, 0]));
+    b[1] = Math.max(b[1], ltp); b[2] = Math.min(b[2], ltp); b[3] = ltp;
+    if (p) { if (hi > 0 && p[0] > 0 && hi > p[0]) b[1] = Math.max(b[1], hi); if (lo > 0 && p[1] > 0 && lo < p[1]) b[2] = Math.min(b[2], lo); if (vol > p[2]) b[4] += vol - p[2]; }
+    r.prev = [hi || (p ? p[0] : 0), lo || (p ? p[1] : 0), Math.max(vol, p ? p[2] : 0)];
+  }
+  // the stored part of today (db live_1m/<SYM>), read again when it's over 3 minutes old
+  async function seed1m(sym) {
+    const c = S.seed1m.get(sym); if (c && Date.now() - c.at < 180e3) return c.doc;
+    let doc = null; try { const snap = await S.db.doc(`live_1m/${liveDocId(sym)}`).get(); doc = snap.exists ? snap.data() : null; } catch (e) { doc = c?.doc || null; }
+    S.seed1m.set(sym, { at: Date.now(), doc }); return doc;
+  }
+  // today's bars for the chart: the stored minutes, then the page's own live minutes after them (or where the store has none)
+  function today1m(sym, doc) {
+    const day = todayIST(), dn = E.dayOf(day), m = new Map();
+    if (doc && doc.date === day && Array.isArray(doc.m)) doc.m.forEach((k, i) => { if (doc.c[i] > 0) m.set(k, [doc.o[i], doc.h[i], doc.l[i], doc.c[i], doc.v?.[i] ?? NaN]); });
+    const last = m.size ? Math.max(...m.keys()) : -1, r = S.t1m.get(sym);
+    if (r && r.date === day) for (const [k, b] of r.bars) if (k > last || !m.has(k)) m.set(k, b.slice());
+    return [...m.keys()].sort((a, b) => a - b).map((k) => { const b = m.get(k); return { d: dn, k, min: k, o: b[0], h: b[1], l: b[2], c: b[3], v: b[4] > 0 ? b[4] : NaN }; });
+  }
+  const todayLive = () => tradingDay() && mktMins() >= 555;   // today has (or will soon have) bars
   const qOf = (ltp, prev, open, high, low, date, time, src, extra = {}) => ({ ltp: +ltp, prev: prev > 0 ? +prev : null, open: open > 0 ? +open : null, high: high > 0 ? +high : null, low: low > 0 ? +low : null, date, time: time || "", stamp: `${date} ${time || ""}`, src, ...extra });
   // the newest quote time on screen, e.g. "14:07"
   function liveAsOf() { let best = ""; for (const q of S.q.values()) if (q.date > (S.lastDay || "") && q.stamp > best) best = q.stamp; return best ? { date: best.slice(0, 10), time: best.slice(11, 16) } : null; }
@@ -106,7 +136,7 @@
     if (typing || sheet || !$("palette").hidden) return;
     const v = S.view;
     if (v === "home") renderHome(); else if (v === "markets") renderMarkets(); else if (v === "book") renderBook(); else if (v === "orders") renderOrders(); else if (v === "desks") renderDesks();
-    else if (v === "symbol") updateSymLive();
+    else if (v === "symbol") { updateSymLive(); if (S.symRange === "1D" && S.symDay === 0 || S.symRange === "1W") redrawToday(); }
   }
   function renderLiveChip() {
     const el = $("dataChip"), dot = $("dataStat")?.querySelector(".dot"); if (!el) return;

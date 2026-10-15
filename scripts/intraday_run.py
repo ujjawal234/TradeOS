@@ -32,6 +32,7 @@ sys.path.insert(0, str(ROOT))
 from tradeos.live.intraday import COLS, Session, tm  # noqa: E402
 from tradeos.live.nse_live import NseLive, Quote  # noqa: E402
 from tradeos.live.market_feed import MarketFeed  # noqa: E402
+from tradeos.live.minute_bars import MinuteBars  # noqa: E402
 
 IST = ZoneInfo("Asia/Kolkata")
 CONFIG = ROOT / "intraday" / "agents.json"
@@ -156,7 +157,9 @@ def main() -> int:
     end_t = day + pd.Timedelta(hours=tm(args.end).hour, minutes=tm(args.end).minute)
     started, resumed = time.monotonic(), state is not None
     # near-live prices for every NSE stock and the indices, for the app and the CIO (live-quotes branch)
-    feed = MarketFeed(ROOT, args.feed_min, push=bool(os.environ.get("GITHUB_ACTIONS"))) if args.feed_min > 0 else None
+    # today's 1-minute bars for every NSE stock the polls see (published with each snapshot as bars_1m.json.gz)
+    bars = MinuteBars(ds)
+    feed = MarketFeed(ROOT, args.feed_min, push=bool(os.environ.get("GITHUB_ACTIONS")), bars=bars) if args.feed_min > 0 else None
     if feed and resumed:
         feed.restore(ds)
     while now_ist() < day + pd.Timedelta(hours=9, minutes=14):
@@ -175,11 +178,19 @@ def main() -> int:
             handoff = True
             break
         upd = None
+        seen = {}
         try:
-            quotes, upd = live.quotes(watch)
+            # every first letter is fetched (the agents' letters first); each call returns all of that letter's stocks,
+            # so the minute bars cover the market while the agents only see their own symbols
+            seen, upd = live.quotes(watch, all_letters=True)
         except Exception as e:  # never let one bad poll end the day
             print(f"{now:%H:%M:%S} poll failed: {e}", flush=True)
-            quotes = {}
+        wset = set(watch)
+        quotes = {s: q for s, q in seen.items() if s in wset}
+        try:
+            bars.add(seen)
+        except Exception as e:  # noqa: BLE001 — minute bars must never stop trading
+            print(f"{now:%H:%M:%S} minute bars failed: {e}", flush=True)
         if feed and feed.due() and now.time() >= tm("09:15"):
             feed.start()
         msgs = sess.feed(now, quotes) if quotes else []
@@ -193,7 +204,7 @@ def main() -> int:
             telegram(f"TradeOS intraday (paper)\n" + "\n".join(msgs))
         sess.store.frame().to_csv(tick_f, index=False)
         state_f.write_text(json.dumps(sess.state(), indent=1))
-        print(f"{now:%H:%M:%S} {len(quotes)}/{len(watch)} quotes, data clock {sess.store.clock()}, "
+        print(f"{now:%H:%M:%S} {len(quotes)}/{len(watch)} quotes ({len(seen)} stocks seen), data clock {sess.store.clock()}, "
               f"open positions {sum(len(a.st.positions) for a in sess.agents)}", flush=True)
         # next poll ~10 s after NSE's next crawl (it refreshes once a minute)
         wait = 60.0

@@ -138,7 +138,7 @@
     if (!["basket", "series"].includes(m.kind)) await ensureFull([sym]).catch(() => null);
     if (S.symView !== sym) return;
     const f = S.full[sym] || S.light[sym]; f.sym = sym;
-    const hasIntra = !!S.man.intraday?.symbols?.[sym] && (S.man.intraday.sessions || []).length > 0;
+    const hasIntra = (!!S.man.intraday?.symbols?.[sym] && (S.man.intraday.sessions || []).length > 0) || (todayLive() && ["stock", "index"].includes(m.kind) && m.ex !== "BSE");
     if (!hasIntra && INTRA_RANGES.has(S.symRange)) S.symRange = "1Y";
     const L = f.c.length, c = quoteNow(sym)?.ltp ?? f.c[L - 1], prev = f.c[L - 2];
     const yr = Array.from(f.c.slice(Math.max(0, L - 252))), hi = Math.max(...yr), lo = Math.min(...yr);
@@ -271,28 +271,39 @@
     return out;
   }
   const clock = (min) => { const t = 555 + min; return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
-  async function drawIntra(sym, f) {
-    const el = $("symChart"), nav = $("symDayNav"), I = S.man.intraday, sess = (I?.sessions || []).slice().sort();
+  function agg5(bars) { const out = []; for (const b of bars) { const k = Math.floor(b.min / 5), x = out[out.length - 1];
+    if (!x || x.k !== k) out.push({ d: b.d, k, min: k * 5, o: b.o, h: b.h, l: b.l, c: b.c, v: b.v }); else { x.h = Math.max(x.h, b.h); x.l = Math.min(x.l, b.l); x.c = b.c; if (b.v === b.v) x.v = (x.v === x.v ? x.v : 0) + b.v; } } return out; }
+  async function drawIntra(sym, f, quiet) {
+    const el = $("symChart"), nav = $("symDayNav"), I = S.man.intraday, sess = (I?.symbols?.[sym] ? I.sessions || [] : []).slice().sort();
     if (!el) return;
+    const tday = todayIST(); if (todayLive() && tday > (sess[sess.length - 1] || "")) sess.push(tday);
     const is1D = S.symRange === "1D", want = S.symRange;
     if (!sess.length) { el.innerHTML = '<p class="small muted">No minute bars in this build.</p>'; return; }
-    S.symDay = Math.min(S.symDay, sess.length - 1);
-    const dates = is1D ? [sess[sess.length - 1 - S.symDay]] : sess.slice(-5);
+    S.symDay = Math.min(S.symDay, sess.length - 1); const wantDay = S.symDay;
+    const dates = is1D ? [sess[sess.length - 1 - S.symDay]] : sess.slice(-5), withToday = dates.includes(tday);
     if (is1D) {
-      const cur = dates[0], lab = new Date(cur + "T00:00:00Z").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+      const cur = dates[0], lab = (cur === tday ? "Today, " : "") + new Date(cur + "T00:00:00Z").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
       nav.innerHTML = `<button class="btn ghost small" type="button" data-step="1" aria-label="Previous session" ${S.symDay >= sess.length - 1 ? "disabled" : ""}>‹</button><span class="xs" style="min-width:92px;text-align:center;font-weight:600">${esc(lab)}</span><button class="btn ghost small" type="button" data-step="-1" aria-label="Next session" ${S.symDay <= 0 ? "disabled" : ""}>›</button>`;
-    } else nav.innerHTML = `<span class="xs muted">${esc(fmtDate(dates[0]))} – ${esc(fmtDate(dates[dates.length - 1]))}</span>`;
-    el.innerHTML = '<p class="small muted" style="padding:40px 0;text-align:center">Loading minute bars…</p>';
-    const days = await intraDays(sym, dates);
-    if (S.symView !== sym || S.symRange !== want || !$("symChart")) return;
-    if (!days.length) { el.innerHTML = `<p class="small muted" style="padding:40px 0;text-align:center">No minute bars for ${esc(sym)} ${is1D ? "on this session" : "in the last 5 sessions"} (it may not have traded).</p>`; return; }
-    const step = is1D ? 1 : 5, bars = days.flatMap((d) => aggBars(d, step));
+    } else nav.innerHTML = `<span class="xs muted">${esc(fmtDate(dates[0]))} – ${esc(withToday ? "today" : fmtDate(dates[dates.length - 1]))}</span>`;
+    if (!quiet) el.innerHTML = '<p class="small muted" style="padding:40px 0;text-align:center">Loading minute bars…</p>';
+    const [days, seed] = await Promise.all([intraDays(sym, dates.filter((d) => d !== tday)), withToday ? seed1m(sym) : null]);
+    if (S.symView !== sym || S.symRange !== want || S.symDay !== wantDay || !$("symChart")) return;
+    const todays = withToday ? today1m(sym, seed) : [];
+    if (is1D && withToday) {
+      if (!todays.length) { el.innerHTML = `<p class="small muted" style="padding:40px 0;text-align:center">No trades in ${esc(sym)} recorded yet today. The chart fills in minute by minute from NSE's live prices while this page is open, and from 09:15 once the market-hours run has stored today's bars.</p>`; return; }
+      const q = quoteNow(sym), L = f.c.length, prevClose = q?.prev > 0 ? q.prev : (L ? f.c[L - 1] : NaN);
+      return intraChart(el, todays, { is1D: true, step: 1, prevClose, sym, today: true, asof: seed?.date === tday ? seed.asof : null });
+    }
+    if (!days.length && !todays.length) { el.innerHTML = `<p class="small muted" style="padding:40px 0;text-align:center">No minute bars for ${esc(sym)} ${is1D ? "on this session" : "in the last 5 sessions"} (it may not have traded).</p>`; return; }
+    const step = is1D ? 1 : 5, bars = days.flatMap((d) => aggBars(d, step)).concat(agg5(todays));
     // previous close for the day's change: the bar data's previous session, else the daily series
     let prevClose = NaN;
     if (is1D) { const di = sess.indexOf(dates[0]); const pd = di > 0 ? S.symIntra.get(sym + "|" + sess[di - 1]) : null;
       if (pd) prevClose = pd.c[pd.c.length - 1]; else { const k = f.d.findIndex((x) => x >= days[0].d); const j = k < 0 ? f.d.length - 1 : k - 1; if (j >= 0) prevClose = f.c[j]; } }
-    intraChart(el, bars, { is1D, step, prevClose, sym });
+    intraChart(el, bars, { is1D, step, prevClose, sym, today: withToday });
   }
+  // a live price arrived: redraw today's chart in place (no loading flash)
+  function redrawToday() { const sym = S.symView, f = sym && (S.full[sym] || S.light[sym]); if (f && $("symChart") && todayLive()) drawIntra(sym, f, true).catch(() => null); }
   function intraChart(el, bars, o) {
     const N = bars.length, noVol = !bars.some((b) => b.v > 0), W = Math.max(320, el.clientWidth || 640), H = 340, padL = 8, padR = 62, padT = 10, volH = noVol ? 0 : 54, padB = 22;
     const ih = H - padT - padB - volH - (volH ? 8 : 0), iw = W - padL - padR, step = iw / N, fx = (i) => padL + (i + 0.5) * step;
@@ -332,8 +343,8 @@
       for (let i = 0; i < N; i++) { const b = bars[i]; if (!(b.v > 0)) continue; const hgt = b.v / vmax * volH; svg += `<rect x="${(fx(i) - vb / 2).toFixed(1)}" y="${(y0 - hgt).toFixed(1)}" width="${vb.toFixed(1)}" height="${hgt.toFixed(1)}" fill="${b.c >= b.o ? "var(--up)" : "var(--down)"}" opacity="0.35"/>`; } }
     const lc = bars[N - 1].c; svg += `<line x1="${padL}" x2="${W - padR}" y1="${fy(lc).toFixed(1)}" y2="${fy(lc).toFixed(1)}" stroke="var(--ink)" stroke-dasharray="2 3" opacity="0.5"/><rect x="${W - padR + 2}" y="${(fy(lc) - 9).toFixed(1)}" width="${padR - 4}" height="18" rx="4" fill="var(--ink)"/><text x="${W - padR + 6}" y="${(fy(lc) + 4).toFixed(1)}" fill="var(--ground)" style="font-size:11px;font-weight:600">${fmtY(lc)}</text>`;
     svg += `<line class="xh" x1="0" x2="0" y1="${padT}" y2="${H - padB}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden"/><rect x="${padL}" y="${padT}" width="${iw}" height="${H - padT - padB}" fill="transparent" style="cursor:crosshair"/></svg><div class="tip" hidden></div>`;
-    const dayChgTxt = o.is1D && o.prevClose === o.prevClose ? `<span>Close ${px(lc)} <b class="${cls(lc / o.prevClose - 1)}">${pct((lc / o.prevClose - 1) * 100, 2)}</b> vs prev close ${px(o.prevClose)}</span>` : "";
-    const legend = [o.is1D ? "1-minute bars, 09:15–15:30 IST" : "5-minute bars, last 5 sessions", vw ? '<span><i style="background:var(--series-b)"></i>VWAP</span>' : o.is1D ? '<span>no VWAP (no volume for indices)</span>' : "",
+    const dayChgTxt = o.is1D && o.prevClose === o.prevClose ? `<span>${o.today ? "Now" : "Close"} ${px(lc)} <b class="${cls(lc / o.prevClose - 1)}">${pct((lc / o.prevClose - 1) * 100, 2)}</b> vs prev close ${px(o.prevClose)}</span>` : "";
+    const legend = [o.is1D ? (o.today ? `Today so far, 1-minute bars from NSE live prices (1–3 min behind), last ${clock(bars[N - 1].min)} IST` : "1-minute bars, 09:15–15:30 IST") : `5-minute bars, last 5 sessions${o.today ? " incl. today so far" : ""}`, vw ? '<span><i style="background:var(--series-b)"></i>VWAP</span>' : o.is1D ? '<span>no VWAP (no volume for indices)</span>' : "",
       orH === orH ? `<span><i style="background:var(--series-c)"></i>opening range (first ${OR_MIN} min) ${px(orL)} – ${px(orH)}</span>` : "", volH ? '<span><i style="background:var(--muted)"></i>volume (none reported for the 09:15 bar)</span>' : "", dayChgTxt].filter(Boolean);
     el.innerHTML = svg + `<div class="legend" style="margin-top:6px">${legend.map((x) => x.startsWith("<span") ? x : `<span>${x}</span>`).join("")}</div>`;
     el.__chart = null;

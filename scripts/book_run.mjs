@@ -7,6 +7,10 @@
 //         session expire, options/intraday sleeves follow their agents' paper records, daily-list agents learn, and alerts
 //         are evaluated.
 //   node scripts/book_run.mjs <app_build_dir> <db_export_dir> <agents.json> <daily.json> <out.json> [--live quotes.json] [--max-age-min 20]
+//         [--bars bars_1m.json.gz] [--hist history_<date>.csv.gz]
+// --bars/--hist (live mode, from the live-quotes branch): today's 1-minute bars (tradeos/live/minute_bars.py) and the day's
+//   5-minute snapshots; the stocks that matter (book positions, open orders, daily-list agents' names, the team's watchlist,
+//   Nifty 50, main indices) get db docs live_1m/<SYM> with today's bars, so the app's 1D chart shows today from 09:15.
 // db_export_dir holds the app database as ArtifactData exports (one JSON file per document):
 //   desks/*.json, agents/*.json, book/{config,state,history}.json, orders/*.json (any; only pending/approved are acted on), alerts/*.json
 // agents.json: the paper agents with their paper version's spec; daily.json: daily_run.mjs output (mark mode; optional in live mode).
@@ -22,7 +26,7 @@ const here = path.dirname(new URL(import.meta.url).pathname);
 const O = require(path.join(here, "..", "lab", "oms.js"));
 const AL = require(path.join(here, "..", "lab", "alerts.js"));
 const argv = process.argv.slice(2), flag = (k) => { const i = argv.indexOf(k); if (i < 0) return null; const v = argv[i + 1]; argv.splice(i, 2); return v; };
-const liveFile = flag("--live"), maxAge = Number(flag("--max-age-min") || 20);
+const liveFile = flag("--live"), maxAge = Number(flag("--max-age-min") || 20), barsFile = flag("--bars"), histFile = flag("--hist");
 const [dir, dbdir, agentsFile, dailyFile, outFile] = argv;
 if (!outFile) { console.error("usage: node scripts/book_run.mjs <app_build_dir> <db_export_dir> <agents.json> <daily.json> <out.json> [--live quotes.json]"); process.exit(2); }
 
@@ -192,10 +196,43 @@ if (!trading) {
 const evKey = trading ? `${today}T${istHHMM.replace(":", "")}` : lastDay;
 events.forEach((e, i) => { if (e.kind && /halt|kill/.test(e.kind) || e.kind?.startsWith("sleeve") || e.kind === "capital_changed" || e.kind === "learned") writes.push({ op: "set", collection: "alert_events", doc_id: `${evKey}_sys_${i}_${e.kind}`, data: { date: today, at: nowIso, severity: e.severity || "info", title: e.title, detail: e.detail || "", system: e.kind !== "learned" } }); });
 
+// ---- today's 1-minute bars for the app's 1D chart (db live_1m/<SYM>; doc ids escape characters ids can't hold)
+function liveDocId(sym) { return String(sym).replace(/[^A-Za-z0-9_\-.:@+]/g, (c) => "~" + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")); }
+function todaysBars() {
+  const zlib = require("node:zlib"), read = (f) => { try { return f && fs.existsSync(f) ? zlib.gunzipSync(fs.readFileSync(f)).toString("utf8") : null; } catch (e) { log.push(`minute bars: ${f}: ${e.message}`); return null; } };
+  const want = new Set(["NIFTY", "BANKNIFTY", "FINNIFTY", "INDIAVIX", "SENSEX", ...(man.universes?.nifty50 || [])]);
+  for (const sl of Object.values(state.sleeves || {})) for (const s of Object.keys(sl.positions || {})) want.add(s);
+  for (const o of [...openOrders, ...newOrders]) if (o.sym) want.add(o.sym);
+  for (const a of paperAgents) for (const e of (a.inbox_log || []).slice(-10)) for (const s of e.syms || []) want.add(s);
+  try { const ud = path.join(dbdir, "data", "users"); if (fs.existsSync(ud)) for (const u of fs.readdirSync(ud)) { const f = path.join(ud, u, "watchlist.json"); if (fs.existsSync(f)) for (const s of JSON.parse(fs.readFileSync(f, "utf8")).syms || []) want.add(s); } } catch (e) { /* optional */ }
+  const out = {}; // sym -> Map(m -> [o,h,l,c,v])
+  const B = (() => { try { return JSON.parse(read(barsFile) || "null"); } catch (e) { return null; } })();
+  let src1 = 0;
+  if (B && B.date === today) for (const s of want) { const rows = B.bars?.[s]; if (!rows?.length) continue; const m = out[s] = new Map(); for (const r of rows) m.set(r[0], [r[1], r[2], r[3], r[4], r[5]]); src1++; }
+  // the day's 5-minute snapshots fill minutes the 1-minute bars don't have (e.g. before the runner started recording them)
+  const H = read(histFile);
+  if (H) {
+    const lines = H.split("\n"), hd = (lines[0] || "").split(","), ix = (k) => hd.indexOf(k), [iA, iS, iL, iT] = ["asof", "sym", "ltp", "ts"].map(ix);
+    const pts = {};
+    for (let i = 1; i < lines.length; i++) { const c = lines[i].split(","); const s = c[iS]; if (!want.has(s) || !c[iA]?.startsWith(today)) continue; const ltp = +c[iL]; if (!(ltp > 0)) continue;
+      const t = (c[iT] && /^\d\d:\d\d/.test(c[iT]) ? c[iT] : c[iA].slice(11, 16)), mm = +t.slice(0, 2) * 60 + +t.slice(3, 5) - 555; if (mm < 0 || mm >= 375) continue; (pts[s] ||= new Map()).set(mm, ltp); }
+    for (const [s, m] of Object.entries(pts)) { const o = out[s] ||= new Map(); for (const [mm, p] of m) if (!o.has(mm)) o.set(mm, [p, p, p, p, null]); }
+  }
+  const asof = B?.asof || Q.asof; let n = 0;
+  for (const [s, m] of Object.entries(out)) {
+    const ks = [...m.keys()].sort((a, b) => a - b); if (!ks.length) continue;
+    const col = (j) => ks.map((k) => { const v = m.get(k)[j]; return v == null ? null : +v; });
+    writes.push({ op: "set", collection: "live_1m", doc_id: liveDocId(s), data: { sym: s, date: today, asof, t0: "09:15", src: B?.date === today ? "1-minute bars from NSE live polls, 5-minute snapshots where missing" : "5-minute NSE snapshots", m: ks, o: col(0), h: col(1), l: col(2), c: col(3), v: col(4), written_at: nowIso } });
+    n++;
+  }
+  return { docs: n, from_1m: src1 };
+}
+
 // ---- 7. book state and history
 state.updated_at = nowIso; state.marked = trading ? { at: nowIso, by: "live run", prices: `NSE live ${Q.asof}` } : { at: nowIso, by: "evening run", prices: `close ${lastDay}` };
 if (trading) { state.last_live_run = nowIso; writes.push({ op: "set", collection: "live", doc_id: "quotes", data: { ...Q, written_at: nowIso } }); } // every NSE stock for the app
 delete state.next_session;
+const todayBars = trading ? todaysBars() : { docs: 0 };
 writes.push({ op: "set", collection: "book", doc_id: "state", data: state });
 writes.push({ op: "set", collection: "book", doc_id: "history", data: { rows: history } });
 
@@ -203,7 +240,7 @@ const pend = newOrders.filter((o) => o.status === "pending").length, blocked = n
 const charges = fillsAll.reduce((t, f) => t + (f.fee || 0), 0), traded = fillsAll.reduce((t, f) => t + Math.abs(f.gross_value || f.qty * f.fill_price), 0);
 const crit = [...events.filter((e) => e.severity === "critical"), ...fired.filter((f) => f.severity === "critical")];
 const summary = { mode, date: today, at: trading ? `${istHHMM} IST` : "after the close", prices: trading ? `NSE live, snapshot ${Q.asof}` : `close of ${lastDay}`, equity: snap.equity, gross: snap.gross, desks: snap.desks,
-  trades: fillsAll.length, traded_value: Math.round(traded), charges: Math.round(charges), orders_new: newOrders.length, orders_pending_approval: pend, orders_blocked: blocked,
+  minute_bars: todayBars.docs, trades: fillsAll.length, traded_value: Math.round(traded), charges: Math.round(charges), orders_new: newOrders.length, orders_pending_approval: pend, orders_blocked: blocked,
   alerts_fired: fired.length, critical: crit.map((e) => e.title), sleeves: Object.keys(state.sleeves).length, log };
 const push_text = trading
   ? ((fillsAll.length || pend || crit.length) ? `TradeOS ${istHHMM} IST: ${fillsAll.length} paper trade(s) at live prices (₹${Math.round(traded).toLocaleString("en-IN")}, charges ₹${Math.round(charges).toLocaleString("en-IN")})${pend ? `, ${pend} awaiting your approval` : ""}${crit.length ? `. ${crit[0].title}` : ""}`.slice(0, 190) : "")
@@ -212,7 +249,7 @@ const push_text = trading
 // document's if_version (taken from the export listing) before sending.
 const wdir = outFile.replace(/\.json$/, "") + "_writes"; fs.rmSync(wdir, { recursive: true, force: true }); fs.mkdirSync(wdir, { recursive: true });
 const known = new Set([...desks.map((d) => "desks/" + d.id), ...agentDocs.map((d) => "agents/" + d.id), ...allOrders.map((d) => "orders/" + d.id), ...alerts.map((d) => "alerts/" + d.id),
-  ...["config", "state", "history"].filter((id) => one("book", id)).map((id) => "book/" + id)]);
+  ...["config", "state", "history"].filter((id) => one("book", id)).map((id) => "book/" + id), ...docs("live").map((d) => "live/" + d.id), ...docs("live_1m").map((d) => "live_1m/" + d.id)]);
 const batches = []; let cur = [], bytes = 0;
 writes.forEach((w, i) => { const fp = path.resolve(wdir, `${String(i).padStart(4, "0")}_${w.collection}_${w.doc_id}.json`.replace(/[^\w.\-\/]/g, "_")); const body = JSON.stringify(w.data || {});
   fs.writeFileSync(fp, body); if (cur.length >= 45 || bytes + body.length > 800000) { batches.push(cur); cur = []; bytes = 0; }
