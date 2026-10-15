@@ -741,8 +741,15 @@ TEST WINDOW (only when a backtest is asked for): {"start":"YYYY-MM-DD","end":nul
     const opts = { modelTier: "default", signal };
     if (S.tools) opts.tools = makeTools(onProgress); else opts.cache = false;
     if (images.length) opts.images = images;
-    try { return await S.sample.json(prompt, opts); }
-    catch (e) {
+    // a dropped connection or a busy moment is retried (twice, with a short wait) before the user sees an error
+    const FINAL = new Set(["cancelled", "unavailable_here", "not_granted", "sampling_disabled", "refused", "session_expired", "prompt_too_large", "image_rejected", "images_unavailable", "invalid_json"]);
+    let e = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt) { onProgress && onProgress(`Connection hiccup, trying again (${attempt + 1} of 3)…`); await new Promise((r) => setTimeout(r, attempt * 2500)); if (signal?.aborted) throw { code: "cancelled" }; }
+      try { return await S.sample.json(prompt, opts); }
+      catch (err) { e = err; if (signal?.aborted || (err && FINAL.has(err.code))) break; console.warn("Claude call failed", err?.code, err?.message); }
+    }
+    {
       if (!e || e.code !== "invalid_json" || !e.text) throw e;
       const v = parseLoose(e.text);
       if (v) return { ...v, _repaired: true };
@@ -757,7 +764,10 @@ TEST WINDOW (only when a backtest is asked for): {"start":"YYYY-MM-DD","end":nul
       rate_limited: "Too many requests just now. Wait a minute and send again.", invalid_json: "The answer came back malformed. Send again, or rephrase a little.",
       refused: "Claude declined this request. Rephrase it and try again.", session_expired: "Your session expired. Sign in again.", prompt_too_large: "That's too much text at once. Attach fewer or shorter files.",
       image_rejected: "One of the images couldn't be used. Try a different file.", images_unavailable: "Images can't be sent from this view." };
-    return (e && m[e.code]) || (e && e.message && !e.code ? e.message : "Couldn't reach Claude just now. Try again in a moment.");
+    if (e && m[e.code]) return m[e.code];
+    if (e && e.message && !e.code) return e.message;
+    const why = [e?.code, e?.message].filter(Boolean).join(": ").slice(0, 160);
+    return `Couldn't reach Claude after 3 tries${why ? ` (${why})` : ""}. Send again in a moment — your message is saved.`;
   }
 
   // ================================================================ standing orders (the user's lasting instructions)
