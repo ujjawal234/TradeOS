@@ -1,7 +1,7 @@
 {
- "at": "2026-10-15T15:14:41Z",
+ "at": "2026-10-16T15:01:41Z",
  "symbols": 70,
- "failed": 41,
+ "failed": 43,
  "errors": {
   "BANKNIFTY": "no data",
   "NIFTYFIN": "no data",
@@ -40,6 +40,8 @@
   "GBPINR": "no data",
   "JPYINR": "no data",
   "SILVER": "no data",
+  "CRUDE": "no data",
+  "BRENT": "no data",
   "NATGAS": "no data",
   "COPPER": "no data",
   "BITCOIN": "no data",
