@@ -146,7 +146,7 @@ def main() -> int:
     ap.add_argument("--out", default="")
     ap.add_argument("--max-runtime-min", type=float, default=0, help="stop early and hand off (0 = no limit)")
     ap.add_argument("--end", default="15:31", help="IST time to stop polling")
-    ap.add_argument("--feed-min", type=float, default=5, help="minutes between full-market price snapshots (0 = off)")
+    ap.add_argument("--feed-min", type=float, default=15, help="minutes between full-market price snapshots (0 = off)")
     args = ap.parse_args()
     specs, universe = load_specs(Path(args.config)), load_universe()
 
@@ -206,6 +206,7 @@ def main() -> int:
 
     handoff = False
     reload_every, last_reload = 120.0, time.monotonic()
+    ROTATION, poll_n, backoff = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", 0, 0
     while True:
         now = now_ist()
         if now >= end_t:
@@ -216,9 +217,14 @@ def main() -> int:
         upd = None
         seen = {}
         try:
-            # every first letter is fetched (the agents' letters first); each call returns all of that letter's stocks,
-            # so the minute bars cover the market while the agents only see their own symbols
-            seen, upd = live.quotes(watch, all_letters=True)
+            # the agents' letters every minute plus 6 more in rotation (the whole market every ~6 minutes): NSE's server
+            # throttles a client that asks for every letter every minute, and then nothing arrives at all
+            rot = ROTATION[(poll_n * 6) % len(ROTATION):(poll_n * 6) % len(ROTATION) + 6]
+            poll_n += 1
+            seen, upd = live.quotes(watch, extra_letters=rot)
+            backoff = 0 if getattr(live, "answered", 1) >= max(1, getattr(live, "asked", 1)) * 0.5 else min(240, max(60, backoff * 2))
+            if backoff:
+                print(f"{now:%H:%M:%S} NSE answered {live.answered}/{live.asked} letters: backing off {backoff}s", flush=True)
         except Exception as e:  # never let one bad poll end the day
             print(f"{now:%H:%M:%S} poll failed: {e}", flush=True)
         wset = set(watch)
@@ -261,7 +267,7 @@ def main() -> int:
                 wait = min(75.0, max(20.0, (nxt - now_ist()).total_seconds()))
             except (ValueError, TypeError):
                 pass
-        time.sleep(wait)
+        time.sleep(wait + backoff)
 
     if feed:
         if feed.thread:

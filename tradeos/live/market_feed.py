@@ -210,7 +210,8 @@ class MarketFeed:
                 continue
             quotes[s] = [x.ltp, x.open or None, x.high or None, x.low or None, x.prev_close or None, round(x.value_cr, 2) if x.value_cr else None, _hhmm(x.ts)]
             n += 1
-        doc = {**self.last_doc, "asof": now.isoformat(), "kind": "minute", "full_asof": self.last_doc.get("asof"), "quotes": dict(sorted(quotes.items()))}
+        doc = {**self.last_doc, "asof": now.isoformat(), "kind": "minute", "full_asof": self.last_doc.get("full_asof") or self.last_doc.get("asof"), "quotes": dict(sorted(quotes.items()))}
+        self.last_doc = {**self.last_doc, "quotes": doc["quotes"], "full_asof": doc["full_asof"]}  # keep each minute's prices (letters rotate)
         (self.dir / "quotes.json").write_text(json.dumps(doc, separators=(",", ":")))
         if self.push:
             self.qthread = threading.Thread(target=self.publish, args=(doc["date"],), daemon=True)

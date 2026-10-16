@@ -120,7 +120,8 @@ class NseLive:
         raise NseLiveError(f"{tool} failed after {self.retries} tries: {last}")
 
     # ---------------------------------------------------------------- data
-    def quotes(self, symbols: list[str] | None, workers: int = 7, budget: float = 40, all_letters: bool = False) -> tuple[dict[str, Quote], str | None]:
+    def quotes(self, symbols: list[str] | None, workers: int = 3, budget: float = 40, all_letters: bool = False,
+               extra_letters: list[str] | None = None) -> tuple[dict[str, Quote], str | None]:
         """Latest quotes for these symbols (EQ series only) and the server's crawl time (UTC ISO).
         One call per distinct first letter, `workers` at a time (each worker has its own MCP session);
         a failed letter is skipped, so the caller sees missing symbols. all_letters=True also fetches every other first letter
@@ -133,6 +134,9 @@ class NseLive:
         letters = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") if everything else sorted({s[0] for s in want})
         if all_letters and not everything:
             letters += [L for L in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" if L not in letters]
+        elif extra_letters and not everything:  # a few more letters this time (the caller rotates them), returned in full
+            letters += [L for L in extra_letters if L not in letters]
+            all_letters = True
         if not hasattr(self, "_pool"):
             self._pool = [self] + [NseLive(self.url, self.timeout, self.retries) for _ in range(max(0, workers - 1))]
         self.timings: dict[str, float] = {}
@@ -176,6 +180,7 @@ class NseLive:
                 groups2 = [[(i, P) for i, P in enumerate(more) if i % len(self._pool) == k] for k in range(len(self._pool))]
                 with ThreadPoolExecutor(max_workers=len(self._pool)) as ex:
                     results += [r for batch in ex.map(lambda g: [fetch2(x) for x in g], groups2) for r in batch]
+        self.asked, self.answered = len(results), sum(1 for _, d, _ in results if d is not None)
         for letter, d, secs in results:
             self.timings[letter] = round(secs, 2)
             if d is None:
