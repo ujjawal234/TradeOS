@@ -50,11 +50,19 @@ def _yahoo_today() -> dict:
         import yfinance as yf
     except ImportError:
         return {}
-    try:
-        df = yf.download(list(INDEX_TICKERS.values()), period="5d", interval="1m", group_by="ticker", auto_adjust=False,
-                         prepost=False, threads=True, progress=False)
-    except Exception:  # noqa: BLE001
-        return {}
+    box: dict = {}
+
+    def _dl() -> None:
+        try:
+            box["df"] = yf.download(list(INDEX_TICKERS.values()), period="5d", interval="1m", group_by="ticker", auto_adjust=False,
+                                    prepost=False, threads=True, progress=False, timeout=20)
+        except Exception:  # noqa: BLE001
+            box["df"] = None
+
+    th = threading.Thread(target=_dl, daemon=True)  # Yahoo can hang; never let it freeze the live feed
+    th.start()
+    th.join(timeout=45)
+    df = box.get("df")
     if df is None or df.empty:
         return {}
     out = {}
@@ -131,8 +139,13 @@ class MarketFeed:
         self.last_doc: dict | None = None  # the latest full snapshot (indices come from it in the minute updates)
         self.qthread: threading.Thread | None = None
 
+    HUNG_S = 240  # a full snapshot still running after this long is treated as hung: the next one starts anyway
+
+    def _busy(self) -> bool:
+        return bool(self.thread and self.thread.is_alive() and time.monotonic() - self.last < self.HUNG_S)
+
     def due(self) -> bool:
-        return time.monotonic() - self.last >= self.every and not (self.thread and self.thread.is_alive())
+        return time.monotonic() - self.last >= self.every and not self._busy()
 
     def start(self) -> None:
         """take a snapshot in the background (never blocks the caller)"""
@@ -184,7 +197,8 @@ class MarketFeed:
         """Minute update between full snapshots: the runner's own once-a-minute poll (every first letter, every NSE stock)
         replaces the stock prices in quotes.json and the branch is pushed again (history and minute bars stay on the
         5-minute cadence). Lets the continuous agent runner decide on prices at most ~1-2 minutes old. Never blocks."""
-        if not seen or not self.last_doc or (self.thread and self.thread.is_alive()) or (self.qthread and self.qthread.is_alive()):
+        # a slow or hung full snapshot no longer stops the minute updates (only a push still in flight does)
+        if not seen or not self.last_doc or (self.qthread and self.qthread.is_alive()):
             return False
         now = datetime.now(IST).replace(microsecond=0)
         if self.last_doc.get("date") != now.date().isoformat():
