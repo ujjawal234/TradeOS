@@ -69,6 +69,41 @@ def load_universe() -> dict:
     return json.loads(f.read_text()).get("stocks", {}) if f.exists() else {}
 
 
+def config_from_main(path: str = "intraday/agents.json") -> list[dict] | None:
+    """The agents file as it is on origin/main right now (the continuous agent runner commits the team's Names-box
+    changes there during the session); None if it can't be read."""
+    try:
+        import subprocess
+        subprocess.run(["git", "-C", str(ROOT), "fetch", "-q", "--depth", "1", "origin", "main"], check=True, capture_output=True, timeout=45)
+        out = subprocess.run(["git", "-C", str(ROOT), "show", f"FETCH_HEAD:{path}"], check=True, capture_output=True, timeout=30).stdout
+        return json.loads(out)["agents"]
+    except Exception as e:  # noqa: BLE001 — never let this stop trading
+        print(f"agents reload failed: {e}", flush=True)
+        return None
+
+
+def apply_config(sess, specs: list[dict], universe: dict, bars, seen: dict) -> list[str]:
+    """Names changed in the app (and app agents started on paper) take effect mid-session: new symbols are backfilled
+    from today's 1-minute bars so their first bar is complete, then traded from the next bar close."""
+    from tradeos.live.intraday import IntradayAgent  # noqa: PLC0415
+    before = set(sess.watchlist())
+    msgs = sess.update_symbols(specs, universe)
+    have = {a.id for a in sess.agents}
+    for sp in specs:
+        if sp.get("enabled", True) and str(sp.get("id", "")).startswith("app_") and sp["id"] not in have:
+            try:
+                sess.agents.append(IntradayAgent(sp, universe))
+                msgs.append(f"[{sp.get('name', sp['id'])}] joined the session with {len(sess.agents[-1].symbols)} names")
+            except Exception as e:  # noqa: BLE001
+                msgs.append(f"[{sp.get('name', sp['id'])}] could not join: {e}")
+    for sym in sorted(set(sess.watchlist()) - before):
+        day = (bars.bars.get(sym) if bars else None) or {}
+        rows = [[m, b[0], b[1], b[2], b[3], b[4]] for m, b in sorted(day.items())]
+        q = seen.get(sym)
+        sess.store.seed(sym, rows, getattr(q, "open", None) or None, getattr(q, "prev_close", None) or None)
+    return msgs
+
+
 def quotes_from_rows(g: pd.DataFrame) -> dict:
     return {r.sym: Quote(r.sym, r.ltp, r.open, r.high, r.low, r.prev_close, r.volume, r.value_cr, str(r.ts)) for r in g.itertuples(index=False)}
 
@@ -170,6 +205,7 @@ def main() -> int:
         print(f"Resuming {ds} with {sum(len(a.st.positions) for a in sess.agents)} open position(s).", flush=True)
 
     handoff = False
+    reload_every, last_reload = 120.0, time.monotonic()
     while True:
         now = now_ist()
         if now >= end_t:
@@ -193,6 +229,17 @@ def main() -> int:
             print(f"{now:%H:%M:%S} minute bars failed: {e}", flush=True)
         if feed and feed.due() and now.time() >= tm("09:15"):
             feed.start()
+        elif feed and seen and now.time() >= tm("09:15"):
+            feed.quick(seen)  # prices for the continuous agent runner every minute between full snapshots
+        if os.environ.get("GITHUB_ACTIONS") and time.monotonic() - last_reload >= reload_every:
+            last_reload = time.monotonic()
+            new_specs = config_from_main()
+            if new_specs is not None and new_specs != specs:
+                specs = new_specs
+                changed = apply_config(sess, specs, universe, bars, seen)
+                watch = sess.watchlist()
+                if changed:
+                    telegram("TradeOS intraday (paper)\n" + "\n".join(changed))
         msgs = sess.feed(now, quotes) if quotes else []
         msgs += sess.force_square_off(now)
         if now.time() >= tm("09:35") and sess.store.clock() is None:

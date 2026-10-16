@@ -223,6 +223,13 @@ details.fold > summary::before { content: "▸"; transition: transform .15s; } d
 .tabs button { border: 0; background: none; padding: 10px 4px; margin-right: 14px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; font-weight: 600; font-size: var(--t-sm); display: inline-flex; gap: 6px; align-items: center; }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.namechips { display: flex; gap: 6px; flex-wrap: wrap; max-height: 220px; overflow-y: auto; }
+.namechip { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: 999px; padding: 2px 4px 2px 11px; font-size: var(--t-xs); min-height: 28px; }
+.namechip.warn { border-color: var(--warn); background: var(--warn-soft); }
+.namechip button { border: 0; background: none; cursor: pointer; color: var(--ink-3, var(--ink-2)); font-size: 15px; line-height: 1; min-width: 24px; min-height: 24px; border-radius: 999px; }
+.namechip button:hover { background: var(--line); color: var(--ink); }
+span.warn { color: var(--warn); } .flag-inline { color: var(--down); }
+.runlog td { vertical-align: top; } .runlog .skips { display: block; color: var(--ink-2); }
 .chips button { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 999px; padding: 5px 13px; cursor: pointer; font-size: var(--t-xs); font-weight: 600; min-height: 30px; color: var(--ink-2); }
 .chips button[aria-pressed="true"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
 .meter { height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; position: relative; }

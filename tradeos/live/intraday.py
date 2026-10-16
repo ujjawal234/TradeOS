@@ -83,6 +83,25 @@ class TickStore:
             st.last[r.sym] = (pd.Timestamp(r.ts), r.ltp, r.volume)
         return st
 
+    def seed(self, sym: str, rows: list, day_open_px: float | None = None, prev_close: float | None = None) -> int:
+        """Backfill today's ticks of a symbol added mid-session from the runner's 1-minute bars ([[m, o, h, l, c, v], ...]),
+        so its bars (and rules such as the opening range or VWAP) start at 09:15, not when it was added. One tick a minute at
+        the bar's close, carrying the day's running high/low, cumulative volume and turnover (close x volume)."""
+        if not rows or self.by_sym.get(sym):
+            return 0
+        o0, hi, lo, cum, val, n = day_open(self.day), -math.inf, math.inf, 0.0, 0.0, 0
+        first = day_open_px or rows[0][1]
+        for m, o, h, l, c, v in sorted(rows):
+            hi, lo, cum = max(hi, h), min(lo, l), cum + float(v or 0)
+            val += float(c) * float(v or 0) / 1e7
+            ts = o0 + pd.Timedelta(minutes=int(m), seconds=59)
+            row = (ts, sym, ts, float(c), float(first), float(hi), float(lo), float(prev_close or first), cum, val)
+            self.rows.append(row)
+            self.by_sym.setdefault(sym, []).append(row)
+            self.last[sym] = (ts, float(c), cum)
+            n += 1
+        return n
+
     def clock(self) -> pd.Timestamp | None:
         """The data's own time: the latest trade time seen (NSE data runs 1-3 minutes behind real time)."""
         return max((k[0] for k in self.last.values()), default=None)
@@ -419,8 +438,28 @@ class Session:
         self.last_px: dict[str, float] = {r[1]: r[3] for r in self.store.rows}
         self.done = bool(state.get("done"))
 
+    def update_symbols(self, specs: list[dict], universe: dict) -> list[str]:
+        """Names the team changed during the session (the app's Names box -> intraday/agents.json): new symbols are watched
+        from the next poll and traded from the next bar; open positions in removed symbols keep their stops, exits and
+        square-off but no new entries are taken in them. Returns what changed, one line per agent."""
+        out, by_id = [], {s["id"]: s for s in specs}
+        for a in self.agents:
+            sp = by_id.get(a.id)
+            if not sp or "symbols" not in sp:
+                continue
+            new = resolve_symbols(sp["symbols"], universe)
+            if new == a.symbols:
+                continue
+            added, removed = [x for x in new if x not in a.symbols], [x for x in a.symbols if x not in new]
+            a.symbols, a.spec["symbols"] = new, sp["symbols"]
+            if sp.get("version") is not None:
+                a.spec["version"] = sp["version"]
+            out.append(f"[{a.name}] names now {len(new)}" + (f"; added {', '.join(added[:12])}" if added else "") + (f"; removed {', '.join(removed[:12])}" if removed else ""))
+        return out
+
     def watchlist(self, extra=("NIFTYBEES",)) -> list[str]:
-        return sorted({s for a in self.agents for s in a.symbols} | set(extra))
+        held = {s for a in self.agents for s in a.st.positions}  # removed names that are still open keep being priced
+        return sorted({s for a in self.agents for s in a.symbols} | held | set(extra))
 
     def feed(self, polled: pd.Timestamp, quotes: dict) -> list[str]:
         new = [q for q in quotes.values() if self.store.add(polled, q)]

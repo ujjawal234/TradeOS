@@ -35,6 +35,10 @@
     on(S.db.collection("alert_events").orderBy("at", "desc").limit(300), (snap) => { S.alertEvents = snap.docs.map((d) => ({ id: d.id, ...d.data() })); fundChanged("alerts"); }, "events");
     on(mainCol().doc("watchlist"), (snap) => { S.watch = snap.exists ? (snap.data().syms || []) : null; fundChanged("watch"); }, "watch");
     on(mainCol().doc("seen"), (snap) => { S.seen = snap.exists ? snap.data() : {}; fundChanged("seen"); }, "seen");
+    // the continuous runner's log for today (Orders → Runner log) and its lease (who is running, until when)
+    on(S.db.doc(`runs/${todayIST()}`), (snap) => { S.runsToday = snap.exists ? snap.data() : null; fundChanged("runs"); }, "runs");
+    document.addEventListener("click", (e) => { const t = e.target.closest && e.target.closest("[data-otab-go]"); if (t) S.ordTabGo = t.dataset.otabGo; }, true);
+    on(S.db.doc("live/runner"), (snap) => { S.runner = snap.exists ? snap.data() : null; fundChanged("runs"); }, "runner");
   }
   let fundT = null;
   function fundChanged(kind) {
@@ -42,7 +46,7 @@
     const seenAt = S.seen?.alerts_at || ""; setCount("alerts", S.alertEvents.filter((e) => (e.at || "") > seenAt && !e.system).length, true);
     clearTimeout(fundT); fundT = setTimeout(() => {
       const v = S.view;
-      if (v === "home") renderHome(); else if (v === "book") renderBook(); else if (v === "orders") renderOrders(); else if (v === "desks") renderDesks(); else if (v === "alerts") renderAlerts();
+      if (v === "home") renderHome(); else if (v === "book") renderBook(); else if (v === "orders" && (kind !== "runs" || ordTab === "runs")) renderOrders(); else if (v === "desks") renderDesks(); else if (v === "alerts") renderAlerts();
       else if (v === "markets" && (kind === "watch" || kind === "agents")) renderMarkets(); else if (v === "room" && kind === "desks") renderRoomHead();
     }, 120);
   }
@@ -115,12 +119,26 @@
   // ---------------------------------------------------------------- BOOK (live)
   let bookTab = "positions";
   const tradeBtns = (sym, sleeve, held) => fundRO() ? "" : `<div class="row" style="flex-wrap:nowrap;gap:6px"><button class="btn small up" type="button" data-trade-sym="${esc(sym)}" data-side="BUY"${sleeve ? ` data-sleeve="${esc(sleeve)}"` : ""}>Buy</button>${held ? `<button class="btn small danger" type="button" data-trade-sym="${esc(sym)}" data-side="SELL"${sleeve ? ` data-sleeve="${esc(sleeve)}"` : ""}>Sell</button>` : ""}</div>`;
+  // "Last run": the continuous runner checks every paper agent about once a minute in the session (watchlist agents on each new
+  // live price, rule and rotation agents every 5 minutes); intraday agents are traded by the intraday runner on each bar close
+  const hmIST = (iso) => iso ? new Date(Date.parse(iso) + 5.5 * 3600e3).toISOString().slice(11, 16) : null;
+  function runnerLive() { const r = S.runner; return !!(r && !r.ended && Date.parse(r.until || 0) > Date.now()); }
+  function lastRunText(agentId) {
+    const R = S.runsToday, at = agentId ? (R?.agents?.[agentId] || S.bookState?.agent_runs?.[agentId]) : (R?.last_at || S.bookState?.last_live_run);
+    if (!at) return marketOpenNow() ? "no run yet today" : "no run today";
+    const d = new Date(Date.parse(at) + 5.5 * 3600e3).toISOString().slice(0, 10), t = hmIST(at);
+    return d === todayIST() ? `${t} IST` : `${fmtDate(d)} ${t} IST`;
+  }
+  function lastRunLine(a) {
+    const live = runnerLive();
+    return `<p class="small muted" style="margin:0">Last run <b>${esc(lastRunText(a ? a.id : null))}</b>${live ? " · runner on: checked about every minute in the session" : marketOpenNow() ? " · the runner is between sessions or starting (it resumes within a few minutes)" : ""}${!a && S.runsToday?.entries?.length ? ` · <button class="linkbtn" type="button" data-go="orders" data-otab-go="runs">Runner log</button>` : ""}</p>`;
+  }
   const runBtn = () => fundRO() ? "" : `<button class="btn" type="button" data-run-agents="">Run agents now</button><button class="btn ghost" type="button" data-trade-sym="" data-side="BUY">New trade</button>`;
   async function renderBook() {
     const box = $("view-book"), b = bookSummary(), cfg = S.bookCfg || {};
     const kill = !!cfg.kill_switch;
     const killBtn = fundRO() ? "" : kill ? `<button class="btn ghost" type="button" id="killOff">Turn the kill switch off</button>` : `<button class="btn danger" type="button" id="killOn"><svg><use href="#i-stop"/></svg>Kill switch</button>`;
-    const head = pageHead("Book", `Every desk's paper positions, valued at ${esc(liveLabel())}. Agents decide on live prices and trades fill at once at the live NSE price, with charges.`, `${runBtn()}${killBtn}<button class="btn cio" type="button" data-ask="Review the book at live prices: today's P&L and what drove it, concentration, sector and beta exposure, desks near their limits, and what you would buy or sell right now. Be specific."><svg><use href="#i-cio"/></svg>Ask the CIO</button>`);
+    const head = pageHead("Book", `Every desk's paper positions, valued at ${esc(liveLabel())}. Agents decide on live prices through the session and trades fill at once at the live NSE price, with charges.<br>${lastRunLine(null).replace(/^<p[^>]*>|<\/p>$/g, "")}`, `${runBtn()}${killBtn}<button class="btn cio" type="button" data-ask="Review the book at live prices: today's P&L and what drove it, concentration, sector and beta exposure, desks near their limits, and what you would buy or sell right now. Be specific."><svg><use href="#i-cio"/></svg>Ask the CIO</button>`);
     if (!b) {
       box.innerHTML = head + `<div class="card empty"><h2>The book is empty</h2><p>Capital reaches the book through desks: create a desk, give it capital and limits, and allocate agents that are paper trading. They trade on live prices during the session; you can also buy and sell yourself from any stock page.</p><div class="row" style="justify-content:center"><button class="btn" type="button" data-go="desks">Set up desks</button><button class="btn cio" type="button" data-ask="Set up the fund for me: propose desks with mandates, capital and risk limits, and assign our paper-trading agents with allocations." data-send="1">Let the CIO set it up</button></div></div>`;
       wireBookHead(box); return;
@@ -174,10 +192,11 @@
     const pend = all.filter((o) => o.status === "pending"), waiting = all.filter((o) => o.status === "approved"), trades = fillsOf(), today = tradesToday();
     const buys = today.filter((o) => /BUY|COVER/.test(o.side)), sells = today.filter((o) => /SELL|SHORT/.test(o.side));
     const val = (xs) => xs.reduce((t, o) => t + (o.gross_value ?? o.qty * o.fill_price), 0);
-    const tabs = [["trades", "Trades", trades.length], ["pending", "Awaiting you", pend.length], ["all", "Every order", null]];
+    const tabs = [["trades", "Trades", trades.length], ["pending", "Awaiting you", pend.length], ["all", "Every order", null], ["runs", "Runner log", S.runsToday?.entries?.length || null]];
+    if (S.ordTabGo) { ordTab = S.ordTabGo; S.ordTabGo = null; }
     if (ordTab === "trades" && !trades.length && pend.length) ordTab = "pending";
     const open = marketOpenNow();
-    box.innerHTML = pageHead("Orders &amp; trades", `Agents decide on live NSE prices (every hour in the session, or now with the button) and their orders fill at once at the live price, with itemised charges. Desks set to manual approval wait for you — approving fills at the live price there and then. Paper only.`, `${runBtn()}<button class="btn cio" type="button" data-ask="Go through today's trades and anything awaiting approval: what was bought and sold, at what cost, what's risky or oversized, and what you'd approve, reject or trade now."><svg><use href="#i-cio"/></svg>Ask the CIO</button>`)
+    box.innerHTML = pageHead("Orders &amp; trades", `Agents decide on live NSE prices all through the session (the runner checks every paper agent about once a minute; last run ${esc(lastRunText(null))}), or now with the button, and their orders fill at once at the live price, with itemised charges. Desks set to manual approval wait for you — approving fills at the live price there and then. Paper only.`, `${runBtn()}<button class="btn cio" type="button" data-ask="Go through today's trades and anything awaiting approval: what was bought and sold, at what cost, what's risky or oversized, and what you'd approve, reject or trade now."><svg><use href="#i-cio"/></svg>Ask the CIO</button>`)
       + `<div class="stats" style="margin-bottom:18px">${[["Trades today", String(today.length), `${open ? "market open" : "market closed"} · ${esc(liveLabel())}`], ["Bought today", inrShort(val(buys)), `${buys.length} trade(s)`], ["Sold today", inrShort(val(sells)), `${sells.length} trade(s) · realised ${inr(sells.reduce((t, o) => t + (o.net_realized ?? o.realized ?? 0), 0))}`],
         ["Charges today", inr(today.reduce((t, o) => t + (o.fee || 0), 0)), "STT, exchange, SEBI, stamp, GST, DP"], ["Awaiting you", String(pend.length), pend.length ? `${inrShort(pend.reduce((t, o) => t + (o.value || 0), 0))} · approve to fill now` : waiting.length ? `${waiting.length} approved, fill at the next run` : "nothing to decide"]].map(([k, v, s]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="b">${s}</span></div>`).join("")}</div>
       <div class="tabs" role="tablist" id="ordTabs">${tabs.map(([k, l, n]) => `<button role="tab" type="button" data-otab="${k}" aria-selected="${ordTab === k}">${l}${n ? ` <span class="badge${k === "pending" ? " hot" : ""}">${n}</span>` : ""}</button>`).join("")}</div>
@@ -186,6 +205,7 @@
       <p class="note" style="margin-top:12px">Paper only: nothing is sent to a broker. Fills use NSE's live price (1–3 minutes behind) plus ${O.SLIP_PCT}% slippage; charges follow an Indian discount broker's schedule (equity delivery: STT 0.1% each side, exchange ${O.CHARGES.delivery.exch}%, SEBI ₹10/crore, stamp duty ${O.CHARGES.delivery.stamp_buy}% on buys, GST 18%, DP ₹${O.CHARGES.delivery.dp_sell} per sell). Click a trade for its breakdown.</p>`;
     const ob = $("ordBody");
     if (ordTab === "trades") ob.innerHTML = tradeTable(trades);
+    else if (ordTab === "runs") ob.innerHTML = runnerLog();
     else {
       const list = ordTab === "pending" ? pend : all;
       ob.innerHTML = list.length ? `<div class="card" style="padding:6px 8px"><div class="tablewrap tall"><table class="orders"><thead><tr><th>Side</th><th>Symbol</th><th class="r">Qty</th><th class="r">${ordTab === "pending" ? "Now" : "Price"}</th><th class="r">Value</th><th>Desk · agent</th><th>Why</th>${ordTab === "pending" ? "<th></th>" : "<th>When</th><th>Status</th>"}</tr></thead><tbody>
@@ -200,6 +220,17 @@
     box.querySelector("#ordTabs").addEventListener("click", (e) => { const t = e.target.closest("[data-otab]"); if (t) { ordTab = t.dataset.otab; renderOrders(); } });
     box.querySelectorAll("[data-dec]").forEach((b) => b.addEventListener("click", () => decideOrders([b.dataset.oid], b.dataset.dec, box)));
     box.querySelectorAll("[data-bulk]").forEach((b) => b.addEventListener("click", () => decideOrders(pend.map((o) => o.id), b.dataset.bulk, box)));
+  }
+  // every run of the continuous runner today: time, prices used, agents checked, signals, fills, skips and why
+  function runnerLog() {
+    const R = S.runsToday, rows = (R?.entries || []).slice().reverse();
+    const head = `<div class="card" style="padding:12px 14px;margin-bottom:10px"><p class="small" style="margin:0"><b>${runnerLive() ? "Runner on" : "Runner off"}</b> · last run ${esc(lastRunText(null))}${R?.cadence ? ` · daily-list agents ${esc(R.cadence.watchlist)}, rule and rotation agents ${esc(R.cadence.rule)}, intraday agents: ${esc(R.cadence.intraday)}` : ""}. 09:15–15:30 IST on weekdays; the evening run marks the book to the close.</p></div>`;
+    if (!rows.length) return head + `<div class="card empty"><h2>No runs yet today</h2><p>${marketOpenNow() ? "The runner starts within a few minutes of the open and logs every run here." : "The runner works 09:15–15:30 IST on weekdays and logs every run here."}</p></div>`;
+    const show = rows.slice(0, 200);
+    return head + `<div class="card" style="padding:6px 8px"><div class="tablewrap tall"><table class="orders runlog"><thead><tr><th>Time</th><th>Prices</th><th class="r">Checked</th><th class="r">Signals</th><th class="r">Filled</th><th>Details</th></tr></thead><tbody>${show.map((e) => `<tr>
+      <td><b>${esc(e.t || hmIST(e.at) || "")}</b></td><td class="small">${e.quotes ? esc(e.quotes) + " IST" : "–"}</td>
+      <td class="r">${e.checked || 0}${e.waiting ? `<span class="sub">${e.waiting} not due</span>` : ""}</td><td class="r">${e.signals || 0}${e.pending ? `<span class="sub">${e.pending} await you</span>` : ""}</td><td class="r">${e.filled || 0}${e.charges ? `<span class="sub">₹${Math.round(e.charges).toLocaleString("en-IN")} charges</span>` : ""}</td>
+      <td class="small">${(e.agents || []).length ? `<span>${esc(e.agents.slice(0, 6).join(", "))}${e.agents.length > 6 ? ` +${e.agents.length - 6}` : ""}</span>` : ""}${(e.fills || []).map((f) => `<span class="skips" style="color:var(--ink)">${esc(f)}</span>`).join("")}${(e.skips || []).map((k) => `<span class="skips">${esc(k.agent)}: ${esc(k.reason)}</span>`).join("")}${(e.notes || []).map((n) => `<span class="skips">${esc(n)}</span>`).join("")}</td></tr>`).join("")}</tbody></table></div>${rows.length > show.length ? `<p class="xs muted" style="margin:6px">Showing the latest ${show.length} of ${rows.length} runs.</p>` : ""}</div>`;
   }
   async function decideOrders(ids, status, box) {
     const list = ids.map((id) => S.ordersList.find((x) => x.id === id)).filter((o) => o && o.status === "pending");

@@ -27,6 +27,10 @@ const O = require(path.join(here, "..", "lab", "oms.js"));
 const AL = require(path.join(here, "..", "lab", "alerts.js"));
 const argv = process.argv.slice(2), flag = (k) => { const i = argv.indexOf(k); if (i < 0) return null; const v = argv[i + 1]; argv.splice(i, 2); return v; };
 const liveFile = flag("--live"), maxAge = Number(flag("--max-age-min") || 20), barsFile = flag("--bars"), histFile = flag("--hist");
+// --only a,b,c (continuous runner): only these agents decide this run (the others keep what they hold; approved orders still
+// fill and the book is still marked). --light: skip the bulky live/quotes and live_1m writes (the runner sends them every few minutes).
+const onlyArg = flag("--only"), only = onlyArg != null ? new Set(onlyArg.split(",").filter(Boolean)) : null, light = argv.includes("--light");
+if (light) argv.splice(argv.indexOf("--light"), 1);
 const [dir, dbdir, agentsFile, dailyFile, outFile] = argv;
 if (!outFile) { console.error("usage: node scripts/book_run.mjs <app_build_dir> <db_export_dir> <agents.json> <daily.json> <out.json> [--live quotes.json]"); process.exit(2); }
 
@@ -42,7 +46,7 @@ const history = (one("book", "history")?.rows || []).slice();
 const paperAgents = fs.existsSync(agentsFile) ? JSON.parse(fs.readFileSync(agentsFile, "utf8")) : [];
 const daily = dailyFile && fs.existsSync(dailyFile) ? JSON.parse(fs.readFileSync(dailyFile, "utf8")) : { results: [] };
 const R = Object.fromEntries((daily.results || []).map((r) => [r.id, r]));
-const writes = [], events = [], log = [];
+const writes = [], events = [], log = [], checked = [], errors = [];
 const nowIso = new Date().toISOString();
 const istNow = new Date(Date.now() + 5.5 * 3600e3), istHHMM = istNow.toISOString().slice(11, 16);
 
@@ -110,6 +114,7 @@ if (trading) {
   for (const [aid, sl] of Object.entries(state.sleeves)) {
     const a = agentDocs.find((x) => x.id === aid);
     if (!sl.oms || sl.closing || !a || a.status !== "paper" || !specs[aid]?.spec) continue;
+    if (only && !only.has(aid)) continue;
     try {
       const spec = E.normalize(specs[aid].spec, man.universes);
       let res, liveN = 0;
@@ -123,13 +128,20 @@ if (trading) {
         res = E.run(spec, L.frames, man.universes, { start: specs[aid].test?.start || "2012-01-01" });
       }
       plans[aid] = O.agentTargets(a, spec, res, O.sleeveEquity(sl, px), px, man.symbols, nextSession);
+      (state.agent_runs ||= {})[aid] = nowIso; checked.push(aid);
       log.push(`${a.name}: decided on ${liveN} live price(s)`);
-    } catch (e) { log.push(`${a.name}: ${e.message || e}`); }
+    } catch (e) { log.push(`${a.name}: ${e.message || e}`); errors.push({ agent: aid, reason: String(e.message || e).slice(0, 160) }); }
   }
   const stamp = `${today}T${istHHMM.replace(":", "")}`;
   built = O.buildOrders({ state, book: config, desks, agents: agentDocs, plans, px, meta: man.symbols, date: today, nextSession, stamp });
   const existing = new Set(allOrders.map((o) => o.id));
   newOrders = built.orders.filter((o) => !existing.has(o.id)).map((o) => ({ ...o, decided_at: nowIso, decided_on: "live prices", live_ts: liveQuote(o.sym)?.ts || null }));
+  // the same decision again (runs come every few minutes): keep the order already open (awaiting approval or a live price)
+  // instead of cancelling it and opening an identical one
+  const stillOpen = openOrders.filter((o) => !fillsAll.some((f) => f.id === o.id));
+  const same = (n) => stillOpen.find((o) => o.agent === n.agent && o.sym === n.sym && o.side === n.side && o.status === (n.status === "blocked" ? "x" : n.status) && Math.abs((o.qty || 0) - n.qty) <= Math.max(1, 0.1 * n.qty));
+  const kept = newOrders.filter((n) => same(n)); newOrders = newOrders.filter((n) => !same(n));
+  for (const n of kept) log.push(`${n.side} ${n.sym}: same decision as the open order ${same(n).id} (kept)`);
   // ---- 4. ...and the approved ones fill at once at the same live price
   const fn = O.fillNow({ state, orders: newOrders, quote: (s) => liveQuote(s)?.ltp ?? null, at: nowIso, today, meta: man.symbols });
   const filled = Object.fromEntries(fn.updates.map((u) => [u.id, u]));
@@ -230,9 +242,9 @@ function todaysBars() {
 
 // ---- 7. book state and history
 state.updated_at = nowIso; state.marked = trading ? { at: nowIso, by: "live run", prices: `NSE live ${Q.asof}` } : { at: nowIso, by: "evening run", prices: `close ${lastDay}` };
-if (trading) { state.last_live_run = nowIso; writes.push({ op: "set", collection: "live", doc_id: "quotes", data: { ...Q, written_at: nowIso } }); } // every NSE stock for the app
+if (trading) { state.last_live_run = nowIso; if (!light) writes.push({ op: "set", collection: "live", doc_id: "quotes", data: { ...Q, written_at: nowIso } }); } // every NSE stock for the app
 delete state.next_session;
-const todayBars = trading ? todaysBars() : { docs: 0 };
+const todayBars = trading && !light ? todaysBars() : { docs: 0 };
 writes.push({ op: "set", collection: "book", doc_id: "state", data: state });
 writes.push({ op: "set", collection: "book", doc_id: "history", data: { rows: history } });
 
@@ -241,7 +253,9 @@ const charges = fillsAll.reduce((t, f) => t + (f.fee || 0), 0), traded = fillsAl
 const crit = [...events.filter((e) => e.severity === "critical"), ...fired.filter((f) => f.severity === "critical")];
 const summary = { mode, date: today, at: trading ? `${istHHMM} IST` : "after the close", prices: trading ? `NSE live, snapshot ${Q.asof}` : `close of ${lastDay}`, equity: snap.equity, gross: snap.gross, desks: snap.desks,
   minute_bars: todayBars.docs, trades: fillsAll.length, traded_value: Math.round(traded), charges: Math.round(charges), orders_new: newOrders.length, orders_pending_approval: pend, orders_blocked: blocked,
-  alerts_fired: fired.length, critical: crit.map((e) => e.title), sleeves: Object.keys(state.sleeves).length, log };
+  alerts_fired: fired.length, critical: crit.map((e) => e.title), sleeves: Object.keys(state.sleeves).length, log,
+  checked, errors, quotes_asof: Q?.asof || null, new_orders: newOrders.map((o) => ({ id: o.id, agent: o.agent, sym: o.sym, side: o.side, qty: o.qty, status: o.status, checks: o.checks || [] })),
+  fills: fillsAll.map((f) => ({ id: f.id, agent: f.agent, sym: f.sym, side: f.side, qty: f.qty, price: f.fill_price, fee: f.fee })) };
 const push_text = trading
   ? ((fillsAll.length || pend || crit.length) ? `TradeOS ${istHHMM} IST: ${fillsAll.length} paper trade(s) at live prices (₹${Math.round(traded).toLocaleString("en-IN")}, charges ₹${Math.round(charges).toLocaleString("en-IN")})${pend ? `, ${pend} awaiting your approval` : ""}${crit.length ? `. ${crit[0].title}` : ""}`.slice(0, 190) : "")
   : ((fired.length || crit.length) ? `TradeOS book ${lastDay}: marked at the close${fired.length ? `, ${fired.length} alert(s)` : ""}${crit.length ? `. ${crit[0].title}` : ""}`.slice(0, 190) : "");

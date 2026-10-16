@@ -128,6 +128,8 @@ class MarketFeed:
         self.last = 0.0
         self.thread: threading.Thread | None = None
         self.count = 0
+        self.last_doc: dict | None = None  # the latest full snapshot (indices come from it in the minute updates)
+        self.qthread: threading.Thread | None = None
 
     def due(self) -> bool:
         return time.monotonic() - self.last >= self.every and not (self.thread and self.thread.is_alive())
@@ -156,6 +158,7 @@ class MarketFeed:
                           for s, x in sorted(q.items())},
                "indices": index_quotes(yd := _yahoo_today()),
                "nse_indices": nse_index_quotes(self.live)}
+        self.last_doc = doc
         (self.dir / "quotes.json").write_text(json.dumps(doc, separators=(",", ":")))
         hist = self.dir / f"history_{doc['date']}.csv.gz"
         rows = io.StringIO()
@@ -176,6 +179,29 @@ class MarketFeed:
         if self.push:
             self.publish(doc["date"])
         return doc
+
+    def quick(self, seen: dict) -> bool:
+        """Minute update between full snapshots: the runner's own once-a-minute poll (every first letter, every NSE stock)
+        replaces the stock prices in quotes.json and the branch is pushed again (history and minute bars stay on the
+        5-minute cadence). Lets the continuous agent runner decide on prices at most ~1-2 minutes old. Never blocks."""
+        if not seen or not self.last_doc or (self.thread and self.thread.is_alive()) or (self.qthread and self.qthread.is_alive()):
+            return False
+        now = datetime.now(IST).replace(microsecond=0)
+        if self.last_doc.get("date") != now.date().isoformat():
+            return False
+        quotes = dict(self.last_doc.get("quotes") or {})
+        n = 0
+        for s, x in seen.items():
+            if not x.ltp:
+                continue
+            quotes[s] = [x.ltp, x.open or None, x.high or None, x.low or None, x.prev_close or None, round(x.value_cr, 2) if x.value_cr else None, _hhmm(x.ts)]
+            n += 1
+        doc = {**self.last_doc, "asof": now.isoformat(), "kind": "minute", "full_asof": self.last_doc.get("asof"), "quotes": dict(sorted(quotes.items()))}
+        (self.dir / "quotes.json").write_text(json.dumps(doc, separators=(",", ":")))
+        if self.push:
+            self.qthread = threading.Thread(target=self.publish, args=(doc["date"],), daemon=True)
+            self.qthread.start()
+        return n > 0
 
     def restore(self, date: str) -> None:
         """a resumed run (6-hour hand-off) picks up today's history from the branch"""

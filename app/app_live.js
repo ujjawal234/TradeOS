@@ -348,7 +348,7 @@
     const sh = $("tradeSheet"), body = $("tradeBody");
     $("ttTitle").textContent = ids && ids.length === 1 ? `${agentName(ids[0])}: decide and trade now` : "Run every agent now";
     sh.hidden = false;
-    if (!marketOpenNow()) { body.innerHTML = `<p class="flag">${esc(closedMsg())}</p><p class="small muted">During the session the agents also run on their own every hour (09:20–15:20 IST).</p><button class="btn ghost" type="button" data-close-sheet>Close</button>`; return; }
+    if (!marketOpenNow()) { body.innerHTML = `<p class="flag">${esc(closedMsg())}</p><p class="small muted">During the session (09:15–15:30 IST) the runner checks every paper agent about once a minute on its own.</p><button class="btn ghost" type="button" data-close-sheet>Close</button>`; return; }
     body.innerHTML = '<p class="thinking" id="raProg">Starting<span class="dots"></span></p>';
     try {
       const r = await runAgentsNow(ids, (t) => { const el = $("raProg"); if (el) el.innerHTML = `${esc(t)}<span class="dots"></span>`; });

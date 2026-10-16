@@ -132,13 +132,13 @@
     const liveHtml = intra && (a.status === "paper" || a.status === "paused") ? await liveCard(a, v.spec.capital) : "";
     if (seq !== roomRenderSeq) return;
     const canAct = oms && a.status === "paper";
-    body.innerHTML = `<div class="stack">${sleeveHtml}${liveHtml}
+    body.innerHTML = `<div class="stack">${intra ? namesCard(a, v) : ""}${sleeveHtml}${liveHtml}${oms && paperOn ? lastRunLine(a) : ""}
       ${oms ? `<div class="card"><div class="row"><h2>${paperOn ? "Decide now" : "What it would do now"}</h2><span class="grow"></span>${paperOn && !S.readOnly ? `<button class="btn" type="button" data-run-agents="${esc(a.id)}" ${open ? "" : "disabled"}>Decide &amp; trade now</button>` : ""}<button class="btn ghost small" type="button" id="nowCheck">Check at live prices</button></div>
-        <p class="small muted" style="margin-top:4px">${open ? "Its rules run on today's live NSE prices (the live quote counts as today's bar); orders fill at once at the live price." : `${esc(closedMsg())} The check below uses the latest prices.`}${paperOn ? " It also runs by itself every hour in the session (09:20–15:20 IST)." : ""}</p><div id="nowSig"></div></div>` : ""}
+        <p class="small muted" style="margin-top:4px">${open ? "Its rules run on today's live NSE prices (the live quote counts as today's bar); orders fill at once at the live price." : `${esc(closedMsg())} The check below uses the latest prices.`}${paperOn ? ` It also runs by itself through the session: ${v.spec.type === "watchlist" ? "on every new live price (about once a minute)" : "every 5 minutes"}.` : ""}</p><div id="nowSig"></div></div>` : ""}
       ${!oms && !intra ? await (async () => { const p = await paperResult(a).catch(() => null); return p && !p.pending ? `<div class="card"><h2>Paper record</h2><p class="small">Since ${fmtDate(p.since)}: <b class="${cls(p.ret)}">${pct(p.ret)}</b> vs Nifty ${pct(p.nifty)} · worst fall ${pct(p.mdd)} (option positions are priced from NSE's daily option prices).</p></div>` : ""; })() : ""}
       ${fills.length ? `<div><div class="row" style="margin-bottom:8px"><h2>Latest trades</h2><span class="grow"></span><button class="linkbtn" type="button" data-tabgo="trades">Every trade</button></div>${tradeTable(fills, { limit: 8, agentCol: false })}</div>` : ""}
       ${(S.ranAll || new Set()).has(ranKey(a, v)) ? "" : `<p class="note">Backtests are on the <button class="linkbtn" type="button" data-tabgo="backtest">Backtest</button> tab.</p>`}</div>`;
-    wireGo(body); wireTrades(body);
+    wireGo(body); wireTrades(body); wireNames(a, v, body);
     body.querySelectorAll("[data-tabgo]").forEach((b) => b.addEventListener("click", () => { S.room.tab = b.dataset.tabgo; renderRoomBody(); }));
     const check = async () => {
       const el = $("nowSig"); if (!el) return; el.innerHTML = '<p class="thinking">Reading live prices and running the rules<span class="dots"></span></p>';
@@ -176,6 +176,70 @@
     if (!t.length) return `<div class="card"><p class="muted">${esc(sigs[0]?.note || "No trades.")}</p></div>`;
     const tot = t.reduce((x, r) => x + (r.pnl || 0), 0);
     return `<div class="card"><div class="row" style="margin-bottom:6px"><h2>${t.length} trade(s)</h2><span class="grow"></span><span class="${cls(tot)}"><b>${inr(tot)}</b></span></div><div class="tablewrap"><table><thead><tr><th>Symbol</th><th>Time</th><th class="r">Entry</th><th class="r">Exit</th><th class="r">Return</th><th class="r">P&amp;L</th><th>Why</th></tr></thead><tbody>${t.map((r) => `<tr><td><b>${esc(r.symbol)}</b></td><td>${esc(r.time)}</td><td class="r">${px(r.entry)}</td><td class="r">${px(r.price)}</td><td class="r ${cls(r.pnl_pct)}">${pct(r.pnl_pct, 2)}</td><td class="r ${cls(r.pnl)}">${inr(r.pnl)}</td><td>${esc(r.reason)}</td></tr>`).join("")}</tbody></table></div></div>`;
+  }
+  // ---------------------------------------------------------------- NAMES BOX (intraday agents)
+  // The team pastes or types tickers; Add / Replace / Clear save a new version at once (same rules, new symbols), move the
+  // paper record to it without restarting it, and write live_names/<agent> — the continuous runner commits that to
+  // intraday/agents.json within a minute and the intraday runner (NSE live data) trades the new names from the next bar.
+  const NAME_UNIS = { nifty50: "Nifty 50", nifty200: "Nifty 200", nifty500: "Nifty 500", fno: "F&O stocks" };
+  function parseNames(text) {
+    const ok = [], bse = [], bad = [], seen = new Set();
+    for (let t of String(text || "").split(/[\s,;|]+/)) {
+      t = t.trim().replace(/^\$/, "").replace(/^(NSE|BSE)[:_]/i, "").replace(/\.(NS|BO)$/i, "").toUpperCase(); if (!t) continue;
+      const uni = NAME_UNIS[t.toLowerCase()] ? t.toLowerCase() : null;
+      const list = uni ? (S.man.universes?.[uni] || []) : [t];
+      if (uni && !list.length) { bad.push(t); continue; }
+      for (const x of list) {
+        if (seen.has(x)) continue; seen.add(x);
+        const m = S.man.symbols[x];
+        if (!m || m.kind !== "stock") bad.push(x); else if (m.ex === "BSE") { bse.push(x); ok.push(x); } else ok.push(x);
+      }
+    }
+    return { ok, bse, bad };
+  }
+  function namesCard(a, v) {
+    if (v.spec?.type !== "intraday") return "";
+    const syms = Array.isArray(v.spec.symbols) ? v.spec.symbols : [], ro = S.readOnly, latest = S.room.versions.find((x) => x.n === (a.paper?.version || a.version));
+    const stale = latest && latest.n !== v.n ? `<p class="note">You are looking at v${v.n}; the box changes v${latest.n}${a.paper ? " (the paper version)" : ""}.</p>` : "";
+    return `<div class="card stack" id="namesCard"><div class="row"><h2>Names</h2><span class="count">${syms.length}</span><span class="grow"></span><span class="small muted">${a.status === "paper" ? "the paper runner uses them from the next bar" : "used when it paper-trades"}</span></div>
+      ${stale}<div class="namechips" id="nameChips">${syms.length ? syms.map((x) => `<span class="namechip${S.man.symbols[x]?.ex === "BSE" ? " warn" : ""}" title="${esc(nameOfSym(x))}"><b>${esc(x)}</b>${ro ? "" : `<button type="button" data-rm-name="${esc(x)}" aria-label="Remove ${esc(x)}">×</button>`}</span>`).join("") : '<span class="small muted">No names: it takes no new trades until you add some.</span>'}</div>
+      ${ro ? "" : `<textarea class="input mono" id="namesIn" rows="2" spellcheck="false" placeholder="Paste or type tickers: TATAMOTORS, GRSE, HAL… (nifty50 / nifty200 / nifty500 / fno add a whole list)"></textarea>
+      <div class="row"><button class="btn" type="button" data-names="add">Add</button><button class="btn ghost" type="button" data-names="replace">Replace</button><button class="btn ghost danger" type="button" data-names="clear" ${syms.length ? "" : "disabled"}>Clear</button><span class="status" id="namesStatus" aria-live="polite"></span></div>
+      <p class="xs muted" id="namesCheck">Checked against every NSE and BSE stock as you type. Only the names change; every other rule stays as it is.</p>`}</div>`;
+  }
+  async function saveNames(a, syms, note) {
+    if (S.readOnly) throw new Error("You can view but not change agents on this page.");
+    const baseN = a.paper?.version || a.version, base = S.room.versions.find((x) => x.n === baseN) || (await S.db.doc(`agents/${a.id}/versions/${verId(baseN)}`).get()).data();
+    const spec = { ...base.spec, symbols: syms.slice().sort() }, n = Math.max(a.version || 1, ...S.room.versions.map((x) => x.n)) + 1, at = nowIso();
+    await S.db.doc(`agents/${a.id}/versions/${verId(n)}`).set({ n, spec, meta: base.meta || {}, test: base.test || {}, note, by: S.uid, at, headline: base.headline || null, parent: baseN, names_only: true });
+    const patch = { version: n, universe: universeLabel(spec) };
+    if (a.paper) patch.paper = { ...a.paper, version: n, names_at: at }; // same record, new names (rules unchanged): no restart
+    await patchAgent(a.id, patch);
+    await S.db.doc(`live_names/${a.id}`).set({ agent: a.id, name: a.name, symbols: spec.symbols, version: n, at, by: S.uid, note });
+    await addAgentMsg(a.id, { role: "system", text: `v${n} saved — ${note}. ${a.status === "paper" ? "The paper runner picks the names up within about a minute and trades them from the next bar." : "It uses them when it paper-trades."}` });
+    return n;
+  }
+  function wireNames(a, v, body) {
+    const box = body.querySelector("#namesCard"); if (!box || S.readOnly) return;
+    const inp = box.querySelector("#namesIn"), chk = box.querySelector("#namesCheck"), st = box.querySelector("#namesStatus");
+    const cur = () => (Array.isArray(v.spec.symbols) ? v.spec.symbols : []);
+    const show = () => { const r = parseNames(inp.value); if (!inp.value.trim()) { chk.textContent = "Checked against every NSE and BSE stock as you type. Only the names change; every other rule stays as it is."; chk.className = "xs muted"; return r; }
+      chk.innerHTML = `${r.ok.length} known${r.ok.length ? `: ${esc(r.ok.slice(0, 12).join(", "))}${r.ok.length > 12 ? "…" : ""}` : ""}${r.bse.length ? ` · <span class="warn">BSE-only (no NSE live price, the runner can't trade them): ${esc(r.bse.join(", "))}</span>` : ""}${r.bad.length ? ` · <span class="flag-inline">unknown, won't be added: ${esc(r.bad.join(", "))}</span>` : ""}`; chk.className = "xs"; return r; };
+    inp.addEventListener("input", show);
+    const run = async (mode, rm) => {
+      const r = parseNames(inp.value), have = cur();
+      let next, note;
+      if (mode === "remove") { next = have.filter((x) => x !== rm); note = `Names: removed ${rm}`; }
+      else if (mode === "clear") { if (!confirm(`Remove all ${have.length} names from ${a.name}? It takes no new trades until names are added.`)) return; next = []; note = "Names: cleared"; }
+      else { if (!r.ok.length) { st.classList.add("err"); st.textContent = r.bad.length ? `Unknown ticker${r.bad.length > 1 ? "s" : ""}: ${r.bad.join(", ")}` : "Type or paste at least one ticker."; return; }
+        if (mode === "add") { const add = r.ok.filter((x) => !have.includes(x)); if (!add.length) { st.classList.remove("err"); st.textContent = "Already on the list."; return; } next = [...have, ...add]; note = `Names: added ${add.slice(0, 15).join(", ")}${add.length > 15 ? ` and ${add.length - 15} more` : ""}`; }
+        else { next = r.ok; note = `Names: replaced with ${r.ok.length} (${r.ok.slice(0, 10).join(", ")}${r.ok.length > 10 ? "…" : ""})`; } }
+      box.querySelectorAll("button").forEach((b) => { b.disabled = true; }); st.classList.remove("err"); st.textContent = "Saving…";
+      try { const n = await saveNames(a, next, note); S.room.ver = n; toast(`Saved as v${n}${r.bad.length && mode !== "remove" && mode !== "clear" ? ` · not added: ${r.bad.join(", ")}` : ""}`); renderRoomHead(); renderRoomBody(); }
+      catch (e) { st.classList.add("err"); st.textContent = e.message || String(e); box.querySelectorAll("button").forEach((b) => { b.disabled = false; }); }
+    };
+    box.querySelectorAll("[data-names]").forEach((b) => b.addEventListener("click", () => run(b.dataset.names)));
+    box.querySelectorAll("[data-rm-name]").forEach((b) => b.addEventListener("click", () => run("remove", b.dataset.rmName)));
   }
   // the live paper runner's record for an intraday agent (NSE live data, polled each minute during the session)
   async function liveCard(a, cap) {
@@ -292,7 +356,7 @@
     kv.push(...extraKV(s));
     kv.push(["Capital", inr(s.capital)], ["Test window", `${fmtDate(test.start)} – ${test.end ? fmtDate(test.end) : "latest"}${test.split ? `, split ${fmtDate(test.split)}` : ", no split"}`]);
     const ids = S.room.versions.map((x) => x.by); names(ids);
-    body.innerHTML = `<div class="card stack"><div class="row"><h2>Rules · v${v.n}</h2><span class="grow"></span><span class="small muted">by ${esc(nameOf(v.by))} · ${esc(fmtWhen(v.at))}</span></div>
+    body.innerHTML = `${namesCard(a, v)}<div class="card stack"${s.type === "intraday" ? ' style="margin-top:14px"' : ""}><div class="row"><h2>Rules · v${v.n}</h2><span class="grow"></span><span class="small muted">by ${esc(nameOf(v.by))} · ${esc(fmtWhen(v.at))}</span></div>
         ${v.meta?.explanation ? `<p>${esc(v.meta.explanation)}</p>` : ""}<dl class="kv">${kv.map(([k, x]) => `<dt>${k}</dt><dd>${x}</dd>`).join("")}</dl>
         ${v.meta?.assumptions?.length ? `<ul class="small muted" style="margin:0;padding-left:18px">${v.meta.assumptions.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
         <details><summary class="small" style="cursor:pointer">Edit the rules directly</summary><div class="stack" style="margin-top:10px">
@@ -304,6 +368,7 @@
         <div><b>${esc(x.note || "")}</b><div class="small muted">${esc(nameOf(x.by))} · ${esc(fmtWhen(x.at))}${a.paper?.version === x.n ? ' · <span class="pill paper">paper</span>' : ""}</div></div>
         <div class="small r num">CAGR ${pct(x.headline?.cagr)} · worst ${pct(x.headline?.mdd)}${x.headline?.test_cagr != null ? ` · test ${pct(x.headline.test_cagr)}` : ""}<br><button class="btn ghost small" type="button" data-view-ver="${x.n}" style="margin-top:4px">View</button></div></div>`).join("")}</div></div>`;
     body.querySelectorAll("[data-view-ver]").forEach((b) => b.addEventListener("click", () => { S.room.ver = +b.dataset.viewVer; S.room.tab = "overview"; renderRoomHead(); renderRoomBody(); }));
+    wireNames(a, v, body);
     $("edSave").addEventListener("click", async () => {
       const st = $("edStatus"); st.classList.remove("err"); st.textContent = "Testing…";
       try { const spec = E.normalize(JSON.parse($("edSpec").value), S.man.universes);
