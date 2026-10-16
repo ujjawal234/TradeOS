@@ -1,0 +1,190 @@
+{
+ "date": "2026-10-16",
+ "done": false,
+ "agents": {
+  "app_aintematrend1": {
+   "positions": {
+    "COALINDIA": {
+     "sym": "COALINDIA",
+     "qty": 792,
+     "entry": 416.63,
+     "t_entry": "2026-10-16 10:21:00",
+     "stop": 414.55,
+     "target": null,
+     "best": 417.0,
+     "hi_seen": 418.4,
+     "lo_seen": 413.0
+    }
+   },
+   "trades": [
+    {
+     "sym": "CIPLA",
+     "side": "long",
+     "qty": 247,
+     "entry": 1330.97,
+     "t_entry": "2026-10-16 10:21:00",
+     "exit": 1324.05,
+     "t_exit": "2026-10-16 11:15:26",
+     "reason": "stop",
+     "pnl": -1907.18,
+     "pnl_pct": -0.52
+    },
+    {
+     "sym": "TMPV",
+     "side": "long",
+     "qty": 1153,
+     "entry": 286.06,
+     "t_entry": "2026-10-16 10:21:00",
+     "exit": 284.84,
+     "t_exit": "2026-10-16 11:18:00",
+     "reason": "exit rule",
+     "pnl": -1600.65,
+     "pnl_pct": -0.425
+    }
+   ],
+   "realized": -3606.821650253859,
+   "entries": {
+    "COALINDIA": 1,
+    "TMPV": 1,
+    "CIPLA": 1
+   },
+   "last_bar": "2026-10-16 12:15:00",
+   "squared_off": false
+  },
+  "app_aintorblong01": {
+   "positions": {
+    "SBILIFE": {
+     "sym": "SBILIFE",
+     "qty": 149,
+     "entry": 1670.63,
+     "t_entry": "2026-10-16 10:25:00",
+     "stop": 1658.94,
+     "target": 1694.02,
+     "best": 1670.6340599999999,
+     "hi_seen": 1678.7,
+     "lo_seen": 1637.3
+    },
+    "JSWSTEEL": {
+     "sym": "JSWSTEEL",
+     "qty": 204,
+     "entry": 1225.24,
+     "t_entry": "2026-10-16 10:30:00",
+     "stop": 1216.67,
+     "target": 1242.4,
+     "best": 1225.245,
+     "hi_seen": 1228.7,
+     "lo_seen": 1194.1
+    },
+    "TCS": {
+     "sym": "TCS",
+     "qty": 102,
+     "entry": 2428.99,
+     "t_entry": "2026-10-16 11:20:00",
+     "stop": 2411.98,
+     "target": 2462.99,
+     "best": 2428.9856999999997,
+     "hi_seen": 2449.0,
+     "lo_seen": 2375.7
+    }
+   },
+   "trades": [
+    {
+     "sym": "TECHM",
+     "side": "long",
+     "qty": 141,
+     "entry": 1767.25,
+     "t_entry": "2026-10-16 11:20:00",
+     "exit": 1791.99,
+     "t_exit": "2026-10-16 12:19:26",
+     "reason": "target",
+     "pnl": 3337.78,
+     "pnl_pct": 1.4
+    }
+   ],
+   "realized": 3113.794706124001,
+   "entries": {
+    "SBILIFE": 1,
+    "JSWSTEEL": 1,
+    "TCS": 1,
+    "TECHM": 1
+   },
+   "last_bar": "2026-10-16 12:10:00",
+   "squared_off": false
+  },
+  "app_aintorbshort1": {
+   "positions": {
+    "APOLLOHOSP": {
+     "sym": "APOLLOHOSP",
+     "qty": -31,
+     "entry": 7844.43,
+     "t_entry": "2026-10-16 10:30:00",
+     "stop": 7899.34,
+     "target": 7734.61,
+     "best": 7844.4308,
+     "hi_seen": 7928.0,
+     "lo_seen": 7795.0
+    }
+   },
+   "trades": [
+    {
+     "sym": "TMPV",
+     "side": "short",
+     "qty": 881,
+     "entry": 283.59,
+     "t_entry": "2026-10-16 09:50:00",
+     "exit": 285.64,
+     "t_exit": "2026-10-16 10:19:26",
+     "reason": "stop",
+     "pnl": -1953.96,
+     "pnl_pct": -0.722
+    }
+   ],
+   "realized": -2026.9099934598148,
+   "entries": {
+    "TMPV": 1,
+    "APOLLOHOSP": 1
+   },
+   "last_bar": "2026-10-16 12:10:00",
+   "squared_off": false
+  },
+  "app_amv26tvmw80lkt": {
+   "positions": {},
+   "trades": [],
+   "realized": 0.0,
+   "entries": {},
+   "last_bar": "2026-10-16 09:19:00",
+   "squared_off": true
+  },
+  "app_amv6bzrax3dpdn": {
+   "positions": {},
+   "trades": [
+    {
+     "sym": "DELTACORP",
+     "side": "long",
+     "qty": 3096,
+     "entry": 80.74,
+     "t_entry": "2026-10-16 09:40:00",
+     "exit": 81.16,
+     "t_exit": "2026-10-16 12:15:00",
+     "reason": "exit rule",
+     "pnl": 1161.6,
+     "pnl_pct": 0.525
+    }
+   ],
+   "realized": 1161.6007094496613,
+   "entries": {
+    "DELTACORP": 1
+   },
+   "last_bar": "2026-10-16 12:10:00",
+   "squared_off": false
+  },
+  "app_amv6c0fvlb31vd": {
+   "positions": {},
+   "trades": [],
+   "realized": 0.0,
+   "entries": {},
+   "last_bar": "2026-10-16 12:10:00",
+   "squared_off": false
+  }
+ }
+}
