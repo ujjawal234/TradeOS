@@ -64,8 +64,9 @@
     const want = [...new Set(syms)].filter((s) => S.man.symbols[s]?.kind === "stock" && S.man.symbols[s]?.ex !== "BSE");
     const by = {}; for (const s of want) (by[s[0]] ||= []).push(s);
     const letters = Object.keys(by).filter((k) => by[k].length >= 4), single = Object.keys(by).filter((k) => by[k].length < 4).flatMap((k) => by[k]), left = [];
-    await poolRun(letters, 4, async (L) => {
-      const p = await nseCall("cm_get_equity_stocks", { limit: 500, symbolFilter: L }), got = new Set(), mine = new Set(by[L]);
+    await poolRun(letters, 4, async (L) => { // one call per first letter when the connector offers it; else one by one below
+      let p = null; try { p = await nseCall("cm_get_equity_stocks", { limit: 500, symbolFilter: L }); } catch (e) { if (nseDown) throw e; }
+      const got = new Set(), mine = new Set(by[L]);
       for (const r of p?.stocks || []) if (mine.has(r.symbol)) { putQuote(r.symbol, stockQuote(r)); got.add(r.symbol); }
       for (const s of by[L]) if (!got.has(s)) left.push(s);
     });
@@ -181,6 +182,20 @@
   }
   function closedMsg() { const m = mktMins(); return !tradingDay() ? "The market is closed today. Paper orders fill at live NSE prices on trading days, 09:15–15:30 IST." : m < 555 ? "The market opens at 09:15 IST. Paper orders fill at live NSE prices from then." : "The market closed at 15:30 IST. Paper orders fill at live NSE prices on the next trading day, 09:15–15:30."; }
 
+  // Fallback live price for one symbol: Google Finance via the Parallel Search connector (liveQuotes skips NSE when it is down).
+  // Counts only if it is from today and within 15 minutes, like an NSE quote.
+  async function googleQuote(sym) {
+    try {
+      const r = await liveQuotes({ symbols: [sym] }, () => {}), g = r?.quotes?.[sym];
+      if (!g || !g.price || g.today === false) return null;
+      if (String(g.source || "").startsWith("NSE")) return freshQuote(sym);
+      const m = String(g.as_of || "").match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AP]M)/i); if (!m) return null;
+      let h = +m[1] % 12; if (/p/i.test(m[4])) h += 12;
+      const time = `${String(h).padStart(2, "0")}:${m[2]}:${m[3] || "00"}`;
+      putQuote(sym, qOf(g.price, g.prev_close, null, null, null, todayIST(), time, "Google Finance", { chg_pct: g.change_pct }));
+      return freshQuote(sym);
+    } catch (e) { return null; }
+  }
   // One paper trade NOW at the live price: BUY or SELL `qty` of `sym` in a sleeve (an agent's, or a desk's manual sleeve).
   async function tradeNow({ sym, side, qty, sleeve, desk, reason, note }) {
     if (fundRO()) throw new Error("You have view-only access.");
@@ -189,8 +204,10 @@
     if (!S.man.symbols[sym]) throw new Error(`No data for ${sym}.`);
     if (!(qty > 0)) throw new Error("Enter a quantity.");
     if (S.man.symbols[sym].kind === "stock" && Math.floor(qty) !== qty) throw new Error("Stocks trade in whole shares.");
-    await quotesFor([sym]);
-    const q = freshQuote(sym); if (!q) throw new Error(`No live NSE price for ${sym} right now${S.man.symbols[sym].ex === "BSE" ? " (BSE-only stocks have no NSE live price)" : ""}. Try again in a minute.`);
+    const qr = await quotesFor([sym]);
+    let q = freshQuote(sym);
+    if (!q) q = await googleQuote(sym); // NSE didn't answer: Google Finance's live quote (a few minutes behind) through Parallel Search
+    if (!q) throw new Error(`No live price for ${sym} right now${qr?.error ? ` — ${qr.error}` : S.man.symbols[sym].ex === "BSE" ? " (BSE-only stocks have no NSE live price)" : ""}. Try again in a minute.`);
     return withBook(async (st) => {
       let sid = sleeve;
       if (!sid || sid === "manual") { const d = S.desks.get(desk); if (!d) throw new Error("Choose a desk."); sid = O.manualSleeve(st, d, [...S.agents.values()], todayIST()); }

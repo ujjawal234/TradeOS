@@ -318,6 +318,7 @@
   // NSE's data is for information/education; TradeOS uses it for research and paper trading only.
   const NSE_SERVER = "cm-market";
   let nseDown = null; // the error code once the connector is missing/blocked for this page load (skip it after that)
+  const nseToolDown = new Set(), NSE_CORE = new Set(["cm_get_stock_quote", "cm_get_live_indices"]); // tools refused for this page load
   const nsePayload = (r) => {
     if (r && r.payload !== undefined) return r.payload;
     const t = (r?.content || []).find((c) => c.type === "text")?.text; if (!t) return r?.structuredContent ?? null;
@@ -326,12 +327,15 @@
   async function nseCall(tool, input) {
     if (!S.mcp) throw Object.assign(new Error("no mcp"), { code: "unavailable" });
     if (nseDown) throw Object.assign(new Error(nseDown), { code: nseDown });
+    if (nseToolDown.has(tool)) throw Object.assign(new Error(`${tool} isn't available`), { code: "tool_unavailable" });
     try {
       const p = nsePayload(await S.mcp.callTool(NSE_SERVER, tool, input, { cache: false }));
       if (p && p.error) throw Object.assign(new Error(String(p.error)), { code: "nse_error" });
       return p;
     } catch (e) {
-      if (["server_not_connected", "server_not_found", "not_in_manifest", "blocked_by_policy", "not_granted", "capability_disabled", "capability_removed"].includes(e?.code)) nseDown = e.code;
+      // a connector-wide refusal turns NSE off for this page load; a tool the page didn't declare only turns off that tool
+      if (["server_not_connected", "server_not_found", "blocked_by_policy", "not_granted", "capability_disabled", "capability_removed"].includes(e?.code)) nseDown = e.code;
+      else if (e?.code === "not_in_manifest") { nseToolDown.add(tool); if (NSE_CORE.has(tool)) nseDown = e.code; }
       throw e;
     }
   }
