@@ -12,9 +12,9 @@
  "Entrackr": "error HTTPError",
  "CNBC Economy": 30,
  "CNBC World": 30,
- "filings_fetched": 1539,
- "headlines": 2181,
- "filings": 3435,
- "events": 428,
- "asof": "2026-10-16 23:40"
+ "filings_fetched": 1325,
+ "headlines": 2262,
+ "filings": 3527,
+ "events": 423,
+ "asof": "2026-10-17 16:27"
 }
