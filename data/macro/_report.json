@@ -1,5 +1,32 @@
 {
- "asof": "2026-10-17T15:29",
- "ok": 38,
- "errors": {}
+ "asof": "2026-10-18T15:54",
+ "ok": 12,
+ "errors": {
+  "IN_GDP_YOY": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=NGDPRNSAXDCINQ: http 403",
+  "IN_10Y": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=INDIRLTLT01STM: http 403",
+  "IN_CPI_YOY_OECD": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=INDCPIALLMINMEI: http 403",
+  "IN_FX_RESERVES": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=TRESEGINM052N: http 403",
+  "IN_EXPORTS_YOY": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=XTEXVA01INM667S: http 403",
+  "IN_IMPORTS_YOY": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=XTIMVA01INM667S: http 403",
+  "USDINR_REF": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DEXINUS: http 403",
+  "US_FEDFUNDS": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFF: http 403",
+  "US_2Y": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2: http 403",
+  "US_10Y_YIELD": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10: http 403",
+  "US_CURVE_10_2": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=T10Y2Y: http 403",
+  "US_REAL_10Y": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFII10: http 403",
+  "US_BREAKEVEN_10Y": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=T10YIE: http 403",
+  "US_HY_SPREAD": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2: http 403",
+  "US_IG_SPREAD": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLC0A0CM: http 403",
+  "USD_BROAD": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTWEXBGS: http 403",
+  "BRENT_SPOT": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU: http 403",
+  "US_FIN_STRESS": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=STLFSI4: http 403",
+  "US_CPI_YOY": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL: http 403",
+  "US_CORE_CPI_YOY": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPILFESL: http 403",
+  "US_UNRATE": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=UNRATE: http 403",
+  "US_PAYROLLS_CHG": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=PAYEMS: http 403",
+  "US_INDPRO_YOY": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=INDPRO: http 403",
+  "US_RETAIL_YOY": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=RSAFS: http 403",
+  "US_SENTIMENT": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=UMCSENT: http 403",
+  "US_M2_YOY": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=M2SL: http 403"
+ }
 }
