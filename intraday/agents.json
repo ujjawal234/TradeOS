@@ -347,9 +347,10 @@
    "enabled": true,
    "engine": "js",
    "source": "app",
-   "version": 2,
-   "paper_since": "2026-10-12",
+   "version": 3,
+   "paper_since": "2026-10-15",
    "symbols": [
+    "AEGISLOG",
     "CPPLUS"
    ],
    "bar_minutes": 5,
