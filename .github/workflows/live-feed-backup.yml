@@ -1,0 +1,26 @@
+name: Live prices backup (Yahoo, when NSE stops answering)
+# Publishes Yahoo 1-minute prices for the Nifty 500 and main indices to the live-quotes branch every minute of the
+# session whenever the intraday runner hasn't published fresh NSE prices (NSE's server throttles GitHub's machines).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "44 3 * * 1-5"   # 09:14 IST
+permissions:
+  contents: write
+concurrency:
+  group: live-feed-backup
+  cancel-in-progress: false
+jobs:
+  feed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 380
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q pandas numpy requests yfinance
+      - run: |
+          git config user.name "tradeos-bot"
+          git config user.email "tradeos-bot@users.noreply.github.com"
+          python scripts/live_feed_backup.py

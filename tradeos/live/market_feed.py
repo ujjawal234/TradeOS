@@ -232,11 +232,11 @@ class MarketFeed:
         if self.last_doc and self.last_doc.get("date") == now.date().isoformat():  # keep today's earlier prices for names not refreshed
             q = {**{s: Quote(s, *(v[i] or 0 for i in range(5)), 0.0, float(v[5] or 0), f"{now.date()} {v[6]}:00") for s, v in (self.last_doc.get("quotes") or {}).items() if v and v[0]}, **q}
         doc = {"asof": now.isoformat(), "nse_updated": upd, "date": now.date().isoformat(),
-               "source": "NSE live data (1-3 min behind; informational) + Yahoo Finance for indices", "fields": FIELDS,
+               "source": "Yahoo backup (NSE not answering) + Yahoo Finance for indices" if self.nse_down else "NSE live data (1-3 min behind; informational) + Yahoo Finance for indices", "fields": FIELDS,
                "quotes": {s: [x.ltp, x.open or None, x.high or None, x.low or None, x.prev_close or None, round(x.value_cr, 2) if x.value_cr else None, _hhmm(x.ts)]
                           for s, x in sorted(q.items())},
                "indices": index_quotes(yd := _yahoo_today()),
-               "nse_indices": nse_index_quotes(self.live)}
+               "nse_indices": {} if self.nse_down else nse_index_quotes(self.live)}
         self.last_doc = doc
         (self.dir / "quotes.json").write_text(json.dumps(doc, separators=(",", ":")))
         hist = self.dir / f"history_{doc['date']}.csv.gz"
