@@ -3,19 +3,7 @@
  "done": false,
  "agents": {
   "app_aintematrend1": {
-   "positions": {
-    "CIPLA": {
-     "sym": "CIPLA",
-     "qty": 248,
-     "entry": 1328.97,
-     "t_entry": "2026-10-19 13:06:00",
-     "stop": 1322.32,
-     "target": null,
-     "best": 1328.9656911621094,
-     "hi_seen": 1338.0999755859375,
-     "lo_seen": 1323.5
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "BAJAJ-AUTO",
@@ -40,15 +28,27 @@
      "reason": "stop",
      "pnl": 827.57,
      "pnl_pct": 0.312
+    },
+    {
+     "sym": "CIPLA",
+     "side": "long",
+     "qty": 248,
+     "entry": 1328.97,
+     "t_entry": "2026-10-19 13:06:00",
+     "exit": 1328.63,
+     "t_exit": "2026-10-19 13:12:00",
+     "reason": "exit rule",
+     "pnl": -280.99,
+     "pnl_pct": -0.025
     }
    ],
-   "realized": -1151.5484114056715,
+   "realized": -1333.6661857131555,
    "entries": {
     "INDIGO": 1,
     "BAJAJ-AUTO": 1,
     "CIPLA": 1
    },
-   "last_bar": "2026-10-19 13:03:00",
+   "last_bar": "2026-10-19 13:21:00",
    "squared_off": false
   },
   "app_aintorblong01": {
@@ -110,7 +110,7 @@
     "MARUTI": 1,
     "JSWSTEEL": 1
    },
-   "last_bar": "2026-10-19 13:00:00",
+   "last_bar": "2026-10-19 13:15:00",
    "squared_off": false
   },
   "app_aintorbshort1": {
@@ -146,7 +146,7 @@
     "HDFCBANK": 1,
     "BAJAJFINSV": 1
    },
-   "last_bar": "2026-10-19 13:00:00",
+   "last_bar": "2026-10-19 13:15:00",
    "squared_off": false
   },
   "app_amv26tvmw80lkt": {
@@ -177,7 +177,7 @@
    "entries": {
     "CPPLUS": 1
    },
-   "last_bar": "2026-10-19 13:00:00",
+   "last_bar": "2026-10-19 13:15:00",
    "squared_off": false
   },
   "app_amv6c0fvlb31vd": {
@@ -200,7 +200,7 @@
    "entries": {
     "CPPLUS": 1
    },
-   "last_bar": "2026-10-19 13:00:00",
+   "last_bar": "2026-10-19 13:15:00",
    "squared_off": false
   }
  }
