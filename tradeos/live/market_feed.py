@@ -255,6 +255,8 @@ class MarketFeed:
             except Exception as e:  # noqa: BLE001
                 print(f"live feed: minute bars not saved: {e}", flush=True)
         print(f"live feed: {len(doc['quotes'])} stocks, {len(doc['indices'])} + {len(doc['nse_indices'])} NSE indices at {now:%H:%M} (NSE {upd})", flush=True)
+        if self.count <= 1:
+            print(f"::notice::first full snapshot: {len(doc['quotes'])} stocks at {now:%H:%M}", flush=True)
         if self.push:
             self.publish(doc["date"])
         return doc
@@ -325,3 +327,4 @@ class MarketFeed:
         except (subprocess.SubprocessError, OSError) as e:
             err = getattr(e, "stderr", "") or ""
             print(f"live feed: push failed: {e} {str(err)[:200]}", flush=True)
+            print(f"::warning::live feed push failed: {str(err)[:300]}", flush=True)

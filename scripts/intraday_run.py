@@ -54,6 +54,17 @@ def telegram(text: str) -> None:
             print(f"telegram failed: {e}", flush=True)
 
 
+_MILES: set = set()
+
+
+def milestone(key: str, msg: str) -> None:
+    """report a run's key moments once each as a GitHub annotation (visible through the API while the job runs)"""
+    print(msg, flush=True)
+    if os.environ.get("GITHUB_ACTIONS") and key not in _MILES and len(_MILES) < 9:
+        _MILES.add(key)
+        print(f"::notice::{msg[:400]}", flush=True)
+
+
 def gh_output(key: str, val: str) -> None:
     p = os.environ.get("GITHUB_OUTPUT")
     if p:
@@ -204,7 +215,7 @@ def main() -> int:
     if not resumed:
         telegram(f"TradeOS intraday {ds}: {len(sess.agents)} paper agent(s) watching {len(watch)} stocks on NSE live data.")
     else:
-        print(f"Resuming {ds} with {sum(len(a.st.positions) for a in sess.agents)} open position(s).", flush=True)
+        milestone("resume", f"Resuming {ds} with {sum(len(a.st.positions) for a in sess.agents)} open position(s); feed base {'yes' if feed and feed.last_doc else 'no'}.")
 
     handoff = False
     reload_every, last_reload = 120.0, time.monotonic()
@@ -231,8 +242,7 @@ def main() -> int:
             if not backoff or poll_n % 5 == 0:  # while NSE is down, try it again only every 5th minute (Yahoo meanwhile)
                 seen, upd = live.quotes(watch, extra_letters=rot)
                 ok = getattr(live, "answered", 1) >= max(1, getattr(live, "asked", 1)) * 0.5
-                if not ok:
-                    print(f"{now:%H:%M:%S} NSE answered {live.answered}/{live.asked} letters: using Yahoo until it recovers", flush=True)
+                milestone("poll_ok" if ok else "poll_bad", f"{now:%H:%M:%S} first {'good' if ok else 'failed'} NSE poll: {getattr(live, 'answered', '?')}/{getattr(live, 'asked', '?')} letters")
                 backoff = 0 if ok else 60
             if feed:
                 feed.nse_down = bool(backoff)
@@ -252,7 +262,7 @@ def main() -> int:
                     ybg.start()
                 for s, q in list(ycache.items()):
                     seen.setdefault(s, q)  # NSE's own price wins whenever it has one
-                print(f"{now:%H:%M:%S} NSE short: Yahoo backup {len(yq)}/{len(missing)} agent names, {len(ycache)} market names", flush=True)
+                milestone("yahoo" if yq else "yahoo_empty", f"{now:%H:%M:%S} NSE short: Yahoo backup {len(yq)}/{len(missing)} agent names, {len(ycache)} market names")
             except Exception as e:  # noqa: BLE001 — the backup must never stop trading
                 print(f"{now:%H:%M:%S} Yahoo backup failed: {e}", flush=True)
         quotes = {s: q for s, q in seen.items() if s in wset}
@@ -284,8 +294,8 @@ def main() -> int:
             telegram(f"TradeOS intraday (paper)\n" + "\n".join(msgs))
         sess.store.frame().to_csv(tick_f, index=False)
         state_f.write_text(json.dumps(sess.state(), indent=1))
-        print(f"{now:%H:%M:%S} {len(quotes)}/{len(watch)} quotes ({len(seen)} stocks seen), data clock {sess.store.clock()}, "
-              f"open positions {sum(len(a.st.positions) for a in sess.agents)}", flush=True)
+        milestone("loop" if poll_n < 3 else "loop3", f"{now:%H:%M:%S} {len(quotes)}/{len(watch)} quotes ({len(seen)} stocks seen), data clock {sess.store.clock()}, "
+                  f"open positions {sum(len(a.st.positions) for a in sess.agents)}, feed {'busy' if feed and feed.thread and feed.thread.is_alive() else 'idle'}")
         # next poll ~10 s after NSE's next crawl (it refreshes once a minute)
         wait = 60.0
         if upd:
