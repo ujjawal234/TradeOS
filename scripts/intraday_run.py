@@ -228,10 +228,14 @@ def main() -> int:
             # throttles a client that asks for every letter every minute, and then nothing arrives at all
             rot = ROTATION[(poll_n * 6) % len(ROTATION):(poll_n * 6) % len(ROTATION) + 6]
             poll_n += 1
-            seen, upd = live.quotes(watch, extra_letters=rot)
-            backoff = 0 if getattr(live, "answered", 1) >= max(1, getattr(live, "asked", 1)) * 0.5 else min(240, max(60, backoff * 2))
-            if backoff:
-                print(f"{now:%H:%M:%S} NSE answered {live.answered}/{live.asked} letters: backing off {backoff}s", flush=True)
+            if not backoff or poll_n % 5 == 0:  # while NSE is down, try it again only every 5th minute (Yahoo meanwhile)
+                seen, upd = live.quotes(watch, extra_letters=rot)
+                ok = getattr(live, "answered", 1) >= max(1, getattr(live, "asked", 1)) * 0.5
+                if not ok:
+                    print(f"{now:%H:%M:%S} NSE answered {live.answered}/{live.asked} letters: using Yahoo until it recovers", flush=True)
+                backoff = 0 if ok else 60
+            if feed:
+                feed.nse_down = bool(backoff)
         except Exception as e:  # never let one bad poll end the day
             print(f"{now:%H:%M:%S} poll failed: {e}", flush=True)
         wset = set(watch)
@@ -290,7 +294,7 @@ def main() -> int:
                 wait = min(75.0, max(20.0, (nxt - now_ist()).total_seconds()))
             except (ValueError, TypeError):
                 pass
-        time.sleep(wait + backoff)
+        time.sleep(wait)
 
     if feed:
         if feed.thread:

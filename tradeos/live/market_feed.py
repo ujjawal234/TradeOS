@@ -182,6 +182,7 @@ class MarketFeed:
     def __init__(self, root: Path, every_min: float = 5, push: bool = True, bars=None, backup_syms: list | None = None):
         self.root, self.every, self.push = root.resolve(), every_min * 60, push
         self.backup_syms = list(backup_syms or [])  # Yahoo fills these when NSE answers for too few stocks
+        self.nse_down = False  # set by the runner while NSE isn't answering
         self.bars = bars  # minute_bars.MinuteBars kept by the runner (published with each snapshot as bars_1m.json.gz)
         self.dir = self.root / "live"
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -214,11 +215,12 @@ class MarketFeed:
 
     def snapshot(self) -> dict | None:
         now = datetime.now(IST).replace(microsecond=0)
-        try:
-            q, upd = self.live.quotes(None, budget=90)
-        except Exception as e:  # noqa: BLE001
-            print(f"live feed: NSE snapshot failed: {e}", flush=True)
-            q, upd = {}, None
+        q, upd = {}, None
+        if not self.nse_down:  # while NSE isn't answering the runner, don't spend minutes waiting on it here
+            try:
+                q, upd = self.live.quotes(None, budget=90)
+            except Exception as e:  # noqa: BLE001
+                print(f"live feed: NSE snapshot failed: {e}", flush=True)
         if len(q) < 1000 and self.backup_syms:  # NSE is throttling us: Yahoo for the main stocks, NSE's prices win where present
             prev = {s: v[4] for s, v in ((self.last_doc or {}).get("quotes") or {}).items() if v and len(v) > 4}
             yq = yahoo_quotes([s for s in self.backup_syms if s not in q], prev, timeout=150)
@@ -285,7 +287,7 @@ class MarketFeed:
     def restore(self, date: str) -> None:
         """a resumed run (6-hour hand-off) picks up today's history from the branch"""
         try:
-            subprocess.run(["git", "-C", str(self.root), "fetch", "-q", "--depth", "1", "origin", BRANCH], check=True, capture_output=True, timeout=60)
+            subprocess.run(["git", "-C", str(self.root), "fetch", "-q", "--depth", "1", "origin", f"refs/heads/{BRANCH}"], check=True, capture_output=True, timeout=60)
             data = subprocess.run(["git", "-C", str(self.root), "show", f"FETCH_HEAD:history_{date}.csv.gz"], check=True, capture_output=True, timeout=60).stdout
             try:  # the last published prices, so minute updates can go out before the first new full snapshot
                 qd = json.loads(subprocess.run(["git", "-C", str(self.root), "show", "FETCH_HEAD:quotes.json"], check=True, capture_output=True, timeout=60).stdout)
