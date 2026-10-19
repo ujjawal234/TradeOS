@@ -1,0 +1,176 @@
+{
+ "date": "2026-10-19",
+ "done": false,
+ "agents": {
+  "app_aintematrend1": {
+   "positions": {
+    "INDIGO": {
+     "sym": "INDIGO",
+     "qty": 70,
+     "entry": 4700.14,
+     "t_entry": "2026-10-19 10:21:00",
+     "stop": 4676.64,
+     "target": null,
+     "best": 4701.0,
+     "hi_seen": 4719.8,
+     "lo_seen": 4663.4
+    },
+    "BAJAJ-AUTO": {
+     "sym": "BAJAJ-AUTO",
+     "qty": 31,
+     "entry": 10462.09,
+     "t_entry": "2026-10-19 10:24:00",
+     "stop": 10409.78,
+     "target": null,
+     "best": 10462.092,
+     "hi_seen": 10499.0,
+     "lo_seen": 10385.0
+    }
+   },
+   "trades": [],
+   "realized": -196.00039224,
+   "entries": {
+    "INDIGO": 1,
+    "BAJAJ-AUTO": 1
+   },
+   "last_bar": "2026-10-19 10:45:00",
+   "squared_off": false
+  },
+  "app_aintorblong01": {
+   "positions": {
+    "RELIANCE": {
+     "sym": "RELIANCE",
+     "qty": 203,
+     "entry": 1228.25,
+     "t_entry": "2026-10-19 09:50:00",
+     "stop": 1219.65,
+     "target": 1245.44,
+     "best": 1228.2456,
+     "hi_seen": 1228.2,
+     "lo_seen": 1207.1
+    },
+    "MARUTI": {
+     "sym": "MARUTI",
+     "qty": 21,
+     "entry": 11659.33,
+     "t_entry": "2026-10-19 10:05:00",
+     "stop": 11577.72,
+     "target": 11822.56,
+     "best": 11659.3314,
+     "hi_seen": 11702.0,
+     "lo_seen": 11450.0
+    }
+   },
+   "trades": [
+    {
+     "sym": "SBIN",
+     "side": "long",
+     "qty": 254,
+     "entry": 980.55,
+     "t_entry": "2026-10-19 09:50:00",
+     "exit": 975.2,
+     "t_exit": "2026-10-19 10:05:00",
+     "reason": "exit rule",
+     "pnl": -1506.68,
+     "pnl_pct": -0.545
+    }
+   ],
+   "realized": -1654.9324902979843,
+   "entries": {
+    "RELIANCE": 1,
+    "SBIN": 1,
+    "MARUTI": 1
+   },
+   "last_bar": "2026-10-19 10:40:00",
+   "squared_off": false
+  },
+  "app_aintorbshort1": {
+   "positions": {
+    "HDFCBANK": {
+     "sym": "HDFCBANK",
+     "qty": -350,
+     "entry": 713.16,
+     "t_entry": "2026-10-19 10:00:00",
+     "stop": 718.15,
+     "target": 703.17,
+     "best": 713.15734,
+     "hi_seen": 733.4,
+     "lo_seen": 712.0
+    },
+    "BAJAJFINSV": {
+     "sym": "BAJAJFINSV",
+     "qty": -146,
+     "entry": 1711.66,
+     "t_entry": "2026-10-19 10:00:00",
+     "stop": 1723.64,
+     "target": 1687.69,
+     "best": 1711.6576,
+     "hi_seen": 1734.2,
+     "lo_seen": 1709.1
+    }
+   },
+   "trades": [],
+   "realized": -149.85212358,
+   "entries": {
+    "HDFCBANK": 1,
+    "BAJAJFINSV": 1
+   },
+   "last_bar": "2026-10-19 10:40:00",
+   "squared_off": false
+  },
+  "app_amv26tvmw80lkt": {
+   "positions": {},
+   "trades": [],
+   "realized": 0.0,
+   "entries": {},
+   "last_bar": "2026-10-19 09:19:00",
+   "squared_off": true
+  },
+  "app_amv6bzrax3dpdn": {
+   "positions": {},
+   "trades": [
+    {
+     "sym": "CPPLUS",
+     "side": "long",
+     "qty": 61,
+     "entry": 4092.52,
+     "t_entry": "2026-10-19 09:35:00",
+     "exit": 4065.49,
+     "t_exit": "2026-10-19 10:00:00",
+     "reason": "exit rule",
+     "pnl": -1798.32,
+     "pnl_pct": -0.661
+    }
+   ],
+   "realized": -1798.3203529639816,
+   "entries": {
+    "CPPLUS": 1
+   },
+   "last_bar": "2026-10-19 10:40:00",
+   "squared_off": false
+  },
+  "app_amv6c0fvlb31vd": {
+   "positions": {},
+   "trades": [
+    {
+     "sym": "CPPLUS",
+     "side": "long",
+     "qty": 61,
+     "entry": 4092.52,
+     "t_entry": "2026-10-19 09:35:00",
+     "exit": 4065.49,
+     "t_exit": "2026-10-19 10:00:00",
+     "reason": "exit rule",
+     "pnl": -1798.32,
+     "pnl_pct": -0.661
+    }
+   ],
+   "realized": -1798.3203529639816,
+   "entries": {
+    "CPPLUS": 1
+   },
+   "last_bar": "2026-10-19 10:40:00",
+   "squared_off": false
+  }
+ }
+}
