@@ -1,0 +1,47 @@
+name: Live price sources probe
+# One-off check of where live prices can come from on GitHub's servers right now (NSE's MCP server, Yahoo).
+# Results are written as job annotations (readable through the API without the logs).
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q pandas numpy requests yfinance
+      - name: Probe
+        run: |
+          python - <<'PY'
+          import sys, time, traceback
+          sys.path.insert(0, ".")
+          def note(m): print(f"::notice::{m}"[:900], flush=True)
+          from tradeos.live.nse_live import NseLive
+          t = time.time()
+          try:
+              lv = NseLive(); r = lv.call("cm_get_stock_quote", {"symbol": "RELIANCE"}); s = r.get("stock") or {}
+              note(f"NSE quote: ok in {time.time()-t:.1f}s ltp={s.get('lastTradedPrice')} at {s.get('latestTimestamp')}")
+          except Exception as e: note(f"NSE quote: FAILED in {time.time()-t:.1f}s: {e!r}")
+          t = time.time()
+          try:
+              q, upd = NseLive().quotes(["RELIANCE", "TCS", "INFY"], extra_letters=list("ABC"))
+              note(f"NSE letters: {len(q)} quotes in {time.time()-t:.1f}s, updated {upd}")
+          except Exception as e: note(f"NSE letters: FAILED in {time.time()-t:.1f}s: {e!r}")
+          t = time.time()
+          try:
+              from tradeos.live.market_feed import yahoo_quotes
+              y = yahoo_quotes(["RELIANCE", "TCS", "INFY", "HDFCBANK"], timeout=60)
+              note(f"Yahoo: {len(y)} quotes in {time.time()-t:.1f}s: " + "; ".join(f"{k} {v.ltp} @ {v.ts}" for k, v in y.items()))
+          except Exception as e: note(f"Yahoo: FAILED in {time.time()-t:.1f}s: {e!r} {traceback.format_exc()[-300:]}")
+          t = time.time()
+          try:
+              import yfinance as yf
+              df = yf.download(["RELIANCE.NS"], period="1d", interval="1m", progress=False)
+              note(f"Yahoo raw: rows={len(df)} last={df.index[-1] if len(df) else None} in {time.time()-t:.1f}s")
+          except Exception as e: note(f"Yahoo raw: FAILED: {e!r}")
+          PY
