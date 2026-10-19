@@ -270,9 +270,9 @@
   },
   "SHANGHAI": {
    "yahoo": "000001.SS",
-   "rows": 126,
+   "rows": 125,
    "first": "2026-04-13",
-   "last": "2026-10-19"
+   "last": "2026-10-16"
   },
   "KOSPI": {
    "yahoo": "^KS11",
@@ -282,9 +282,9 @@
   },
   "TAIWAN": {
    "yahoo": "^TWII",
-   "rows": 130,
+   "rows": 129,
    "first": "2026-04-13",
-   "last": "2026-10-19"
+   "last": "2026-10-16"
   },
   "FTSE100": {
    "yahoo": "^FTSE",
@@ -456,5 +456,5 @@
   "BITCOIN": "no data",
   "ETHEREUM": "no data"
  },
- "fetched_at": "2026-10-19T15:16:55Z"
+ "fetched_at": "2026-10-19T17:08:35Z"
 }
