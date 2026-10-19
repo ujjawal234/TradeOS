@@ -68,6 +68,11 @@ function liveQuote(s) {
   const arr = Q.quotes?.[s] || Q.indices?.[s] || (man.symbols[s]?.kind === "index" ? E.nseIndexRow(s, nseIdx, man.symbols) : null);
   if (!arr || !(arr[0] > 0)) return null;
   const [ltp, open, high, low, prev_close, value_cr, ts] = arr;
+  // a symbol's own price must be fresh too (the file can be fresh while some names in it are not): no fill on an old price
+  if (mode === "live" && /^\d{2}:\d{2}/.test(String(ts || ""))) {
+    const [h, m] = String(ts).split(":").map(Number), nowM = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
+    if (nowM - (h * 60 + m) > maxAge) return null;
+  }
   return { ltp, open, high, low, prev_close, value_cr, ts };
 }
 const lastCloseCache = {};

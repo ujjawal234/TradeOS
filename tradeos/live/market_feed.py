@@ -30,7 +30,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from .nse_live import NseLive
+from .nse_live import NseLive, Quote
 
 IST = ZoneInfo("Asia/Kolkata")
 INDEX_TICKERS = {"NIFTY": "^NSEI", "BANKNIFTY": "^NSEBANK", "FINNIFTY": "NIFTY_FIN_SERVICE.NS", "SENSEX": "^BSESN", "INDIAVIX": "^INDIAVIX"}
@@ -41,6 +41,58 @@ BRANCH = "live-quotes"
 def _hhmm(ts: str) -> str:
     ts = str(ts or "")
     return ts[11:16] if len(ts) >= 16 else ts[:5]
+
+
+def yahoo_quotes(symbols, prev: dict | None = None, timeout: float = 60) -> dict:
+    """Backup prices when NSE's server stops answering (it throttles a busy client for the rest of the day):
+    today's 1-minute bars from Yahoo Finance (SYM.NS); the last bar is the price and its time is the quote time,
+    so a stale Yahoo price is never mistaken for a fresh one. {SYM: Quote}; empty if Yahoo is unavailable."""
+    try:
+        import pandas as pd
+        import yfinance as yf
+    except ImportError:
+        return {}
+    syms = [s for s in dict.fromkeys(symbols or []) if s and s[0].isalnum()][:600]
+    if not syms:
+        return {}
+    box: dict = {}
+
+    def _dl() -> None:
+        try:
+            box["df"] = yf.download([s + ".NS" for s in syms], period="1d", interval="1m", group_by="ticker", auto_adjust=False,
+                                    prepost=False, threads=True, progress=False, timeout=20)
+        except Exception:  # noqa: BLE001
+            box["df"] = None
+
+    th = threading.Thread(target=_dl, daemon=True)
+    th.start()
+    th.join(timeout=timeout)
+    df = box.get("df")
+    if df is None or getattr(df, "empty", True):
+        return {}
+    out, today = {}, datetime.now(IST).date()
+    multi = isinstance(df.columns, pd.MultiIndex)
+    lvl0 = set(df.columns.get_level_values(0)) if multi else set()
+    for s in syms:
+        tk = s + ".NS"
+        try:
+            sub = df[tk] if multi and tk in lvl0 else (df if not multi and len(syms) == 1 else None)
+            if sub is None:
+                continue
+            sub = sub.dropna(subset=["Close"])
+            if sub.empty:
+                continue
+            idx = sub.index if sub.index.tz is not None else sub.index.tz_localize("UTC")
+            sub = sub.set_axis(idx.tz_convert(IST))
+            sub = sub[sub.index.date == today]
+            if sub.empty:
+                continue
+            pc = (prev or {}).get(s) or 0
+            out[s] = Quote(s, float(sub["Close"].iloc[-1]), float(sub["Open"].iloc[0]), float(sub["High"].max()), float(sub["Low"].min()),
+                           float(pc), float(sub["Volume"].fillna(0).sum()), 0.0, sub.index[-1].strftime("%Y-%m-%d %H:%M:%S"))
+        except Exception:  # noqa: BLE001 — one bad ticker never spoils the rest
+            continue
+    return out
 
 
 def _yahoo_today() -> dict:

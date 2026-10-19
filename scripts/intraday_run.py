@@ -19,6 +19,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -31,7 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tradeos.live.intraday import COLS, Session, tm  # noqa: E402
 from tradeos.live.nse_live import NseLive, Quote  # noqa: E402
-from tradeos.live.market_feed import MarketFeed  # noqa: E402
+from tradeos.live.market_feed import MarketFeed, yahoo_quotes  # noqa: E402
 from tradeos.live.minute_bars import MinuteBars  # noqa: E402
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -207,6 +208,11 @@ def main() -> int:
     handoff = False
     reload_every, last_reload = 120.0, time.monotonic()
     ROTATION, poll_n, backoff = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", 0, 0
+    # Yahoo backup while NSE isn't answering: the agents' names every minute, the Nifty 500 every 3 minutes (background)
+    n500 = [s for s, m in universe.items() if m.get("nifty500")]
+    ycache: dict = {}
+    ybg: threading.Thread | None = None
+    ybg_at = 0.0
     while True:
         now = now_ist()
         if now >= end_t:
@@ -228,6 +234,22 @@ def main() -> int:
         except Exception as e:  # never let one bad poll end the day
             print(f"{now:%H:%M:%S} poll failed: {e}", flush=True)
         wset = set(watch)
+        if backoff or (wset and sum(1 for s in wset if s in seen) < 0.5 * len(wset)):
+            try:
+                prev = {s: v[4] for s, v in ((feed.last_doc or {}).get("quotes") or {}).items() if v and len(v) > 4} if feed else {}
+                missing = [s for s in watch if s not in seen]
+                yq = yahoo_quotes(missing, prev, timeout=35) if missing else {}
+                for s, q in yq.items():
+                    seen.setdefault(s, q)
+                if feed and not (ybg and ybg.is_alive()) and time.monotonic() - ybg_at >= 180:
+                    ybg_at = time.monotonic()
+                    ybg = threading.Thread(target=lambda p=prev: ycache.update(yahoo_quotes(n500, p, timeout=150)), daemon=True)
+                    ybg.start()
+                for s, q in list(ycache.items()):
+                    seen.setdefault(s, q)  # NSE's own price wins whenever it has one
+                print(f"{now:%H:%M:%S} NSE short: Yahoo backup {len(yq)}/{len(missing)} agent names, {len(ycache)} market names", flush=True)
+            except Exception as e:  # noqa: BLE001 — the backup must never stop trading
+                print(f"{now:%H:%M:%S} Yahoo backup failed: {e}", flush=True)
         quotes = {s: q for s, q in seen.items() if s in wset}
         try:
             bars.add(seen)
