@@ -195,7 +195,8 @@ def main() -> int:
     # near-live prices for every NSE stock and the indices, for the app and the CIO (live-quotes branch)
     # today's 1-minute bars for every NSE stock the polls see (published with each snapshot as bars_1m.json.gz)
     bars = MinuteBars(ds)
-    feed = MarketFeed(ROOT, args.feed_min, push=bool(os.environ.get("GITHUB_ACTIONS")), bars=bars) if args.feed_min > 0 else None
+    feed = MarketFeed(ROOT, args.feed_min, push=bool(os.environ.get("GITHUB_ACTIONS")), bars=bars,
+                      backup_syms=[s for s, m in universe.items() if m.get("nifty500")]) if args.feed_min > 0 else None
     if feed and resumed:
         feed.restore(ds)
     while now_ist() < day + pd.Timedelta(hours=9, minutes=14):

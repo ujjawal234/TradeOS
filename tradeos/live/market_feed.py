@@ -179,8 +179,9 @@ def nse_index_quotes(live: NseLive) -> dict:
 
 
 class MarketFeed:
-    def __init__(self, root: Path, every_min: float = 5, push: bool = True, bars=None):
+    def __init__(self, root: Path, every_min: float = 5, push: bool = True, bars=None, backup_syms: list | None = None):
         self.root, self.every, self.push = root.resolve(), every_min * 60, push
+        self.backup_syms = list(backup_syms or [])  # Yahoo fills these when NSE answers for too few stocks
         self.bars = bars  # minute_bars.MinuteBars kept by the runner (published with each snapshot as bars_1m.json.gz)
         self.dir = self.root / "live"
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -213,10 +214,21 @@ class MarketFeed:
 
     def snapshot(self) -> dict | None:
         now = datetime.now(IST).replace(microsecond=0)
-        q, upd = self.live.quotes(None, budget=90)
+        try:
+            q, upd = self.live.quotes(None, budget=90)
+        except Exception as e:  # noqa: BLE001
+            print(f"live feed: NSE snapshot failed: {e}", flush=True)
+            q, upd = {}, None
+        if len(q) < 1000 and self.backup_syms:  # NSE is throttling us: Yahoo for the main stocks, NSE's prices win where present
+            prev = {s: v[4] for s, v in ((self.last_doc or {}).get("quotes") or {}).items() if v and len(v) > 4}
+            yq = yahoo_quotes([s for s in self.backup_syms if s not in q], prev, timeout=150)
+            print(f"live feed: NSE gave {len(q)} stocks; Yahoo backup {len(yq)}", flush=True)
+            q = {**yq, **q}
         if not q:
             print("live feed: no quotes this time", flush=True)
             return None
+        if self.last_doc and self.last_doc.get("date") == now.date().isoformat():  # keep today's earlier prices for names not refreshed
+            q = {**{s: Quote(s, *(v[i] or 0 for i in range(5)), 0.0, float(v[5] or 0), f"{now.date()} {v[6]}:00") for s, v in (self.last_doc.get("quotes") or {}).items() if v and v[0]}, **q}
         doc = {"asof": now.isoformat(), "nse_updated": upd, "date": now.date().isoformat(),
                "source": "NSE live data (1-3 min behind; informational) + Yahoo Finance for indices", "fields": FIELDS,
                "quotes": {s: [x.ltp, x.open or None, x.high or None, x.low or None, x.prev_close or None, round(x.value_cr, 2) if x.value_cr else None, _hhmm(x.ts)]
@@ -275,6 +287,13 @@ class MarketFeed:
         try:
             subprocess.run(["git", "-C", str(self.root), "fetch", "-q", "--depth", "1", "origin", BRANCH], check=True, capture_output=True, timeout=60)
             data = subprocess.run(["git", "-C", str(self.root), "show", f"FETCH_HEAD:history_{date}.csv.gz"], check=True, capture_output=True, timeout=60).stdout
+            try:  # the last published prices, so minute updates can go out before the first new full snapshot
+                qd = json.loads(subprocess.run(["git", "-C", str(self.root), "show", "FETCH_HEAD:quotes.json"], check=True, capture_output=True, timeout=60).stdout)
+                if qd.get("date") == date:
+                    self.last_doc = qd
+                    print(f"live feed: resumed the last prices ({len(qd.get('quotes') or {})} stocks, {qd.get('asof')})", flush=True)
+            except (subprocess.SubprocessError, OSError, ValueError):
+                pass
             if data:
                 (self.dir / f"history_{date}.csv.gz").write_bytes(data)
                 print(f"live feed: resumed today's history ({len(data) / 1e6:.1f} MB)", flush=True)
