@@ -4,7 +4,7 @@ name: Live price sources probe
 on:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -44,4 +44,23 @@ jobs:
               df = yf.download(["RELIANCE.NS"], period="1d", interval="1m", progress=False)
               note(f"Yahoo raw: rows={len(df)} last={df.index[-1] if len(df) else None} in {time.time()-t:.1f}s")
           except Exception as e: note(f"Yahoo raw: FAILED: {e!r}")
+          # the runner's own path: resume the last prices, a minute update from Yahoo, push to the live-quotes branch
+          try:
+              import json, subprocess
+              from datetime import datetime
+              from pathlib import Path
+              from tradeos.live.market_feed import MarketFeed, IST
+              subprocess.run(["git", "config", "user.name", "tradeos-bot"]); subprocess.run(["git", "config", "user.email", "tradeos-bot@users.noreply.github.com"])
+              u = json.loads(Path("data/universe.json").read_text())["stocks"]; n500 = [s for s, m in u.items() if m.get("nifty500")]
+              f = MarketFeed(Path("."), 15, push=True, bars=None, backup_syms=n500)
+              d = datetime.now(IST).date().isoformat(); f.restore(d)
+              note(f"restore: last_doc={'yes' if f.last_doc else 'NO'} {len((f.last_doc or {}).get('quotes') or {})} stocks asof {(f.last_doc or {}).get('asof')}")
+              t = time.time(); seen = yahoo_quotes(n500, timeout=150); note(f"Yahoo Nifty 500: {len(seen)} in {time.time()-t:.1f}s")
+              if not f.last_doc:
+                  f.last_doc = {"date": d, "asof": datetime.now(IST).isoformat(), "quotes": {}, "indices": {}, "nse_indices": {}}
+              ok = f.quick(seen); f.qthread and f.qthread.join(120)
+              r = subprocess.run(["git", "ls-remote", "origin", "refs/heads/live-quotes"], capture_output=True, text=True)
+              log = subprocess.run(["git", "log", "-1", "--format=%cI %s", "FETCH_HEAD"], capture_output=True, text=True)
+              note(f"quick={ok}; remote live-quotes now {r.stdout.strip()[:60]}")
+          except Exception as e: note(f"runner path FAILED: {e!r} {traceback.format_exc()[-400:]}")
           PY
