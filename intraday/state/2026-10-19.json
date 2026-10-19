@@ -48,23 +48,11 @@
     "BAJAJ-AUTO": 1,
     "CIPLA": 1
    },
-   "last_bar": "2026-10-19 13:21:00",
+   "last_bar": "2026-10-19 13:33:00",
    "squared_off": false
   },
   "app_aintorblong01": {
-   "positions": {
-    "JSWSTEEL": {
-     "sym": "JSWSTEEL",
-     "qty": 200,
-     "entry": 1246.15,
-     "t_entry": "2026-10-19 13:05:00",
-     "stop": 1237.43,
-     "target": 1263.6,
-     "best": 1246.1492044189454,
-     "hi_seen": 1247.0999755859375,
-     "lo_seen": 1211.800048828125
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "SBIN",
@@ -101,16 +89,28 @@
      "reason": "stop",
      "pnl": -1908.82,
      "pnl_pct": -0.72
+    },
+    {
+     "sym": "JSWSTEEL",
+     "side": "long",
+     "qty": 200,
+     "entry": 1246.15,
+     "t_entry": "2026-10-19 13:05:00",
+     "exit": 1237.18,
+     "t_exit": "2026-10-19 13:29:00",
+     "reason": "stop",
+     "pnl": -1942.5,
+     "pnl_pct": -0.72
     }
    ],
-   "realized": -5434.64253429887,
+   "realized": -7302.3706851388715,
    "entries": {
     "RELIANCE": 1,
     "SBIN": 1,
     "MARUTI": 1,
     "JSWSTEEL": 1
    },
-   "last_bar": "2026-10-19 13:15:00",
+   "last_bar": "2026-10-19 13:30:00",
    "squared_off": false
   },
   "app_aintorbshort1": {
@@ -146,7 +146,7 @@
     "HDFCBANK": 1,
     "BAJAJFINSV": 1
    },
-   "last_bar": "2026-10-19 13:15:00",
+   "last_bar": "2026-10-19 13:30:00",
    "squared_off": false
   },
   "app_amv26tvmw80lkt": {
@@ -177,7 +177,7 @@
    "entries": {
     "CPPLUS": 1
    },
-   "last_bar": "2026-10-19 13:15:00",
+   "last_bar": "2026-10-19 13:30:00",
    "squared_off": false
   },
   "app_amv6c0fvlb31vd": {
@@ -200,7 +200,7 @@
    "entries": {
     "CPPLUS": 1
    },
-   "last_bar": "2026-10-19 13:15:00",
+   "last_bar": "2026-10-19 13:30:00",
    "squared_off": false
   }
  }
