@@ -1,6 +1,6 @@
 {
  "date": "2026-10-19",
- "done": false,
+ "done": true,
  "agents": {
   "app_aintematrend1": {
    "positions": {},
@@ -40,16 +40,68 @@
      "reason": "exit rule",
      "pnl": -280.99,
      "pnl_pct": -0.025
+    },
+    {
+     "sym": "DRREDDY",
+     "side": "long",
+     "qty": 265,
+     "entry": 1241.35,
+     "t_entry": "2026-10-19 13:54:00",
+     "exit": 1236.29,
+     "t_exit": "2026-10-19 14:18:00",
+     "reason": "stop",
+     "pnl": -1537.16,
+     "pnl_pct": -0.407
+    },
+    {
+     "sym": "KOTAKBANK",
+     "side": "long",
+     "qty": 746,
+     "entry": 442.19,
+     "t_entry": "2026-10-19 14:15:00",
+     "exit": 439.95,
+     "t_exit": "2026-10-19 14:34:26",
+     "reason": "stop",
+     "pnl": -1866.98,
+     "pnl_pct": -0.506
+    },
+    {
+     "sym": "TCS",
+     "side": "long",
+     "qty": 133,
+     "entry": 2465.89,
+     "t_entry": "2026-10-19 14:24:00",
+     "exit": 2453.07,
+     "t_exit": "2026-10-19 14:34:26",
+     "reason": "stop",
+     "pnl": -1901.42,
+     "pnl_pct": -0.52
+    },
+    {
+     "sym": "ASIANPAINT",
+     "side": "long",
+     "qty": 141,
+     "entry": 2327.77,
+     "t_entry": "2026-10-19 14:03:00",
+     "exit": 2322.54,
+     "t_exit": "2026-10-19 14:42:00",
+     "reason": "exit rule",
+     "pnl": -934.79,
+     "pnl_pct": -0.225
     }
    ],
-   "realized": -1333.6661857131555,
+   "realized": -7574.009868877365,
    "entries": {
     "INDIGO": 1,
     "BAJAJ-AUTO": 1,
-    "CIPLA": 1
+    "CIPLA": 1,
+    "DRREDDY": 1,
+    "ASIANPAINT": 1,
+    "KOTAKBANK": 1,
+    "TCS": 1
    },
-   "last_bar": "2026-10-19 13:33:00",
-   "squared_off": false
+   "last_bar": "2026-10-19 15:12:00",
+   "squared_off": true
   },
   "app_aintorblong01": {
    "positions": {},
@@ -110,8 +162,8 @@
     "MARUTI": 1,
     "JSWSTEEL": 1
    },
-   "last_bar": "2026-10-19 13:30:00",
-   "squared_off": false
+   "last_bar": "2026-10-19 15:10:00",
+   "squared_off": true
   },
   "app_aintorbshort1": {
    "positions": {},
@@ -146,8 +198,8 @@
     "HDFCBANK": 1,
     "BAJAJFINSV": 1
    },
-   "last_bar": "2026-10-19 13:30:00",
-   "squared_off": false
+   "last_bar": "2026-10-19 15:10:00",
+   "squared_off": true
   },
   "app_amv26tvmw80lkt": {
    "positions": {},
@@ -177,8 +229,8 @@
    "entries": {
     "CPPLUS": 1
    },
-   "last_bar": "2026-10-19 13:30:00",
-   "squared_off": false
+   "last_bar": "2026-10-19 15:25:00",
+   "squared_off": true
   },
   "app_amv6c0fvlb31vd": {
    "positions": {},
@@ -200,8 +252,8 @@
    "entries": {
     "CPPLUS": 1
    },
-   "last_bar": "2026-10-19 13:30:00",
-   "squared_off": false
+   "last_bar": "2026-10-19 15:25:00",
+   "squared_off": true
   }
  }
 }

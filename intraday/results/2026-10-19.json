@@ -1,0 +1,250 @@
+{
+ "date": "2026-10-19",
+ "agents": [
+  {
+   "id": "app_aintematrend1",
+   "name": "EMA 9/21 trend above VWAP (3-min)",
+   "trades": 7,
+   "wins": 1,
+   "open": 0,
+   "pnl": -7574.01,
+   "return_pct": -0.757,
+   "trade_list": [
+    {
+     "sym": "BAJAJ-AUTO",
+     "side": "long",
+     "qty": 31,
+     "entry": 10462.09,
+     "t_entry": "2026-10-19 10:24:00",
+     "exit": 10407.7,
+     "t_exit": "2026-10-19 13:04:00",
+     "reason": "stop",
+     "pnl": -1880.24,
+     "pnl_pct": -0.52
+    },
+    {
+     "sym": "INDIGO",
+     "side": "long",
+     "qty": 70,
+     "entry": 4700.14,
+     "t_entry": "2026-10-19 10:21:00",
+     "exit": 4714.79,
+     "t_exit": "2026-10-19 13:07:00",
+     "reason": "stop",
+     "pnl": 827.57,
+     "pnl_pct": 0.312
+    },
+    {
+     "sym": "CIPLA",
+     "side": "long",
+     "qty": 248,
+     "entry": 1328.97,
+     "t_entry": "2026-10-19 13:06:00",
+     "exit": 1328.63,
+     "t_exit": "2026-10-19 13:12:00",
+     "reason": "exit rule",
+     "pnl": -280.99,
+     "pnl_pct": -0.025
+    },
+    {
+     "sym": "DRREDDY",
+     "side": "long",
+     "qty": 265,
+     "entry": 1241.35,
+     "t_entry": "2026-10-19 13:54:00",
+     "exit": 1236.29,
+     "t_exit": "2026-10-19 14:18:00",
+     "reason": "stop",
+     "pnl": -1537.16,
+     "pnl_pct": -0.407
+    },
+    {
+     "sym": "KOTAKBANK",
+     "side": "long",
+     "qty": 746,
+     "entry": 442.19,
+     "t_entry": "2026-10-19 14:15:00",
+     "exit": 439.95,
+     "t_exit": "2026-10-19 14:34:26",
+     "reason": "stop",
+     "pnl": -1866.98,
+     "pnl_pct": -0.506
+    },
+    {
+     "sym": "TCS",
+     "side": "long",
+     "qty": 133,
+     "entry": 2465.89,
+     "t_entry": "2026-10-19 14:24:00",
+     "exit": 2453.07,
+     "t_exit": "2026-10-19 14:34:26",
+     "reason": "stop",
+     "pnl": -1901.42,
+     "pnl_pct": -0.52
+    },
+    {
+     "sym": "ASIANPAINT",
+     "side": "long",
+     "qty": 141,
+     "entry": 2327.77,
+     "t_entry": "2026-10-19 14:03:00",
+     "exit": 2322.54,
+     "t_exit": "2026-10-19 14:42:00",
+     "reason": "exit rule",
+     "pnl": -934.79,
+     "pnl_pct": -0.225
+    }
+   ]
+  },
+  {
+   "id": "app_aintorblong01",
+   "name": "Opening-range breakout long (5-min)",
+   "trades": 4,
+   "wins": 0,
+   "open": 0,
+   "pnl": -7302.37,
+   "return_pct": -0.73,
+   "trade_list": [
+    {
+     "sym": "SBIN",
+     "side": "long",
+     "qty": 254,
+     "entry": 980.55,
+     "t_entry": "2026-10-19 09:50:00",
+     "exit": 975.2,
+     "t_exit": "2026-10-19 10:05:00",
+     "reason": "exit rule",
+     "pnl": -1506.68,
+     "pnl_pct": -0.545
+    },
+    {
+     "sym": "RELIANCE",
+     "side": "long",
+     "qty": 203,
+     "entry": 1228.25,
+     "t_entry": "2026-10-19 09:50:00",
+     "exit": 1219.41,
+     "t_exit": "2026-10-19 13:04:00",
+     "reason": "stop",
+     "pnl": -1944.38,
+     "pnl_pct": -0.72
+    },
+    {
+     "sym": "MARUTI",
+     "side": "long",
+     "qty": 21,
+     "entry": 11659.33,
+     "t_entry": "2026-10-19 10:05:00",
+     "exit": 11575.4,
+     "t_exit": "2026-10-19 13:04:00",
+     "reason": "stop",
+     "pnl": -1908.82,
+     "pnl_pct": -0.72
+    },
+    {
+     "sym": "JSWSTEEL",
+     "side": "long",
+     "qty": 200,
+     "entry": 1246.15,
+     "t_entry": "2026-10-19 13:05:00",
+     "exit": 1237.18,
+     "t_exit": "2026-10-19 13:29:00",
+     "reason": "stop",
+     "pnl": -1942.5,
+     "pnl_pct": -0.72
+    }
+   ]
+  },
+  {
+   "id": "app_aintorbshort1",
+   "name": "Opening-range breakdown short (5-min)",
+   "trades": 2,
+   "wins": 2,
+   "open": 0,
+   "pnl": 1636.34,
+   "return_pct": 0.164,
+   "trade_list": [
+    {
+     "sym": "BAJAJFINSV",
+     "side": "short",
+     "qty": 146,
+     "entry": 1711.66,
+     "t_entry": "2026-10-19 10:00:00",
+     "exit": 1703.24,
+     "t_exit": "2026-10-19 13:00:00",
+     "reason": "exit rule",
+     "pnl": 1079.66,
+     "pnl_pct": 0.492
+    },
+    {
+     "sym": "HDFCBANK",
+     "side": "short",
+     "qty": 350,
+     "entry": 713.16,
+     "t_entry": "2026-10-19 10:00:00",
+     "exit": 711.14,
+     "t_exit": "2026-10-19 13:05:00",
+     "reason": "exit rule",
+     "pnl": 556.68,
+     "pnl_pct": 0.283
+    }
+   ]
+  },
+  {
+   "id": "app_amv26tvmw80lkt",
+   "name": "First-Bar Strength Long, 1-min, exit 9:20 (Nifty 50)",
+   "trades": 0,
+   "wins": 0,
+   "open": 0,
+   "pnl": 0.0,
+   "return_pct": 0.0,
+   "trade_list": []
+  },
+  {
+   "id": "app_amv6bzrax3dpdn",
+   "name": "Intraday Breakout Buyer (5-min)",
+   "trades": 1,
+   "wins": 0,
+   "open": 0,
+   "pnl": -1798.32,
+   "return_pct": -0.072,
+   "trade_list": [
+    {
+     "sym": "CPPLUS",
+     "side": "long",
+     "qty": 61,
+     "entry": 4092.52,
+     "t_entry": "2026-10-19 09:35:00",
+     "exit": 4065.49,
+     "t_exit": "2026-10-19 10:00:00",
+     "reason": "exit rule",
+     "pnl": -1798.32,
+     "pnl_pct": -0.661
+    }
+   ]
+  },
+  {
+   "id": "app_amv6c0fvlb31vd",
+   "name": "Intraday Breakout Buyer (5-min)",
+   "trades": 1,
+   "wins": 0,
+   "open": 0,
+   "pnl": -1798.32,
+   "return_pct": -0.072,
+   "trade_list": [
+    {
+     "sym": "CPPLUS",
+     "side": "long",
+     "qty": 61,
+     "entry": 4092.52,
+     "t_entry": "2026-10-19 09:35:00",
+     "exit": 4065.49,
+     "t_exit": "2026-10-19 10:00:00",
+     "reason": "exit rule",
+     "pnl": -1798.32,
+     "pnl_pct": -0.661
+    }
+   ]
+  }
+ ]
+}
