@@ -8,17 +8,17 @@
  "bytes": 11520183,
  "download": {
   "NSE": {
-   "new_files": 1,
-   "checked": 4
+   "new_files": 0,
+   "checked": 3
   },
   "BSE": {
-   "new_files": 1,
-   "checked": 4
+   "new_files": 0,
+   "checked": 3
   }
  },
  "corporate_actions": {
   "files": 130,
-  "new": 1,
+  "new": 0,
   "not_available": {},
   "records": 3906,
   "dividends": 1126,
