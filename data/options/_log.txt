@@ -1,4 +1,4 @@
-Window 2026-04-12 to 2026-10-19; removed 0 old cache files
+Window 2026-04-13 to 2026-10-20; removed 0 old cache files
 F&O bhavcopy: 0 trading days to fetch of 130
 Downloaded 0 new F&O files; not available: {}
 BSE F&O: 0 new files of 0; not available: {}
