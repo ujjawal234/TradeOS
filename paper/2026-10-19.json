@@ -1,20 +1,16 @@
 {
  "date": "2026-10-19",
- "generated": "2026-10-19T15:33:51.555Z",
+ "generated": "2026-10-20T15:30:59.950Z",
  "agents_run": 17,
  "actions": 6,
  "data_check": {
   "ok": true,
   "agents_skipped": 0,
-  "late_symbols": [
-   "NIFTY_CAPITAL_GOODS",
-   "NIFTY_POWER",
-   "NIFTY_TELECOMMUNICATIONS"
-  ],
-  "late_count": 3
+  "late_symbols": [],
+  "late_count": 0
  },
  "push_text": "TradeOS 2026-10-19: NIFTY Weekly Long Straddle on VIX>20: HOLD SHORT NIFTY 2026-10-27 22900 CE, HOLD SHORT NIFTY 2026-10-27 22900 PE; NIFTY Expiry-Day Short Strangle 1% OTM: HOLD SHORT NI…",
- "telegram_text": "TradeOS signals for the session after 2026-10-19 (paper trading, not advice)\nEMA 9/21 trend above VWAP (3-min) (v1) -4.7% vs Nifty +1.5%: no action\nOpening-range breakout long (5-min) (v1) -4.0% vs Nifty +1.5%: no action\nOpening-range breakdown short (5-min) (v1) +0.9% vs Nifty +1.5%: no action\nNifty/Midcap150/Smallcap250 6m Momentum Rotation (v1) – vs Nifty –: no action\nNifty 50/200 DMA Golden Cross (v2) 0.0% vs Nifty +1.3%: no action\nNifty 200DMA Trend Filter (v1) 0.0% vs Nifty +1.3%: no action\nSector Index Top-2 3M Momentum Rotation (v2) +4.8% vs Nifty +1.2%: no action (no 2026-10-19 data for NIFTY_CAPITAL_GOODS, NIFTY_POWER, NIFTY_TELECOMMUNICATIONS)\nNifty 50 Top-10 Monthly Momentum (v1) 0.0% vs Nifty +1.2%: no action\nNIFTY Weekly Long Straddle on VIX>20 (v5) +23.9% vs Nifty +1.2%: HOLD SHORT NIFTY 2026-10-27 22900 CE @169.2, HOLD SHORT NIFTY 2026-10-27 22900 PE @171.95\nNIFTY Expiry-Day Short Strangle 1% OTM (v2) -0.3% vs Nifty +1.5%: HOLD SHORT NIFTY 2026-10-27 22450 PE @39.4, HOLD SHORT NIFTY 2026-10-27 23400 CE @26.9\nNIFTY Long Condor, no VIX filter, 2 days before expiry (v1) 0.0% vs Nifty +1.3%: no action\nFirst-Bar Strength Long, 1-min, exit 9:20 (Nifty 50) (v1) +0.5% vs Nifty +1.6%: no action\nShort-Term Breakout Buyer (daily list) (v4): no action\nIntraday Breakout Buyer (5-min) (v1) +0.3% vs Nifty +2.4%: no action\nIntraday Breakout Buyer (5-min) (v3) -0.1% vs Nifty -0.5%: no action\n52-Week-High Momentum Breakout Buyer (v1) -0.5% vs Nifty -0.5%: BUY HFCL @268.81, BUY PNB @121.9\nX Ideas (daily list) (v1): no action",
+ "telegram_text": "TradeOS signals for the session after 2026-10-19 (paper trading, not advice)\nEMA 9/21 trend above VWAP (3-min) (v1) -4.6% vs Nifty +1.5%: no action\nOpening-range breakout long (5-min) (v1) -4.5% vs Nifty +1.5%: no action\nOpening-range breakdown short (5-min) (v1) +1.8% vs Nifty +1.5%: no action\nNifty/Midcap150/Smallcap250 6m Momentum Rotation (v1) – vs Nifty –: no action\nNifty 50/200 DMA Golden Cross (v2) 0.0% vs Nifty +1.3%: no action\nNifty 200DMA Trend Filter (v1) 0.0% vs Nifty +1.3%: no action\nSector Index Top-2 3M Momentum Rotation (v2) +4.8% vs Nifty +1.2%: no action\nNifty 50 Top-10 Monthly Momentum (v1) 0.0% vs Nifty +1.2%: no action\nNIFTY Weekly Long Straddle on VIX>20 (v5) +23.9% vs Nifty +1.2%: HOLD SHORT NIFTY 2026-10-27 22900 CE @169.2, HOLD SHORT NIFTY 2026-10-27 22900 PE @171.95\nNIFTY Expiry-Day Short Strangle 1% OTM (v2) -0.3% vs Nifty +1.5%: HOLD SHORT NIFTY 2026-10-27 22450 PE @39.4, HOLD SHORT NIFTY 2026-10-27 23400 CE @26.9\nNIFTY Long Condor, no VIX filter, 2 days before expiry (v1) 0.0% vs Nifty +1.3%: no action\nFirst-Bar Strength Long, 1-min, exit 9:20 (Nifty 50) (v1) +0.5% vs Nifty +1.6%: no action\nShort-Term Breakout Buyer (daily list) (v4): no action\nIntraday Breakout Buyer (5-min) (v1) +0.2% vs Nifty +2.4%: no action\nIntraday Breakout Buyer (5-min) (v3) -0.1% vs Nifty -0.5%: no action\n52-Week-High Momentum Breakout Buyer (v1) -0.5% vs Nifty -0.5%: BUY HFCL @268.81, BUY PNB @121.9\nX Ideas (daily list) (v1): no action",
  "results": [
   {
    "id": "aintematrend1",
@@ -24,10 +20,10 @@
    "paper": {
     "asof": "2026-10-19",
     "days": 11,
-    "return_pct": -4.73,
+    "return_pct": -4.6,
     "nifty_pct": 1.48,
-    "max_drawdown_pct": -4.73,
-    "equity": 952737,
+    "max_drawdown_pct": -4.6,
+    "equity": 954003,
     "start_equity": 1000000
    },
    "signals": [
@@ -210,10 +206,10 @@
    "paper": {
     "asof": "2026-10-19",
     "days": 11,
-    "return_pct": -4.02,
+    "return_pct": -4.5,
     "nifty_pct": 1.48,
-    "max_drawdown_pct": -4.49,
-    "equity": 959773,
+    "max_drawdown_pct": -4.97,
+    "equity": 954963,
     "start_equity": 1000000
    },
    "signals": [
@@ -324,10 +320,10 @@
    "paper": {
     "asof": "2026-10-19",
     "days": 11,
-    "return_pct": 0.94,
+    "return_pct": 1.78,
     "nifty_pct": 1.48,
     "max_drawdown_pct": -1.15,
-    "equity": 1009375,
+    "equity": 1017790,
     "start_equity": 1000000
    },
    "signals": [
@@ -1052,16 +1048,6 @@
    "name": "Sector Index Top-2 3M Momentum Rotation",
    "version": 2,
    "since": "2026-09-30",
-   "stale": {
-    "blocked": false,
-    "symbols": [
-     "NIFTY_CAPITAL_GOODS",
-     "NIFTY_POWER",
-     "NIFTY_TELECOMMUNICATIONS"
-    ],
-    "count": 3,
-    "of": 22
-   },
    "paper": {
     "asof": "2026-10-19",
     "days": 13,
@@ -1075,7 +1061,7 @@
     {
      "symbol": "NIFTY_TELECOMMUNICATIONS",
      "action": "BUY",
-     "price": 3816.77,
+     "price": 3809.67,
      "date": "2026-10-19",
      "note": "Entered the top 3 (rank 3) — buy at next rebalance (2026-11-02)",
      "weight_pct": 33.33,
@@ -1449,10 +1435,10 @@
    "paper": {
     "asof": "2026-10-19",
     "days": 6,
-    "return_pct": 0.25,
+    "return_pct": 0.22,
     "nifty_pct": 2.35,
     "max_drawdown_pct": -0.34,
-    "equity": 2506276,
+    "equity": 2505493,
     "start_equity": 2500000
    },
    "signals": [

@@ -3,12 +3,12 @@
  "date": "2026-10-19",
  "at": "after the close",
  "prices": "close of 2026-10-19",
- "equity": 10633109,
- "gross": 2138981,
+ "equity": 10632936,
+ "gross": 2139511,
  "desks": {
   "dmv26g56l28uwu": 6026994,
   "dmv26g5jc5xjtx": 2111696,
-  "dmv26ub8g23kcv": 2494419
+  "dmv26ub8g23kcv": 2494246
  },
  "minute_bars": 0,
  "trades": 0,
