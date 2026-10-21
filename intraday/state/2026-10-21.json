@@ -1,21 +1,9 @@
 {
  "date": "2026-10-21",
- "done": false,
+ "done": true,
  "agents": {
   "app_aintematrend1": {
-   "positions": {
-    "TECHM": {
-     "sym": "TECHM",
-     "qty": 180,
-     "entry": 1829.37,
-     "t_entry": "2026-10-21 14:30:00",
-     "stop": 1820.22,
-     "target": null,
-     "best": 1830.0,
-     "hi_seen": 1833.0,
-     "lo_seen": 1790.0
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "ICICIBANK",
@@ -100,9 +88,21 @@
      "reason": "exit rule",
      "pnl": -796.51,
      "pnl_pct": -0.182
+    },
+    {
+     "sym": "TECHM",
+     "side": "long",
+     "qty": 180,
+     "entry": 1829.37,
+     "t_entry": "2026-10-21 14:30:00",
+     "exit": 1820.65,
+     "t_exit": "2026-10-21 15:00:32",
+     "reason": "stop",
+     "pnl": -1767.46,
+     "pnl_pct": -0.477
     }
    ],
-   "realized": -8415.533965469836,
+   "realized": -10084.205198561815,
    "entries": {
     "ICICIBANK": 1,
     "ULTRACEMCO": 1,
@@ -112,23 +112,11 @@
     "HCLTECH": 1,
     "TMPV": 1
    },
-   "last_bar": "2026-10-21 14:30:00",
-   "squared_off": false
+   "last_bar": "2026-10-21 15:12:00",
+   "squared_off": true
   },
   "app_aintorblong01": {
-   "positions": {
-    "TECHM": {
-     "sym": "TECHM",
-     "qty": 137,
-     "entry": 1817.96,
-     "t_entry": "2026-10-21 10:05:00",
-     "stop": 1805.24,
-     "target": 1843.42,
-     "best": 1817.9635199999998,
-     "hi_seen": 1833.0,
-     "lo_seen": 1790.0
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "JSWSTEEL",
@@ -153,64 +141,31 @@
      "reason": "stop",
      "pnl": -1941.33,
      "pnl_pct": -0.72
+    },
+    {
+     "sym": "TECHM",
+     "side": "long",
+     "qty": 137,
+     "entry": 1817.96,
+     "t_entry": "2026-10-21 10:05:00",
+     "exit": 1826.23,
+     "t_exit": "2026-10-21 15:15:32",
+     "reason": "square-off",
+     "pnl": 983.85,
+     "pnl_pct": 0.455
     }
    ],
-   "realized": -3630.5060764517,
+   "realized": -2571.9331617997013,
    "entries": {
     "JSWSTEEL": 1,
     "TECHM": 1,
     "SBILIFE": 1
    },
-   "last_bar": "2026-10-21 14:25:00",
-   "squared_off": false
+   "last_bar": "2026-10-21 15:10:00",
+   "squared_off": true
   },
   "app_aintorbshort1": {
-   "positions": {
-    "BAJFINANCE": {
-     "sym": "BAJFINANCE",
-     "qty": -269,
-     "entry": 928.16,
-     "t_entry": "2026-10-21 12:35:00",
-     "stop": 934.66,
-     "target": 915.17,
-     "best": 928.1643300000001,
-     "hi_seen": 968.8,
-     "lo_seen": 919.1
-    },
-    "POWERGRID": {
-     "sym": "POWERGRID",
-     "qty": -1009,
-     "entry": 247.65,
-     "t_entry": "2026-10-21 12:35:00",
-     "stop": 249.38,
-     "target": 244.18,
-     "best": 247.65045999999998,
-     "hi_seen": 253.6,
-     "lo_seen": 246.7
-    },
-    "BHARTIARTL": {
-     "sym": "BHARTIARTL",
-     "qty": -133,
-     "entry": 1872.93,
-     "t_entry": "2026-10-21 12:35:00",
-     "stop": 1886.04,
-     "target": 1846.7,
-     "best": 1872.92534,
-     "hi_seen": 1911.0,
-     "lo_seen": 1865.1
-    },
-    "LT": {
-     "sym": "LT",
-     "qty": -68,
-     "entry": 3637.97,
-     "t_entry": "2026-10-21 13:30:00",
-     "stop": 3663.44,
-     "target": 3587.04,
-     "best": 3637.97226,
-     "hi_seen": 3702.6,
-     "lo_seen": 3622.5
-    }
-   },
+   "positions": {},
    "trades": [
     {
      "sym": "BSE",
@@ -331,9 +286,57 @@
      "reason": "exit rule",
      "pnl": 755.57,
      "pnl_pct": 0.362
+    },
+    {
+     "sym": "BAJFINANCE",
+     "side": "short",
+     "qty": 269,
+     "entry": 928.16,
+     "t_entry": "2026-10-21 12:35:00",
+     "exit": 924.43,
+     "t_exit": "2026-10-21 15:15:32",
+     "reason": "square-off",
+     "pnl": 852.56,
+     "pnl_pct": 0.401
+    },
+    {
+     "sym": "POWERGRID",
+     "side": "short",
+     "qty": 1009,
+     "entry": 247.65,
+     "t_entry": "2026-10-21 12:35:00",
+     "exit": 248.7,
+     "t_exit": "2026-10-21 15:15:32",
+     "reason": "square-off",
+     "pnl": -1209.42,
+     "pnl_pct": -0.424
+    },
+    {
+     "sym": "BHARTIARTL",
+     "side": "short",
+     "qty": 133,
+     "entry": 1872.93,
+     "t_entry": "2026-10-21 12:35:00",
+     "exit": 1877.58,
+     "t_exit": "2026-10-21 15:15:32",
+     "reason": "square-off",
+     "pnl": -767.49,
+     "pnl_pct": -0.248
+    },
+    {
+     "sym": "LT",
+     "side": "short",
+     "qty": 68,
+     "entry": 3637.97,
+     "t_entry": "2026-10-21 13:30:00",
+     "exit": 3628.13,
+     "t_exit": "2026-10-21 15:15:32",
+     "reason": "square-off",
+     "pnl": 521.2,
+     "pnl_pct": 0.271
     }
    ],
-   "realized": 2810.6755338419716,
+   "realized": 2506.33483332796,
    "entries": {
     "HDFCLIFE": 1,
     "BSE": 1,
@@ -350,8 +353,8 @@
     "BHARTIARTL": 1,
     "LT": 1
    },
-   "last_bar": "2026-10-21 14:25:00",
-   "squared_off": false
+   "last_bar": "2026-10-21 15:10:00",
+   "squared_off": true
   },
   "app_amv26tvmw80lkt": {
    "positions": {},
@@ -366,30 +369,31 @@
    "trades": [],
    "realized": 0.0,
    "entries": {},
-   "last_bar": "2026-10-21 14:25:00",
-   "squared_off": false
+   "last_bar": "2026-10-21 15:25:00",
+   "squared_off": true
   },
   "app_amv6c0fvlb31vd": {
-   "positions": {
-    "ANANDRATHI": {
+   "positions": {},
+   "trades": [
+    {
      "sym": "ANANDRATHI",
+     "side": "long",
      "qty": 114,
      "entry": 2181.04,
      "t_entry": "2026-10-21 14:00:00",
-     "stop": null,
-     "target": null,
-     "best": 2181.0361199999998,
-     "hi_seen": 2190.800048828125,
-     "lo_seen": 2164.9
+     "exit": 2199.56,
+     "t_exit": "2026-10-21 15:30:29",
+     "reason": "square-off",
+     "pnl": 1961.46,
+     "pnl_pct": 0.849
     }
-   },
-   "trades": [],
-   "realized": -74.59143530399999,
+   ],
+   "realized": 1961.4636126959979,
    "entries": {
     "ANANDRATHI": 1
    },
-   "last_bar": "2026-10-21 14:25:00",
-   "squared_off": false
+   "last_bar": "2026-10-21 15:25:00",
+   "squared_off": true
   }
  }
 }
