@@ -347,11 +347,15 @@
    "enabled": true,
    "engine": "js",
    "source": "app",
-   "version": 3,
+   "version": 6,
    "paper_since": "2026-10-15",
    "symbols": [
     "AEGISLOG",
-    "CPPLUS"
+    "ANANDRATHI",
+    "CPPLUS",
+    "LAURUSLABS",
+    "SAGILITY",
+    "VELJAN"
    ],
    "bar_minutes": 5,
    "side": "long",
@@ -367,7 +371,8 @@
    "square_off": "15:30",
    "max_trades_per_symbol": 1,
    "cost_pct": 0.03,
-   "slippage_pct": 0.02
+   "slippage_pct": 0.02,
+   "names_at": "2026-10-21T08:03:13.094Z"
   }
  ]
 }
