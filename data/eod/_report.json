@@ -1,11 +1,11 @@
 {
- "asof": "2026-10-21",
+ "asof": "2026-10-22",
  "first": "2026-04-15",
- "sessions": 130,
- "nse": 3236,
- "bse_only": 2406,
- "rows": 617514,
- "bytes": 11525808,
+ "sessions": 131,
+ "nse": 3240,
+ "bse_only": 2405,
+ "rows": 622259,
+ "bytes": 11614467,
  "download": {
   "NSE": {
    "new_files": 1,
@@ -17,13 +17,13 @@
   }
  },
  "corporate_actions": {
-  "files": 130,
+  "files": 131,
   "new": 1,
   "not_available": {},
-  "records": 3873,
-  "dividends": 1129,
-  "outside_data": 307,
-  "ratio_applied": 27,
+  "records": 3914,
+  "dividends": 1131,
+  "outside_data": 310,
+  "ratio_applied": 28,
   "ratio_rejected": 11,
   "inferred_splits": 14,
   "rights": 13,
