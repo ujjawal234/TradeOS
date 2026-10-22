@@ -1,11 +1,11 @@
 {
- "asof": "2026-10-21",
+ "asof": "2026-10-22",
  "companies": 496,
  "of": 502,
- "new_quarters": 18,
+ "new_quarters": 24,
  "errors": 0,
  "error_examples": [],
  "profiles": 502,
- "minutes": 0.2,
- "hot": 38
+ "minutes": 7.0,
+ "hot": 62
 }
