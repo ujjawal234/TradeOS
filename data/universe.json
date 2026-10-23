@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-22",
+ "generated": "2026-10-23",
  "lists_fetched": {
   "nifty50": true,
   "nifty200": true,
@@ -1855,8 +1855,8 @@
    "lot_size": 325,
    "nifty50": false
   },
-  "ICICIPRULI": {
-   "name": "ICICI Prudential Life Insurance Company Ltd.",
+  "ICICILIFE": {
+   "name": "ICICI Life Insurance Ltd.",
    "industry": "Financial Services",
    "nifty500": true,
    "fno": true,
