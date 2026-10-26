@@ -310,14 +310,14 @@
   "source": "FRED BAMLH0A0HYM2",
   "group": "global",
   "lag_days": 1,
-  "first": "2023-10-24",
-  "last_period": "2026-10-22",
-  "last_known": "2026-10-23",
-  "last": 3.4,
-  "prev": 3.27,
-  "chg_3m": 0.61,
-  "chg_12m": 0.6,
-  "n": 786
+  "first": "2023-10-27",
+  "last_period": "2026-10-23",
+  "last_known": "2026-10-24",
+  "last": 3.38,
+  "prev": 3.4,
+  "chg_3m": 0.57,
+  "chg_12m": 0.56,
+  "n": 784
  },
  "US_IG_SPREAD": {
   "name": "US investment-grade credit spread",
@@ -326,14 +326,14 @@
   "source": "FRED BAMLC0A0CM",
   "group": "global",
   "lag_days": 1,
-  "first": "2023-10-24",
-  "last_period": "2026-10-22",
-  "last_known": "2026-10-23",
-  "last": 0.89,
-  "prev": 0.88,
-  "chg_3m": 0.09,
-  "chg_12m": 0.13,
-  "n": 785
+  "first": "2023-10-27",
+  "last_period": "2026-10-23",
+  "last_known": "2026-10-24",
+  "last": 0.91,
+  "prev": 0.89,
+  "chg_3m": 0.1,
+  "chg_12m": 0.15,
+  "n": 783
  },
  "USD_BROAD": {
   "name": "US dollar, broad trade-weighted index",
@@ -535,13 +535,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-01",
-  "last_period": "2026-10-23",
-  "last_known": "2026-10-24",
+  "last_period": "2026-10-26",
+  "last_known": "2026-10-27",
   "last": 2.5,
   "prev": 2.5,
   "chg_3m": 0.25,
   "chg_12m": 0.5,
-  "n": 7966
+  "n": 7969
  },
  "JP_10Y": {
   "name": "Japan 10-year yield (monthly)",
