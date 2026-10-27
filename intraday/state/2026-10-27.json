@@ -1,0 +1,54 @@
+{
+ "date": "2026-10-27",
+ "done": true,
+ "agents": {
+  "app_aintematrend1": {
+   "positions": {},
+   "trades": [],
+   "realized": 0.0,
+   "entries": {},
+   "last_bar": "2026-10-27 15:12:00",
+   "squared_off": true
+  },
+  "app_aintorblong01": {
+   "positions": {},
+   "trades": [],
+   "realized": 0.0,
+   "entries": {},
+   "last_bar": "2026-10-27 15:10:00",
+   "squared_off": true
+  },
+  "app_aintorbshort1": {
+   "positions": {},
+   "trades": [],
+   "realized": 0.0,
+   "entries": {},
+   "last_bar": "2026-10-27 15:10:00",
+   "squared_off": true
+  },
+  "app_amv26tvmw80lkt": {
+   "positions": {},
+   "trades": [],
+   "realized": 0.0,
+   "entries": {},
+   "last_bar": "2026-10-27 14:47:00",
+   "squared_off": true
+  },
+  "app_amv6bzrax3dpdn": {
+   "positions": {},
+   "trades": [],
+   "realized": 0.0,
+   "entries": {},
+   "last_bar": "2026-10-27 15:25:00",
+   "squared_off": true
+  },
+  "app_amv6c0fvlb31vd": {
+   "positions": {},
+   "trades": [],
+   "realized": 0.0,
+   "entries": {},
+   "last_bar": "2026-10-27 15:25:00",
+   "squared_off": true
+  }
+ }
+}

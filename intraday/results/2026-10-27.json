@@ -1,0 +1,65 @@
+{
+ "date": "2026-10-27",
+ "agents": [
+  {
+   "id": "app_aintematrend1",
+   "name": "EMA 9/21 trend above VWAP (3-min)",
+   "trades": 0,
+   "wins": 0,
+   "open": 0,
+   "pnl": 0.0,
+   "return_pct": 0.0,
+   "trade_list": []
+  },
+  {
+   "id": "app_aintorblong01",
+   "name": "Opening-range breakout long (5-min)",
+   "trades": 0,
+   "wins": 0,
+   "open": 0,
+   "pnl": 0.0,
+   "return_pct": 0.0,
+   "trade_list": []
+  },
+  {
+   "id": "app_aintorbshort1",
+   "name": "Opening-range breakdown short (5-min)",
+   "trades": 0,
+   "wins": 0,
+   "open": 0,
+   "pnl": 0.0,
+   "return_pct": 0.0,
+   "trade_list": []
+  },
+  {
+   "id": "app_amv26tvmw80lkt",
+   "name": "First-Bar Strength Long, 1-min, exit 9:20 (Nifty 50)",
+   "trades": 0,
+   "wins": 0,
+   "open": 0,
+   "pnl": 0.0,
+   "return_pct": 0.0,
+   "trade_list": []
+  },
+  {
+   "id": "app_amv6bzrax3dpdn",
+   "name": "Intraday Breakout Buyer (5-min)",
+   "trades": 0,
+   "wins": 0,
+   "open": 0,
+   "pnl": 0.0,
+   "return_pct": 0.0,
+   "trade_list": []
+  },
+  {
+   "id": "app_amv6c0fvlb31vd",
+   "name": "Intraday Breakout Buyer (5-min)",
+   "trades": 0,
+   "wins": 0,
+   "open": 0,
+   "pnl": 0.0,
+   "return_pct": 0.0,
+   "trade_list": []
+  }
+ ]
+}
