@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-27",
+ "generated": "2026-10-28",
  "lists_fetched": {
   "nifty50": true,
   "nifty200": true,
@@ -63,7 +63,7 @@
    "nifty500": true,
    "nifty200": true,
    "fno": true,
-   "lot_size": 3100,
+   "lot_size": 1550,
    "nifty50": false
   },
   "ABDL": {
@@ -424,7 +424,7 @@
    "nifty500": true,
    "nifty200": true,
    "fno": true,
-   "lot_size": 1000,
+   "lot_size": 500,
    "nifty50": false
   },
   "AUROPHARMA": {
@@ -1030,9 +1030,10 @@
    "name": "Coromandel International Ltd.",
    "industry": "Chemicals",
    "nifty500": true,
+   "fno": true,
+   "lot_size": 300,
    "nifty50": false,
-   "nifty200": false,
-   "fno": false
+   "nifty200": false
   },
   "CPPLUS": {
    "name": "Aditya Infotech Ltd.",
@@ -1079,9 +1080,10 @@
    "name": "City Union Bank Ltd.",
    "industry": "Financial Services",
    "nifty500": true,
+   "fno": true,
+   "lot_size": 2325,
    "nifty50": false,
-   "nifty200": false,
-   "fno": false
+   "nifty200": false
   },
   "CUMMINSIND": {
    "name": "Cummins India Ltd.",
@@ -1089,7 +1091,7 @@
    "nifty500": true,
    "nifty200": true,
    "fno": true,
-   "lot_size": 200,
+   "lot_size": 100,
    "nifty50": false
   },
   "CUPID": {
@@ -1129,9 +1131,10 @@
    "name": "Data Patterns (India) Ltd.",
    "industry": "Capital Goods",
    "nifty500": true,
+   "fno": true,
+   "lot_size": 125,
    "nifty50": false,
-   "nifty200": false,
-   "fno": false
+   "nifty200": false
   },
   "DEEPAKFERT": {
    "name": "Deepak Fertilisers & Petrochemicals Corp. Ltd.",
@@ -2304,9 +2307,10 @@
    "name": "Karur Vysya Bank Ltd.",
    "industry": "Financial Services",
    "nifty500": true,
+   "fno": true,
+   "lot_size": 1550,
    "nifty50": false,
-   "nifty200": false,
-   "fno": false
+   "nifty200": false
   },
   "KAYNES": {
    "name": "Kaynes Technology India Ltd.",
@@ -2423,7 +2427,7 @@
    "nifty500": true,
    "nifty200": true,
    "fno": true,
-   "lot_size": 850,
+   "lot_size": 425,
    "nifty50": false
   },
   "LEMONTREE": {
@@ -2798,9 +2802,10 @@
    "name": "Navin Fluorine International Ltd.",
    "industry": "Chemicals",
    "nifty500": true,
+   "fno": true,
+   "lot_size": 75,
    "nifty50": false,
-   "nifty200": false,
-   "fno": false
+   "nifty200": false
   },
   "NBCC": {
    "name": "NBCC (India) Ltd.",
@@ -2951,7 +2956,7 @@
    "nifty500": true,
    "nifty200": true,
    "fno": true,
-   "lot_size": 100,
+   "lot_size": 50,
    "nifty50": false
   },
   "OIL": {
@@ -3553,7 +3558,7 @@
    "nifty500": true,
    "nifty200": true,
    "fno": true,
-   "lot_size": 50,
+   "lot_size": 25,
    "nifty50": false
   },
   "SONACOMS": {
@@ -3670,9 +3675,10 @@
    "name": "Syrma SGS Technology Ltd.",
    "industry": "Capital Goods",
    "nifty500": true,
+   "fno": true,
+   "lot_size": 325,
    "nifty50": false,
-   "nifty200": false,
-   "fno": false
+   "nifty200": false
   },
   "TARIL": {
    "name": "Transformers And Rectifiers (India) Ltd.",
@@ -4224,7 +4230,7 @@
    "nifty500": true,
    "nifty200": true,
    "fno": true,
-   "lot_size": 900,
+   "lot_size": 450,
    "nifty50": false
   },
   "ZYDUSWELL": {

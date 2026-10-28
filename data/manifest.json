@@ -1,92 +1,92 @@
 {
- "generated": "2026-10-27",
- "start": "2026-04-20",
+ "generated": "2026-10-28",
+ "start": "2026-04-21",
  "adjusted": true,
  "source": "Yahoo Finance",
  "symbols": {
   "NIFTY": {
    "yahoo": "^NSEI",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "BANKNIFTY": {
    "yahoo": "^NSEBANK",
-   "rows": 126,
-   "first": "2026-04-20",
+   "rows": 125,
+   "first": "2026-04-21",
    "last": "2026-10-19"
   },
   "SENSEX": {
    "yahoo": "^BSESN",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "NIFTYFIN": {
    "yahoo": "NIFTY_FIN_SERVICE.NS",
-   "rows": 23,
+   "rows": 24,
    "first": "2026-09-23",
-   "last": "2026-10-27"
+   "last": "2026-10-28"
   },
   "INDIAVIX": {
    "yahoo": "^INDIAVIX",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "NIFTYBANK": {
    "yahoo": "^NSEBANK",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "NIFTYIT": {
    "yahoo": "^CNXIT",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "NIFTYPHARMA": {
    "yahoo": "^CNXPHARMA",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "NIFTYFMCG": {
    "yahoo": "^CNXFMCG",
-   "rows": 23,
+   "rows": 24,
    "first": "2026-09-23",
-   "last": "2026-10-27"
+   "last": "2026-10-28"
   },
   "NIFTYAUTO": {
    "yahoo": "^CNXAUTO",
-   "rows": 23,
+   "rows": 24,
    "first": "2026-09-23",
-   "last": "2026-10-27"
+   "last": "2026-10-28"
   },
   "NIFTYMETAL": {
    "yahoo": "^CNXMETAL",
-   "rows": 23,
+   "rows": 24,
    "first": "2026-09-23",
-   "last": "2026-10-27"
+   "last": "2026-10-28"
   },
   "NIFTYREALTY": {
    "yahoo": "^CNXREALTY",
-   "rows": 23,
+   "rows": 24,
    "first": "2026-09-23",
-   "last": "2026-10-27"
+   "last": "2026-10-28"
   },
   "NIFTYENERGY": {
    "yahoo": "^CNXENERGY",
-   "rows": 23,
+   "rows": 24,
    "first": "2026-09-23",
-   "last": "2026-10-27"
+   "last": "2026-10-28"
   },
   "NIFTYPSUBANK": {
    "yahoo": "^CNXPSUBANK",
-   "rows": 23,
+   "rows": 24,
    "first": "2026-09-23",
-   "last": "2026-10-27"
+   "last": "2026-10-28"
   },
   "NIFTYMEDIA": {
    "yahoo": "^CNXMEDIA",
@@ -96,39 +96,39 @@
   },
   "NIFTYINFRA": {
    "yahoo": "^CNXINFRA",
-   "rows": 23,
+   "rows": 24,
    "first": "2026-09-23",
-   "last": "2026-10-27"
+   "last": "2026-10-28"
   },
   "NIFTYNEXT50": {
    "yahoo": "^NSMIDCP",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "NIFTY100": {
    "yahoo": "^CNX100",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "NIFTY200": {
    "yahoo": "^CNX200",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "NIFTY500": {
    "yahoo": "^CRSLDX",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "NIFTYMIDCAP50": {
    "yahoo": "^NSEMDCP50",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "NIFTYMIDCAP100": {
    "yahoo": "NIFTY_MIDCAP_100.NS",
@@ -150,21 +150,21 @@
   },
   "NIFTYPSE": {
    "yahoo": "^CNXPSE",
-   "rows": 23,
+   "rows": 24,
    "first": "2026-09-23",
-   "last": "2026-10-27"
+   "last": "2026-10-28"
   },
   "NIFTYMNC": {
    "yahoo": "^CNXMNC",
-   "rows": 23,
+   "rows": 24,
    "first": "2026-09-23",
-   "last": "2026-10-27"
+   "last": "2026-10-28"
   },
   "NIFTYCONSUMPTION": {
    "yahoo": "^CNXCONSUM",
-   "rows": 23,
+   "rows": 24,
    "first": "2026-09-23",
-   "last": "2026-10-27"
+   "last": "2026-10-28"
   },
   "NIFTYCOMMODITIES": {
    "yahoo": "^CNXCMDT",
@@ -217,193 +217,193 @@
   "BSE100": {
    "yahoo": "BSE-100.BO",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "BSE500": {
    "yahoo": "BSE-500.BO",
    "rows": 131,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "SPX": {
    "yahoo": "^GSPC",
-   "rows": 126,
-   "first": "2026-04-20",
+   "rows": 125,
+   "first": "2026-04-21",
    "last": "2026-10-16"
   },
   "NASDAQ": {
    "yahoo": "^IXIC",
-   "rows": 124,
-   "first": "2026-04-20",
+   "rows": 123,
+   "first": "2026-04-21",
    "last": "2026-10-14"
   },
   "DOWJONES": {
    "yahoo": "^DJI",
-   "rows": 126,
-   "first": "2026-04-20",
+   "rows": 125,
+   "first": "2026-04-21",
    "last": "2026-10-16"
   },
   "RUSSELL2000": {
    "yahoo": "^RUT",
-   "rows": 124,
-   "first": "2026-04-20",
+   "rows": 123,
+   "first": "2026-04-21",
    "last": "2026-10-14"
   },
   "USVIX": {
    "yahoo": "^VIX",
-   "rows": 126,
-   "first": "2026-04-20",
+   "rows": 125,
+   "first": "2026-04-21",
    "last": "2026-10-14"
   },
   "NIKKEI": {
    "yahoo": "^N225",
    "rows": 126,
-   "first": "2026-04-20",
-   "last": "2026-10-26"
+   "first": "2026-04-21",
+   "last": "2026-10-27"
   },
   "HANGSENG": {
    "yahoo": "^HSI",
-   "rows": 131,
-   "first": "2026-04-20",
+   "rows": 130,
+   "first": "2026-04-21",
    "last": "2026-10-27"
   },
   "SHANGHAI": {
    "yahoo": "000001.SS",
-   "rows": 127,
-   "first": "2026-04-20",
+   "rows": 126,
+   "first": "2026-04-21",
    "last": "2026-10-27"
   },
   "KOSPI": {
    "yahoo": "^KS11",
    "rows": 126,
-   "first": "2026-04-20",
-   "last": "2026-10-26"
+   "first": "2026-04-21",
+   "last": "2026-10-27"
   },
   "TAIWAN": {
    "yahoo": "^TWII",
-   "rows": 129,
-   "first": "2026-04-20",
+   "rows": 128,
+   "first": "2026-04-21",
    "last": "2026-10-27"
   },
   "FTSE100": {
    "yahoo": "^FTSE",
    "rows": 134,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "DAX": {
    "yahoo": "^GDAXI",
    "rows": 136,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "CAC40": {
    "yahoo": "^FCHI",
    "rows": 136,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "EUROSTOXX50": {
    "yahoo": "^STOXX50E",
    "rows": 134,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "MSCI_EM": {
    "yahoo": "EEM",
-   "rows": 126,
-   "first": "2026-04-20",
+   "rows": 125,
+   "first": "2026-04-21",
    "last": "2026-10-16"
   },
   "US10Y": {
    "yahoo": "^TNX",
-   "rows": 124,
-   "first": "2026-04-20",
+   "rows": 123,
+   "first": "2026-04-21",
    "last": "2026-10-14"
   },
   "US2Y": {
    "yahoo": "^IRX",
-   "rows": 124,
-   "first": "2026-04-20",
+   "rows": 123,
+   "first": "2026-04-21",
    "last": "2026-10-14"
   },
   "DXY": {
    "yahoo": "DX-Y.NYB",
    "rows": 133,
-   "first": "2026-04-20",
-   "last": "2026-10-27"
+   "first": "2026-04-21",
+   "last": "2026-10-28"
   },
   "USDINR": {
    "yahoo": "INR=X",
-   "rows": 126,
-   "first": "2026-04-20",
+   "rows": 125,
+   "first": "2026-04-21",
    "last": "2026-10-13"
   },
   "EURINR": {
    "yahoo": "EURINR=X",
-   "rows": 128,
-   "first": "2026-04-20",
+   "rows": 127,
+   "first": "2026-04-21",
    "last": "2026-10-14"
   },
   "GBPINR": {
    "yahoo": "GBPINR=X",
-   "rows": 128,
-   "first": "2026-04-20",
+   "rows": 127,
+   "first": "2026-04-21",
    "last": "2026-10-14"
   },
   "JPYINR": {
    "yahoo": "JPYINR=X",
-   "rows": 125,
-   "first": "2026-04-20",
+   "rows": 124,
+   "first": "2026-04-21",
    "last": "2026-10-09"
   },
   "GOLD": {
    "yahoo": "GC=F",
-   "rows": 126,
-   "first": "2026-04-20",
+   "rows": 125,
+   "first": "2026-04-21",
    "last": "2026-10-16"
   },
   "SILVER": {
    "yahoo": "SI=F",
-   "rows": 123,
-   "first": "2026-04-20",
+   "rows": 122,
+   "first": "2026-04-21",
    "last": "2026-10-13"
   },
   "CRUDE": {
    "yahoo": "CL=F",
-   "rows": 125,
-   "first": "2026-04-20",
+   "rows": 124,
+   "first": "2026-04-21",
    "last": "2026-10-15"
   },
   "BRENT": {
    "yahoo": "BZ=F",
-   "rows": 125,
-   "first": "2026-04-20",
+   "rows": 124,
+   "first": "2026-04-21",
    "last": "2026-10-15"
   },
   "NATGAS": {
    "yahoo": "NG=F",
-   "rows": 122,
-   "first": "2026-04-20",
+   "rows": 121,
+   "first": "2026-04-21",
    "last": "2026-10-12"
   },
   "COPPER": {
    "yahoo": "HG=F",
-   "rows": 122,
-   "first": "2026-04-20",
+   "rows": 121,
+   "first": "2026-04-21",
    "last": "2026-10-12"
   },
   "BITCOIN": {
    "yahoo": "BTC-USD",
-   "rows": 166,
-   "first": "2026-04-20",
+   "rows": 165,
+   "first": "2026-04-21",
    "last": "2026-10-02"
   },
   "ETHEREUM": {
    "yahoo": "ETH-USD",
-   "rows": 166,
-   "first": "2026-04-20",
+   "rows": 165,
+   "first": "2026-04-21",
    "last": "2026-10-02"
   }
  },
@@ -445,5 +445,5 @@
   "BITCOIN": "no data",
   "ETHEREUM": "no data"
  },
- "fetched_at": "2026-10-27T16:00:42Z"
+ "fetched_at": "2026-10-28T16:48:28Z"
 }
