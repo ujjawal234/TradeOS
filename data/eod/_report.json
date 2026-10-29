@@ -1,11 +1,11 @@
 {
- "asof": "2026-10-28",
- "first": "2026-04-22",
+ "asof": "2026-10-29",
+ "first": "2026-04-23",
  "sessions": 130,
- "nse": 3249,
- "bse_only": 2404,
- "rows": 618447,
- "bytes": 11540067,
+ "nse": 3250,
+ "bse_only": 2405,
+ "rows": 618623,
+ "bytes": 11542126,
  "download": {
   "NSE": {
    "new_files": 1,
@@ -20,8 +20,8 @@
   "files": 130,
   "new": 1,
   "not_available": {},
-  "records": 3854,
-  "dividends": 1144,
+  "records": 3865,
+  "dividends": 1146,
   "outside_data": 316,
   "ratio_applied": 28,
   "ratio_rejected": 12,
@@ -29,7 +29,7 @@
   "rights": 15,
   "demergers": 4
  },
- "symbol_change_rows_moved": 864,
+ "symbol_change_rows_moved": 851,
  "big_moves_left": [
   [
    "APPL",
