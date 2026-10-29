@@ -1,11 +1,52 @@
 {
- "asof": "2026-10-28",
+ "asof": "2026-10-29",
  "companies": 496,
  "of": 502,
- "new_quarters": 16,
- "errors": 0,
- "error_examples": [],
+ "new_quarters": 19,
+ "errors": 184,
+ "error_examples": [
+  {
+   "sym": "INFY",
+   "new": 0,
+   "err": "integrated list http 403"
+  },
+  {
+   "sym": "INOXWIND",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "INOXINDIA",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "IPCALAB",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "IOB",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "IOC",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "IRCON",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "INTELLECT",
+   "new": 0,
+   "err": "integrated list http 403"
+  }
+ ],
  "profiles": 503,
- "minutes": 0.3,
- "hot": 114
+ "minutes": 15.2,
+ "hot": 122
 }
