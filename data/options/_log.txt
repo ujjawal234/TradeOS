@@ -1,8 +1,8 @@
-Window 2026-04-21 to 2026-10-28; removed 2 old cache files
+Window 2026-04-22 to 2026-10-29; removed 2 old cache files
 F&O bhavcopy: 1 trading days to fetch of 131
   0/1 scanned, 1 files, 1s
 Downloaded 1 new F&O files; not available: {}
 BSE F&O: 1 new files of 1; not available: {}
 Symbol changes: 1061
-  built 0/131 days (2026-04-21), 221 underlyings, 0s
+  built 0/131 days (2026-04-22), 221 underlyings, 0s
 Options: 235 underlyings, 4.7 MB gzip in 2 bundles
