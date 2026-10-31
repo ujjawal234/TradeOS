@@ -1,7 +1,7 @@
 {
  "ET Markets": 50,
  "ET Stocks": 50,
- "ET Economy": 50,
+ "ET Economy": 49,
  "Mint Markets": 35,
  "Mint Economy": 35,
  "Mint Companies": 35,
@@ -12,9 +12,9 @@
  "Entrackr": "error HTTPError",
  "CNBC Economy": 30,
  "CNBC World": 30,
- "filings_fetched": 2441,
- "headlines": 5644,
- "filings": 9072,
- "events": 899,
- "asof": "2026-10-31 00:58"
+ "filings_fetched": 2693,
+ "headlines": 5738,
+ "filings": 9321,
+ "events": 933,
+ "asof": "2026-10-31 18:18"
 }
