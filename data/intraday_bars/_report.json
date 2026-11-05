@@ -1,10 +1,10 @@
 {
- "asof": "2026-11-04",
+ "asof": "2026-11-05",
  "sessions": 20,
- "symbols": 2645,
- "requested": 5662,
- "fetched": 2545,
+ "symbols": 2649,
+ "requested": 5666,
+ "fetched": 1819,
  "left_out_for_size": 0,
  "files": 240,
- "app_bytes": 64264719
+ "app_bytes": 64118095
 }
