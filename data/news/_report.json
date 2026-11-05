@@ -1,20 +1,20 @@
 {
  "ET Markets": 50,
  "ET Stocks": 50,
- "ET Economy": 49,
+ "ET Economy": 50,
  "Mint Markets": 35,
  "Mint Economy": 35,
  "Mint Companies": 35,
- "RBI": 10,
- "ET Tech": 49,
+ "RBI": "error HTTPError",
+ "ET Tech": 50,
  "ET IPOs": 50,
  "Inc42": 24,
  "Entrackr": "error HTTPError",
  "CNBC Economy": 30,
  "CNBC World": 30,
- "filings_fetched": 3131,
- "headlines": 6698,
- "filings": 12643,
- "events": 435,
- "asof": "2026-11-05 02:21"
+ "filings_fetched": 3352,
+ "headlines": 6833,
+ "filings": 12864,
+ "events": 472,
+ "asof": "2026-11-05 13:52"
 }
