@@ -6,15 +6,15 @@
  "Mint Economy": 35,
  "Mint Companies": 35,
  "RBI": 10,
- "ET Tech": 48,
+ "ET Tech": 49,
  "ET IPOs": 50,
  "Inc42": 24,
  "Entrackr": "error HTTPError",
  "CNBC Economy": 30,
  "CNBC World": 30,
- "filings_fetched": 3823,
- "headlines": 7246,
- "filings": 15172,
- "events": 620,
- "asof": "2026-11-07 18:47"
+ "filings_fetched": 2623,
+ "headlines": 7318,
+ "filings": 15231,
+ "events": 626,
+ "asof": "2026-11-08 19:09"
 }
