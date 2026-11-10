@@ -1,36 +1,41 @@
 {
  "asof": "2026-11-09",
- "first": "2026-05-04",
- "sessions": 132,
+ "first": "2026-05-05",
+ "sessions": 131,
  "nse": 3261,
  "bse_only": 2408,
- "rows": 630201,
- "bytes": 11756526,
+ "rows": 625450,
+ "bytes": 11669182,
  "download": {
   "NSE": {
-   "new_files": 2,
-   "checked": 4
+   "new_files": 0,
+   "checked": 3
   },
   "BSE": {
-   "new_files": 2,
-   "checked": 4
+   "new_files": 0,
+   "checked": 3
   }
  },
  "corporate_actions": {
-  "files": 132,
-  "new": 2,
+  "files": 131,
+  "new": 0,
   "not_available": {},
-  "records": 4006,
-  "dividends": 1288,
-  "ratio_applied": 27,
-  "outside_data": 265,
+  "records": 3989,
+  "dividends": 1286,
+  "ratio_applied": 26,
+  "outside_data": 267,
   "ratio_rejected": 14,
-  "inferred_splits": 15,
+  "inferred_splits": 14,
   "rights": 15,
   "demergers": 3
  },
- "symbol_change_rows_moved": 1027,
+ "symbol_change_rows_moved": 1013,
  "big_moves_left": [
+  [
+   "ANANDRATHI",
+   "2026-06-03",
+   0.504
+  ],
   [
    "APPL",
    "2026-05-12",
