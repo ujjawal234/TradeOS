@@ -1,22 +1,11 @@
 {
- "asof": "2026-11-09",
+ "asof": "2026-11-10",
  "companies": 496,
  "of": 502,
- "new_quarters": 0,
- "errors": 2,
- "error_examples": [
-  {
-   "sym": "PGEL",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "PPLPHARMA",
-   "new": 0,
-   "err": "list http 403"
-  }
- ],
+ "new_quarters": 35,
+ "errors": 0,
+ "error_examples": [],
  "profiles": 503,
- "minutes": 0.5,
- "hot": 1
+ "minutes": 0.3,
+ "hot": 49
 }
