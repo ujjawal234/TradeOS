@@ -215,13 +215,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-01",
-  "last_period": "2026-11-11",
-  "last_known": "2026-11-12",
+  "last_period": "2026-11-12",
+  "last_known": "2026-11-13",
   "last": 3.88,
   "prev": 3.88,
   "chg_3m": 0.25,
   "chg_12m": 0.0,
-  "n": 7985
+  "n": 7986
  },
  "US_2Y": {
   "name": "US 2-year Treasury yield",
@@ -231,13 +231,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-03",
-  "last_period": "2026-11-10",
-  "last_known": "2026-11-11",
-  "last": 4.73,
-  "prev": 4.56,
-  "chg_3m": 0.56,
-  "chg_12m": 1.11,
-  "n": 5469
+  "last_period": "2026-11-12",
+  "last_known": "2026-11-13",
+  "last": 4.86,
+  "prev": 4.73,
+  "chg_3m": 0.69,
+  "chg_12m": 1.26,
+  "n": 5470
  },
  "US_10Y_YIELD": {
   "name": "US 10-year Treasury yield",
@@ -247,13 +247,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-03",
-  "last_period": "2026-11-10",
-  "last_known": "2026-11-11",
-  "last": 4.98,
-  "prev": 4.88,
-  "chg_3m": 0.3,
-  "chg_12m": 0.84,
-  "n": 5469
+  "last_period": "2026-11-12",
+  "last_known": "2026-11-13",
+  "last": 5.1,
+  "prev": 4.98,
+  "chg_3m": 0.42,
+  "chg_12m": 0.97,
+  "n": 5470
  },
  "US_CURVE_10_2": {
   "name": "US yield curve 10y minus 2y",
@@ -263,13 +263,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-03",
-  "last_period": "2026-11-12",
-  "last_known": "2026-11-13",
-  "last": 0.24,
-  "prev": 0.25,
-  "chg_3m": -0.27,
-  "chg_12m": -0.29,
-  "n": 5470
+  "last_period": "2026-11-13",
+  "last_known": "2026-11-14",
+  "last": 0.27,
+  "prev": 0.24,
+  "chg_3m": -0.26,
+  "chg_12m": -0.27,
+  "n": 5471
  },
  "US_REAL_10Y": {
   "name": "US 10-year real yield (TIPS)",
@@ -279,13 +279,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-03",
-  "last_period": "2026-11-10",
-  "last_known": "2026-11-11",
-  "last": 2.78,
-  "prev": 2.66,
-  "chg_3m": 0.37,
-  "chg_12m": 0.92,
-  "n": 5469
+  "last_period": "2026-11-12",
+  "last_known": "2026-11-13",
+  "last": 2.86,
+  "prev": 2.78,
+  "chg_3m": 0.45,
+  "chg_12m": 1.01,
+  "n": 5470
  },
  "US_BREAKEVEN_10Y": {
   "name": "US 10-year breakeven inflation",
@@ -295,13 +295,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-03",
-  "last_period": "2026-11-12",
-  "last_known": "2026-11-13",
+  "last_period": "2026-11-13",
+  "last_known": "2026-11-14",
   "last": 2.24,
-  "prev": 2.2,
-  "chg_3m": -0.03,
-  "chg_12m": -0.04,
-  "n": 5470
+  "prev": 2.24,
+  "chg_3m": -0.04,
+  "chg_12m": -0.03,
+  "n": 5471
  },
  "US_HY_SPREAD": {
   "name": "US high-yield credit spread",
