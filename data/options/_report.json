@@ -1,7 +1,7 @@
 {
- "asof": "2026-11-16",
- "days": 131,
- "days_used": 131,
+ "asof": "2026-11-17",
+ "days": 132,
+ "days_used": 132,
  "download": {
   "new_files": 1,
   "not_available": {},
@@ -21,68 +21,68 @@
   "SENSEX",
   "SENSEX50"
  ],
- "bundle_bytes": 4697211,
+ "bundle_bytes": 4732398,
  "bundles": 2,
  "largest": [
   [
-   "NIFTY.c",
-   54492
+   "NIFTYNXT50.c",
+   54833
   ],
   [
-   "NIFTYNXT50.c",
-   54455
+   "NIFTY.c",
+   54762
   ],
   [
    "BANKNIFTY.c",
-   52269
+   52654
   ],
   [
    "MIDCPNIFTY.c",
-   48441
+   48791
   ],
   [
    "SENSEX.c",
-   47613
+   47908
   ],
   [
    "FINNIFTY.c",
-   43231
+   43508
   ],
   [
    "BOSCHLTD.c",
-   26087
+   26275
   ],
   [
    "PAGEIND.c",
-   25457
+   25634
   ],
   [
    "SHREECEM.c",
-   24838
+   25020
   ],
   [
    "MARUTI.c",
-   24154
+   24331
   ],
   [
    "SOLARINDS.c",
-   23956
+   24142
   ],
   [
    "ULTRACEMCO.c",
-   23708
+   23882
   ],
   [
    "BAJAJ-AUTO.c",
-   23507
+   23682
   ],
   [
    "POLYCAB.c",
-   23156
+   23311
   ],
   [
    "APOLLOHOSP.c",
-   22864
+   23027
   ]
  ],
  "debug": {},
