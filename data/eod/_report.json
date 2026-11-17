@@ -1,45 +1,40 @@
 {
- "asof": "2026-11-16",
- "first": "2026-05-11",
+ "asof": "2026-11-17",
+ "first": "2026-05-12",
  "sessions": 131,
- "nse": 3264,
- "bse_only": 2412,
- "rows": 627092,
- "bytes": 11689222,
+ "nse": 3263,
+ "bse_only": 2413,
+ "rows": 627335,
+ "bytes": 11692978,
  "download": {
   "NSE": {
    "new_files": 1,
-   "checked": 5
+   "checked": 4
   },
   "BSE": {
    "new_files": 1,
-   "checked": 5
+   "checked": 4
   }
  },
  "corporate_actions": {
   "files": 131,
   "new": 1,
   "not_available": {},
-  "records": 4098,
-  "dividends": 1277,
+  "records": 4062,
+  "dividends": 1279,
   "ratio_applied": 28,
-  "outside_data": 291,
+  "outside_data": 288,
   "ratio_rejected": 11,
   "inferred_splits": 14,
   "rights": 15,
   "demergers": 3
  },
- "symbol_change_rows_moved": 959,
+ "symbol_change_rows_moved": 945,
  "big_moves_left": [
   [
    "ANANDRATHI",
    "2026-06-03",
    0.504
-  ],
-  [
-   "APPL",
-   "2026-05-12",
-   0.418
   ],
   [
    "ARIHANTACA",
