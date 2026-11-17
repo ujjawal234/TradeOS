@@ -1,52 +1,52 @@
 {
- "asof": "2026-11-16",
+ "asof": "2026-11-17",
  "companies": 496,
  "of": 502,
- "new_quarters": 200,
+ "new_quarters": 2945,
  "errors": 36,
  "error_examples": [
   {
-   "sym": "BAJAJ-AUTO",
-   "new": 33,
+   "sym": "AUROPHARMA",
+   "new": 31,
    "err": "xbrl http 403"
   },
   {
-   "sym": "ACUTAAS",
-   "new": 20,
-   "err": "xbrl http 403"
-  },
-  {
-   "sym": "AWL",
-   "new": 19,
-   "err": "xbrl http 403"
-  },
-  {
-   "sym": "CGCL",
-   "new": 30,
-   "err": "xbrl http 403"
-  },
-  {
-   "sym": "ACC",
+   "sym": "BALKRISIND",
    "new": 32,
    "err": "xbrl http 403"
   },
   {
-   "sym": "CHENNPETRO",
-   "new": 30,
+   "sym": "BANDHANBNK",
+   "new": 28,
    "err": "xbrl http 403"
   },
   {
-   "sym": "CIPLA",
+   "sym": "BALRAMCHIN",
+   "new": 34,
+   "err": "xbrl http 403"
+  },
+  {
+   "sym": "BIOCON",
+   "new": 32,
+   "err": "xbrl http 403"
+  },
+  {
+   "sym": "BSE",
    "new": 0,
    "err": "list http 403"
   },
   {
-   "sym": "CONCORDBIO",
+   "sym": "BSOFT",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "CANBK",
    "new": 0,
    "err": "list http 403"
   }
  ],
  "profiles": 503,
- "minutes": 2.8,
+ "minutes": 7.9,
  "hot": 20
 }
