@@ -1,52 +1,52 @@
 {
- "asof": "2026-11-18",
+ "asof": "2026-11-19",
  "companies": 496,
  "of": 502,
- "new_quarters": 690,
- "errors": 110,
+ "new_quarters": 1955,
+ "errors": 165,
  "error_examples": [
   {
-   "sym": "BHARATFORG",
-   "new": 33,
-   "err": "xbrl http 404"
-  },
-  {
-   "sym": "CAMS",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "CANBK",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "CAPLIPOINT",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "CARTRADE",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "BLUESTARCO",
-   "new": 32,
-   "err": "xbrl http 403"
-  },
-  {
-   "sym": "CCL",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "BRIGADE",
+   "sym": "ASAHIINDIA",
    "new": 31,
    "err": "xbrl http 403"
+  },
+  {
+   "sym": "BAJAJHFL",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "BAJAJHLDNG",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "ASTERDM",
+   "new": 29,
+   "err": "xbrl http 403"
+  },
+  {
+   "sym": "BAJFINANCE",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "BANKBARODA",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "BANKINDIA",
+   "new": 0,
+   "err": "list http 403"
+  },
+  {
+   "sym": "BATAINDIA",
+   "new": 0,
+   "err": "list http 403"
   }
  ],
  "profiles": 503,
- "minutes": 7.6,
- "hot": 17
+ "minutes": 22.5,
+ "hot": 16
 }
