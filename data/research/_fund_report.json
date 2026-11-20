@@ -1,52 +1,52 @@
 {
- "asof": "2026-11-19",
+ "asof": "2026-11-20",
  "companies": 496,
  "of": 502,
- "new_quarters": 1955,
- "errors": 165,
+ "new_quarters": 6591,
+ "errors": 68,
  "error_examples": [
   {
-   "sym": "ASAHIINDIA",
-   "new": 31,
-   "err": "xbrl http 403"
-  },
-  {
-   "sym": "BAJAJHFL",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "BAJAJHLDNG",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "ASTERDM",
-   "new": 29,
-   "err": "xbrl http 403"
-  },
-  {
-   "sym": "BAJFINANCE",
-   "new": 0,
-   "err": "list http 403"
+   "sym": "AUBANK",
+   "new": 28,
+   "err": "xbrl http 404"
   },
   {
    "sym": "BANKBARODA",
-   "new": 0,
-   "err": "list http 403"
+   "new": 30,
+   "err": "xbrl http 404"
   },
   {
    "sym": "BANKINDIA",
-   "new": 0,
-   "err": "list http 403"
+   "new": 31,
+   "err": "xbrl http 404"
   },
   {
-   "sym": "BATAINDIA",
-   "new": 0,
-   "err": "list http 403"
+   "sym": "CANBK",
+   "new": 30,
+   "err": "xbrl http 404"
+  },
+  {
+   "sym": "CAPLIPOINT",
+   "new": 32,
+   "err": "xbrl http 404"
+  },
+  {
+   "sym": "CCL",
+   "new": 32,
+   "err": "xbrl http 404"
+  },
+  {
+   "sym": "CENTRALBK",
+   "new": 31,
+   "err": "xbrl http 404"
+  },
+  {
+   "sym": "CESC",
+   "new": 32,
+   "err": "xbrl http 404"
   }
  ],
  "profiles": 503,
- "minutes": 22.5,
+ "minutes": 12.8,
  "hot": 16
 }
