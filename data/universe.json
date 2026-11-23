@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-20",
+ "generated": "2026-11-23",
  "lists_fetched": {
   "nifty50": true,
   "nifty200": true,
@@ -118,9 +118,10 @@
    "name": "Acutaas Chemicals Ltd.",
    "industry": "Healthcare",
    "nifty500": true,
+   "fno": true,
+   "lot_size": 150,
    "nifty50": false,
-   "nifty200": false,
-   "fno": false
+   "nifty200": false
   },
   "ADANIENSOL": {
    "name": "Adani Energy Solutions Ltd.",
@@ -305,8 +306,9 @@
    "industry": "Capital Goods",
    "nifty500": true,
    "nifty200": true,
-   "nifty50": false,
-   "fno": false
+   "fno": true,
+   "lot_size": 50,
+   "nifty50": false
   },
   "APLAPOLLO": {
    "name": "APL Apollo Tubes Ltd.",
