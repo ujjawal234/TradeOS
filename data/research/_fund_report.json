@@ -2,51 +2,16 @@
  "asof": "2026-11-24",
  "companies": 496,
  "of": 502,
- "new_quarters": 617,
- "errors": 99,
+ "new_quarters": 425,
+ "errors": 1,
  "error_examples": [
   {
-   "sym": "GILLETTE",
+   "sym": "HCLTECH",
    "new": 33,
    "err": "xbrl http 404"
-  },
-  {
-   "sym": "GODREJPROP",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "GPIL",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "GRANULES",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "GRAPHITE",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "GRASIM",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "GRAVITA",
-   "new": 0,
-   "err": "list http 403"
-  },
-  {
-   "sym": "GROWW",
-   "new": 0,
-   "err": "list http 403"
   }
  ],
  "profiles": 503,
- "minutes": 6.2,
- "hot": 5
+ "minutes": 1.0,
+ "hot": 3
 }
