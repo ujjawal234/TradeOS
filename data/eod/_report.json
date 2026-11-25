@@ -1,35 +1,35 @@
 {
- "asof": "2026-11-23",
- "first": "2026-05-19",
+ "asof": "2026-11-25",
+ "first": "2026-05-20",
  "sessions": 130,
- "nse": 3262,
- "bse_only": 2411,
- "rows": 624309,
- "bytes": 11630922,
+ "nse": 3263,
+ "bse_only": 2409,
+ "rows": 624618,
+ "bytes": 11632080,
  "download": {
   "NSE": {
-   "new_files": 0,
-   "checked": 4
+   "new_files": 1,
+   "checked": 5
   },
   "BSE": {
-   "new_files": 0,
-   "checked": 4
+   "new_files": 1,
+   "checked": 5
   }
  },
  "corporate_actions": {
   "files": 130,
-  "new": 0,
+  "new": 1,
   "not_available": {},
-  "records": 3995,
+  "records": 4033,
   "dividends": 1291,
   "ratio_applied": 28,
-  "outside_data": 276,
-  "ratio_rejected": 11,
+  "outside_data": 272,
+  "ratio_rejected": 12,
   "inferred_splits": 14,
-  "rights": 15,
+  "rights": 16,
   "demergers": 3
  },
- "symbol_change_rows_moved": 1009,
+ "symbol_change_rows_moved": 1125,
  "big_moves_left": [
   [
    "ANANDRATHI",
