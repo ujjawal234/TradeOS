@@ -263,13 +263,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-03",
-  "last_period": "2026-11-24",
-  "last_known": "2026-11-25",
-  "last": 0.28,
-  "prev": 0.29,
-  "chg_3m": -0.11,
-  "chg_12m": -0.27,
-  "n": 5478
+  "last_period": "2026-11-25",
+  "last_known": "2026-11-26",
+  "last": 0.24,
+  "prev": 0.28,
+  "chg_3m": -0.15,
+  "chg_12m": -0.31,
+  "n": 5479
  },
  "US_REAL_10Y": {
   "name": "US 10-year real yield (TIPS)",
@@ -295,13 +295,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-03",
-  "last_period": "2026-11-24",
-  "last_known": "2026-11-25",
+  "last_period": "2026-11-25",
+  "last_known": "2026-11-26",
   "last": 2.12,
-  "prev": 2.13,
+  "prev": 2.12,
   "chg_3m": -0.19,
   "chg_12m": -0.11,
-  "n": 5478
+  "n": 5479
  },
  "US_HY_SPREAD": {
   "name": "US high-yield credit spread",
@@ -535,13 +535,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-01",
-  "last_period": "2026-11-25",
-  "last_known": "2026-11-26",
+  "last_period": "2026-11-26",
+  "last_known": "2026-11-27",
   "last": 2.5,
   "prev": 2.5,
   "chg_3m": 0.25,
   "chg_12m": 0.5,
-  "n": 7999
+  "n": 8000
  },
  "JP_10Y": {
   "name": "Japan 10-year yield (monthly)",
