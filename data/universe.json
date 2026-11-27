@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-26",
+ "generated": "2026-11-27",
  "lists_fetched": {
   "nifty50": true,
   "nifty200": true,
@@ -1224,14 +1224,6 @@
    "fno": true,
    "lot_size": 625
   },
-  "DUMMYHEG": {
-   "name": "Dummy HEG Ltd.",
-   "industry": "Capital Goods",
-   "nifty500": true,
-   "nifty50": false,
-   "nifty200": false,
-   "fno": false
-  },
   "ECLERX": {
    "name": "eClerx Services Ltd.",
    "industry": "Services",
@@ -1710,6 +1702,14 @@
   },
   "HEGAM": {
    "name": "HEG Advanced Materials Ltd.",
+   "industry": "Capital Goods",
+   "nifty500": true,
+   "nifty50": false,
+   "nifty200": false,
+   "fno": false
+  },
+  "HEGRAPHITE": {
+   "name": "HEG Ltd.",
    "industry": "Capital Goods",
    "nifty500": true,
    "nifty50": false,
@@ -3798,7 +3798,7 @@
    "nifty200": true,
    "nifty50": true,
    "fno": true,
-   "lot_size": 600
+   "lot_size": 1200
   },
   "TECHNOE": {
    "name": "Techno Electric & Engineering Company Ltd.",
