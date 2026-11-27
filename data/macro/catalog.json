@@ -151,13 +151,13 @@
   "group": "india",
   "lag_days": 8,
   "first": "2005-01-01",
-  "last_period": "2026-10-01",
-  "last_known": "2026-11-08",
-  "last": 101.446,
-  "prev": 101.389,
-  "chg_3m": 0.192,
-  "chg_12m": 1.182,
-  "n": 262
+  "last_period": "2026-09-01",
+  "last_known": "2026-10-08",
+  "last": 102.004,
+  "prev": 101.82,
+  "chg_3m": 0.552,
+  "chg_12m": 2.012,
+  "n": 261
  },
  "USDINR_REF": {
   "name": "Rupees per US dollar (Fed H.10 noon rate)",
@@ -310,14 +310,14 @@
   "source": "FRED BAMLH0A0HYM2",
   "group": "global",
   "lag_days": 1,
-  "first": "2023-11-27",
-  "last_period": "2026-11-24",
-  "last_known": "2026-11-25",
-  "last": 3.72,
-  "prev": 3.63,
-  "chg_3m": 1.12,
-  "chg_12m": 0.77,
-  "n": 785
+  "first": "2023-11-28",
+  "last_period": "2026-11-26",
+  "last_known": "2026-11-27",
+  "last": 3.77,
+  "prev": 3.77,
+  "chg_3m": 1.17,
+  "chg_12m": 0.83,
+  "n": 786
  },
  "US_IG_SPREAD": {
   "name": "US investment-grade credit spread",
@@ -326,14 +326,14 @@
   "source": "FRED BAMLC0A0CM",
   "group": "global",
   "lag_days": 1,
-  "first": "2023-11-27",
-  "last_period": "2026-11-24",
-  "last_known": "2026-11-25",
-  "last": 0.98,
-  "prev": 0.97,
-  "chg_3m": 0.19,
-  "chg_12m": 0.16,
-  "n": 784
+  "first": "2023-11-28",
+  "last_period": "2026-11-26",
+  "last_known": "2026-11-27",
+  "last": 0.99,
+  "prev": 0.99,
+  "chg_3m": 0.2,
+  "chg_12m": 0.17,
+  "n": 785
  },
  "USD_BROAD": {
   "name": "US dollar, broad trade-weighted index",
@@ -535,13 +535,13 @@
   "group": "global",
   "lag_days": 1,
   "first": "2005-01-01",
-  "last_period": "2026-11-26",
-  "last_known": "2026-11-27",
+  "last_period": "2026-11-27",
+  "last_known": "2026-11-28",
   "last": 2.5,
   "prev": 2.5,
   "chg_3m": 0.25,
   "chg_12m": 0.5,
-  "n": 8000
+  "n": 8001
  },
  "JP_10Y": {
   "name": "Japan 10-year yield (monthly)",
